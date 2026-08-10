@@ -42,6 +42,17 @@ h1,h2,h3{font-family:'Fraunces',serif;margin:0;}
 .nav-item.active{background:rgba(255,255,255,0.1);color:#fff;border-left-color:var(--accent);}
 .nav-icon{width:16px;text-align:center;opacity:0.9;}
 .sidebar-footer{margin-top:auto;padding:16px 20px 0;font-size:11px;color:rgba(255,255,255,0.5);border-top:1px solid rgba(255,255,255,0.15);}
+.sidebar-action-btn{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.9);border-radius:20px;padding:9px 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Inter';transition:.15s;}
+.sidebar-action-btn:hover{background:rgba(255,255,255,0.12);}
+.sidebar-action-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+/* Modo noche */
+body.dark{--bg:#181C1A;--surface:#20251F;--ink:#EDEFEA;--ink-soft:#9CA69E;--primary-light:#243A31;--border:#33392F;}
+body.dark table th{background:#232821;}
+body.dark tr:hover td{background:#232821;}
+body.dark .modal{background:var(--surface);}
+body.dark .field input,body.dark .field select,body.dark .field textarea{background:#232821;color:var(--ink);border-color:var(--border);}
+body.dark .doc-preview textarea{background:#232821;color:var(--ink);}
 
 /* Main */
 .main{flex:1;padding:28px 36px 60px;max-width:1180px;}
@@ -161,6 +172,13 @@ tr:hover td{background:#FAF9F6;}
     <div class="nav-item" data-view="epp"><span class="nav-icon">&#129508;</span> EPP y Limpieza</div>
     <div class="nav-item" data-view="basedatos"><span class="nav-icon">&#128193;</span> Base de datos</div>
     <div class="sidebar-footer">Datos guardados en tu navegador, de forma privada.</div>
+    <div style="padding:12px 14px 4px;display:flex;flex-direction:column;gap:8px;">
+      <button class="sidebar-action-btn" onclick="toggleDarkMode()"><span id="darkModeIcon">&#9789;</span> <span id="darkModeLabel">Modo noche</span></button>
+      <button class="sidebar-action-btn" onclick="toggleAvisos()"><span id="avisosIcon">&#128276;</span> <span id="avisosLabel">Activar avisos</span></button>
+      <button class="sidebar-action-btn" onclick="guardarRespaldo()">&#8595; Guardar respaldo</button>
+      <button class="sidebar-action-btn" onclick="document.getElementById('restoreBackupFile').click()">&#8593; Restaurar respaldo</button>
+      <input type="file" id="restoreBackupFile" accept=".json" style="display:none;" onchange="restaurarRespaldo(this.files[0])">
+    </div>
   </div>
 
   <div class="main">
@@ -3479,7 +3497,111 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(v) v.addEventListener('input', updateEppVencimientoPreview);
 });
 
-init();
+// ---------- Respaldo (guardar / restaurar todo el sistema) ----------
+const BACKUP_KEYS = ['employees','budgetEntries','menuEntries','workerDocs','templates','faltas','descansos',
+  'registrosDiarios','inventoryItems','inventoryMovements','eventos','encuestas','capacitaciones','reconocimientos',
+  'eppAsignaciones','limpiezaRegistros'];
+
+async function guardarRespaldo(){
+  const backup = {_meta:{sistema:'SERVING RRHH', fecha: new Date().toISOString()}};
+  for(const key of BACKUP_KEYS){ backup[key] = await loadData(key, []); }
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `respaldo-serving-rrhh-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Respaldo descargado');
+}
+
+function restaurarRespaldo(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (ev)=>{
+    try{
+      const data = JSON.parse(ev.target.result);
+      if(!confirm('Esto reemplazará todos los datos actuales del sistema (personal, documentos, inventario, etc.) con los del archivo de respaldo. ¿Continuar?')) return;
+      for(const key of BACKUP_KEYS){
+        if(data[key] !== undefined){ await saveData(key, data[key]); }
+      }
+      showToast('Respaldo restaurado. Recargando...');
+      setTimeout(()=>location.reload(), 1200);
+    }catch(err){
+      console.error(err);
+      showToast('No se pudo leer el archivo. Verifica que sea un respaldo .json válido.');
+    }
+  };
+  reader.readAsText(file);
+  document.getElementById('restoreBackupFile').value = '';
+}
+
+// ---------- Modo noche ----------
+async function toggleDarkMode(){
+  const isDark = document.body.classList.toggle('dark');
+  document.getElementById('darkModeIcon').textContent = isDark ? '\u2600' : '\u263D';
+  document.getElementById('darkModeLabel').textContent = isDark ? 'Modo día' : 'Modo noche';
+  document.querySelector('button[onclick="toggleDarkMode()"]').classList.toggle('active', isDark);
+  await saveData('darkModePref', isDark);
+}
+async function initDarkMode(){
+  const pref = await loadData('darkModePref', false);
+  if(pref){
+    document.body.classList.add('dark');
+    document.getElementById('darkModeIcon').textContent = '\u2600';
+    document.getElementById('darkModeLabel').textContent = 'Modo día';
+    document.querySelector('button[onclick="toggleDarkMode()"]').classList.add('active');
+  }
+}
+
+// ---------- Avisos (notificaciones del navegador) ----------
+async function toggleAvisos(){
+  const currentlyOn = await loadData('avisosPref', false);
+  const btn = document.querySelector('button[onclick="toggleAvisos()"]');
+  if(!currentlyOn){
+    if(!('Notification' in window)){ showToast('Tu navegador no soporta notificaciones'); return; }
+    const perm = await Notification.requestPermission();
+    if(perm !== 'granted'){ showToast('No se activaron los avisos (permiso denegado por el navegador)'); return; }
+    await saveData('avisosPref', true);
+    document.getElementById('avisosLabel').textContent = 'Avisos activados';
+    btn.classList.add('active');
+    showToast('Avisos activados');
+    mostrarAvisosPendientes();
+  } else {
+    await saveData('avisosPref', false);
+    document.getElementById('avisosLabel').textContent = 'Activar avisos';
+    btn.classList.remove('active');
+    showToast('Avisos desactivados');
+  }
+}
+async function initAvisos(){
+  const pref = await loadData('avisosPref', false);
+  if(pref && 'Notification' in window && Notification.permission==='granted'){
+    document.getElementById('avisosLabel').textContent = 'Avisos activados';
+    document.querySelector('button[onclick="toggleAvisos()"]').classList.add('active');
+    mostrarAvisosPendientes();
+  }
+}
+function mostrarAvisosPendientes(){
+  if(!('Notification' in window) || Notification.permission!=='granted') return;
+  const alerts = [];
+  employees.forEach(e=>{
+    const dc = daysUntil(e.fechaFin);
+    if(dc!==null && dc>=0 && dc<=7 && e.estado==='activo') alerts.push(`Contrato de ${e.nombre} vence en ${dc} día(s)`);
+    const de = daysUntil(e.fechaEmo);
+    if(de!==null && de>=0 && de<=7) alerts.push(`EMO de ${e.nombre} vence en ${de} día(s)`);
+  });
+  if(alerts.length){
+    new Notification('SERVING RRHH — Avisos pendientes', {
+      body: alerts.slice(0,3).join('\n') + (alerts.length>3 ? `\n+${alerts.length-3} más` : '')
+    });
+  }
+}
+
+(async function bootstrap(){
+  await init();
+  await initDarkMode();
+  await initAvisos();
+})();
 </script>
 </body>
 </html>
