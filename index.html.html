@@ -1,0 +1,3485 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SERVING · RRHH</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#F6F4EF;
+  --surface:#FFFFFF;
+  --ink:#1F2A24;
+  --ink-soft:#5B6660;
+  --primary:#1F4B3F;
+  --primary-light:#E7EFE9;
+  --accent:#C98A2C;
+  --accent-light:#F6E9D3;
+  --danger:#B23A32;
+  --danger-light:#F6E0DD;
+  --success:#3E7A55;
+  --success-light:#E4F0E8;
+  --border:#E1DDD3;
+  --radius:10px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;font-size:14px;}
+h1,h2,h3{font-family:'Fraunces',serif;margin:0;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+.app{display:flex;min-height:100vh;}
+
+/* Sidebar */
+.sidebar{width:220px;background:var(--primary);color:#fff;flex-shrink:0;display:flex;flex-direction:column;padding:24px 0;}
+.brand{padding:0 20px 24px;border-bottom:1px solid rgba(255,255,255,0.15);margin-bottom:12px;}
+.brand .eyebrow{font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);font-weight:600;}
+.brand h1{font-size:22px;color:#fff;margin-top:4px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:11px 20px;color:rgba(255,255,255,0.75);cursor:pointer;font-size:13.5px;font-weight:500;border-left:3px solid transparent;transition:.15s;}
+.nav-item:hover{background:rgba(255,255,255,0.06);color:#fff;}
+.nav-item.active{background:rgba(255,255,255,0.1);color:#fff;border-left-color:var(--accent);}
+.nav-icon{width:16px;text-align:center;opacity:0.9;}
+.sidebar-footer{margin-top:auto;padding:16px 20px 0;font-size:11px;color:rgba(255,255,255,0.5);border-top:1px solid rgba(255,255,255,0.15);}
+
+/* Main */
+.main{flex:1;padding:28px 36px 60px;max-width:1180px;}
+.view{display:none;}
+.view.active{display:block;}
+.view-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:22px;flex-wrap:wrap;gap:12px;}
+.view-header h2{font-size:26px;}
+.view-header p{color:var(--ink-soft);margin-top:4px;font-size:13px;}
+
+.btn{border:none;border-radius:7px;padding:9px 16px;font-family:'Inter',sans-serif;font-weight:600;font-size:13px;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:6px;}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:#163a30;}
+.btn-accent{background:var(--accent);color:#fff;}
+.btn-accent:hover{background:#b47a24;}
+.btn-ghost{background:var(--surface);color:var(--ink);border:1px solid var(--border);}
+.btn-ghost:hover{border-color:var(--primary);}
+.btn-danger{background:var(--danger-light);color:var(--danger);}
+.btn-sm{padding:6px 11px;font-size:12px;}
+
+/* Cards / stats */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:22px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;}
+.stat-card .num{font-family:'Fraunces',serif;font-size:32px;font-weight:600;}
+.stat-card .label{font-size:12px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;}
+.stat-card.warn .num{color:var(--danger);}
+.stat-card.ok .num{color:var(--success);}
+
+/* Ticker de vencimientos */
+.ticker-wrap{background:#17352C;border-radius:var(--radius);padding:14px 20px;margin-bottom:22px;overflow:hidden;position:relative;}
+.ticker-label{font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:8px;}
+.ticker-track{display:flex;gap:24px;overflow-x:auto;padding-bottom:2px;}
+.ticker-item{flex-shrink:0;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:7px;padding:8px 14px;color:#fff;font-size:12.5px;white-space:nowrap;}
+.ticker-item b{color:var(--accent);}
+.ticker-empty{color:rgba(255,255,255,0.6);font-size:12.5px;font-style:italic;}
+
+/* Aviso */
+.aviso-box{border-radius:var(--radius);padding:14px 18px;margin-bottom:22px;display:flex;flex-direction:column;gap:8px;}
+.aviso-box.warn{background:var(--accent-light);border:1px solid #E2C48F;}
+.aviso-box.danger{background:var(--danger-light);border:1px solid #E4AFA9;}
+.aviso-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;}
+.aviso-box.warn .aviso-title{color:#8a5c15;}
+.aviso-box.danger .aviso-title{color:var(--danger);}
+.aviso-list{display:flex;flex-wrap:wrap;gap:8px;}
+.aviso-chip{background:rgba(255,255,255,0.7);border-radius:20px;padding:5px 12px;font-size:12.5px;font-weight:600;}
+.aviso-box.warn .aviso-chip{color:#8a5c15;}
+.aviso-box.danger .aviso-chip{color:var(--danger);}
+
+/* Table */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:22px;}
+.panel-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+.panel-head h3{font-size:16px;}
+table{width:100%;border-collapse:collapse;}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);padding:10px 14px;border-bottom:1px solid var(--border);background:#FAF9F6;}
+td{padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#FAF9F6;}
+.pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+.pill-ok{background:var(--success-light);color:var(--success);}
+.pill-warn{background:var(--accent-light);color:#8a5c15;}
+.pill-danger{background:var(--danger-light);color:var(--danger);}
+.pill-muted{background:#EEECE6;color:var(--ink-soft);}
+.actions-cell{display:flex;gap:6px;}
+.empty{padding:40px 20px;text-align:center;color:var(--ink-soft);font-size:13px;}
+.search-box{border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:13px;font-family:'Inter';width:220px;}
+
+/* Forms / modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(20,25,22,0.5);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;}
+.modal-overlay.active{display:flex;}
+.modal{background:var(--surface);border-radius:12px;width:100%;max-width:560px;max-height:88vh;overflow-y:auto;padding:26px 28px;}
+.modal h3{font-size:19px;margin-bottom:18px;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:5px;}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--border);border-radius:7px;padding:9px 11px;font-family:'Inter';font-size:13.5px;background:#fff;color:var(--ink);}
+.field textarea{font-family:'IBM Plex Mono',monospace;font-size:12.5px;resize:vertical;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+
+/* Docs */
+.doc-grid{display:grid;grid-template-columns:220px 1fr;gap:18px;}
+.doc-types{display:flex;flex-direction:column;gap:6px;}
+.doc-type-btn{text-align:left;padding:10px 12px;border-radius:7px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:12.5px;font-weight:600;color:var(--ink-soft);}
+.doc-type-btn.active{background:var(--primary-light);border-color:var(--primary);color:var(--primary);}
+.doc-preview{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;}
+.doc-preview textarea{width:100%;min-height:420px;border:1px solid var(--border);border-radius:7px;padding:16px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.6;}
+
+/* Budget / menus */
+.tabs-sub{display:flex;gap:8px;margin-bottom:16px;}
+.tab-sub-btn{padding:7px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink-soft);}
+.tab-sub-btn.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+
+.upload-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.file-chip{display:flex;align-items:center;gap:8px;background:var(--primary-light);border-radius:7px;padding:6px 10px 6px 12px;font-size:12px;color:var(--primary);}
+.hint{font-size:11.5px;color:var(--ink-soft);margin-top:4px;}
+.toast{position:fixed;bottom:22px;right:22px;background:var(--primary);color:#fff;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,0.15);z-index:100;opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none;}
+.toast.show{opacity:1;transform:translateY(0);}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="brand">
+      <div class="eyebrow">Serving</div>
+      <h1>RRHH</h1>
+    </div>
+    <div class="nav-item active" data-view="dashboard"><span class="nav-icon">&#9673;</span> Inicio</div>
+    <div class="nav-item" data-view="personal"><span class="nav-icon">&#9782;</span> Personal</div>
+    <div class="nav-item" data-view="documentos"><span class="nav-icon">&#9998;</span> Documentos</div>
+    <div class="nav-item" data-view="plantillas"><span class="nav-icon">&#128209;</span> Plantillas</div>
+    <div class="nav-item" data-view="emo"><span class="nav-icon">&#127973;</span> EMO</div>
+    <div class="nav-item" data-view="presupuesto"><span class="nav-icon">&#9878;</span> Presupuesto</div>
+    <div class="nav-item" data-view="menus"><span class="nav-icon">&#9749;</span> Menús diarios</div>
+    <div class="nav-item" data-view="boletas"><span class="nav-icon">&#128190;</span> Documentos y Contratos</div>
+    <div class="nav-item" data-view="asistencia"><span class="nav-icon">&#128203;</span> Asistencia y Horarios</div>
+    <div class="nav-item" data-view="inventario"><span class="nav-icon">&#128230;</span> Inventario</div>
+    <div class="nav-item" data-view="bienestar"><span class="nav-icon">&#127807;</span> Bienestar</div>
+    <div class="nav-item" data-view="epp"><span class="nav-icon">&#129508;</span> EPP y Limpieza</div>
+    <div class="nav-item" data-view="basedatos"><span class="nav-icon">&#128193;</span> Base de datos</div>
+    <div class="sidebar-footer">Datos guardados en tu navegador, de forma privada.</div>
+  </div>
+
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div class="view active" id="view-dashboard">
+      <div class="view-header">
+        <div>
+          <h2>Panel general</h2>
+          <p>Estado del personal y vencimientos próximos</p>
+        </div>
+      </div>
+
+      <div class="stat-grid" id="dashStats"></div>
+
+      <div class="ticker-wrap">
+        <div class="ticker-label">Vencimientos en los próximos 30 días</div>
+        <div class="ticker-track" id="tickerTrack"></div>
+      </div>
+
+      <div class="ticker-wrap" style="background:#8a5c15;">
+        <div class="ticker-label" style="color:#fff;">🎂 Cumpleaños próximos (30 días)</div>
+        <div class="ticker-track" id="birthdayTrack"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Personal activo</h3></div>
+        <div id="dashActiveTable"></div>
+      </div>
+    </div>
+
+    <!-- PERSONAL -->
+    <div class="view" id="view-personal">
+      <div class="view-header">
+        <div>
+          <h2>Personal</h2>
+          <p>Colaboradores, contratos, régimen de salud y pensión</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input class="search-box" id="personalSearch" placeholder="Buscar por nombre o DNI...">
+          <button class="btn btn-ghost" onclick="downloadPersonalTemplate()">Descargar plantilla Excel</button>
+          <input type="file" id="personalExcelFile" accept=".xlsx,.xls" style="display:none;" onchange="uploadPersonalExcel(this.files[0])">
+          <button class="btn btn-ghost" onclick="document.getElementById('personalExcelFile').click()">Cargar desde Excel</button>
+          <button class="btn btn-primary" onclick="openEmployeeModal()">+ Nuevo colaborador</button>
+        </div>
+      </div>
+      <p class="hint" id="personalExcelStatus" style="margin:-8px 0 14px;"></p>
+
+      <div class="tabs-sub">
+        <button class="tab-sub-btn active" data-filter="todos">Todos</button>
+        <button class="tab-sub-btn" data-filter="activo">Activos</button>
+        <button class="tab-sub-btn" data-filter="inactivo">Inactivos</button>
+        <button class="tab-sub-btn" data-filter="porvencer">Contrato por vencer</button>
+        <button class="tab-sub-btn" data-filter="sis">Régimen SIS</button>
+        <button class="tab-sub-btn" data-filter="essalud">Régimen EsSalud</button>
+        <button class="tab-sub-btn" data-filter="eps">Régimen EPS</button>
+        <button class="tab-sub-btn" data-filter="administracion">Área: Administración</button>
+        <button class="tab-sub-btn" data-filter="produccion">Área: Producción</button>
+        <button class="tab-sub-btn" data-filter="contabilidad">Área: Contabilidad</button>
+      </div>
+
+      <div class="panel">
+        <div id="personalTable"></div>
+      </div>
+    </div>
+
+    <!-- DOCUMENTOS -->
+    <div class="view" id="view-documentos">
+      <div class="view-header">
+        <div>
+          <h2>Documentos</h2>
+          <p>Genera y descarga contratos, constancias, memorandos y adendas</p>
+        </div>
+      </div>
+
+      <div class="field" style="max-width:340px;margin-bottom:18px;">
+        <label>Colaborador</label>
+        <select id="docEmployeeSelect" onchange="renderDocPreview()"></select>
+      </div>
+
+      <div class="doc-grid">
+        <div class="doc-types" id="docTypeList"></div>
+        <div class="doc-preview">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <h3 style="font-size:15px;" id="docPreviewTitle">Contrato de trabajo</h3>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-ghost btn-sm" onclick="resetTemplate()">Restaurar plantilla</button>
+              <button class="btn btn-ghost btn-sm" onclick="printDoc()">Imprimir / PDF</button>
+              <button class="btn btn-accent btn-sm" onclick="downloadDoc()">Descargar .txt</button>
+            </div>
+          </div>
+          <textarea id="docTextarea" oninput="markTemplateDirty()"></textarea>
+          <p class="hint">Puedes editar el texto libremente antes de descargar o imprimir. Los datos del colaborador ya están reemplazados en la vista previa.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- PLANTILLAS -->
+    <div class="view" id="view-plantillas">
+      <div class="view-header">
+        <div>
+          <h2>Plantillas de la empresa</h2>
+          <p>Sube tus propios modelos formales (.docx o .txt) o edítalos aquí para que se usen al redactar cada documento</p>
+        </div>
+      </div>
+
+      <div class="doc-grid">
+        <div class="doc-types" id="plantillaTypeList"></div>
+        <div class="doc-preview">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+            <h3 style="font-size:15px;" id="plantillaPreviewTitle">Contrato de trabajo</h3>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <input type="file" id="plantillaFile" accept=".docx,.txt" style="max-width:200px;font-size:12px;">
+              <button class="btn btn-ghost btn-sm" onclick="importPlantillaFile()">Cargar archivo</button>
+              <button class="btn btn-ghost btn-sm" onclick="resetPlantillaDefault()">Restaurar original</button>
+              <button class="btn btn-accent btn-sm" onclick="savePlantilla()">Guardar plantilla</button>
+            </div>
+          </div>
+          <textarea id="plantillaTextarea" style="min-height:420px;"></textarea>
+          <p class="hint">Usa estos campos y se completarán automáticamente con los datos de cada colaborador: {{nombre}}, {{dni}}, {{cargo}}, {{fechaIngreso}}, {{fechaFin}}, {{salud}}, {{pension}}, {{fecha}}. Esta es la plantilla base que se usará en la sección Documentos.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- EMO -->
+    <div class="view" id="view-emo">
+      <div class="view-header">
+        <div>
+          <h2>EMO — Exámenes Médicos Ocupacionales</h2>
+          <p>Espacio exclusivo para ver las vigencias y vencimientos del EMO de cada colaborador</p>
+        </div>
+      </div>
+
+      <div class="stat-grid" id="emoStats"></div>
+
+      <div id="emoAviso"></div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Vigencia del EMO por colaborador</h3></div>
+        <div id="emoTable"></div>
+      </div>
+    </div>
+
+
+    <div class="view" id="view-presupuesto">
+      <div class="view-header">
+        <div>
+          <h2>Presupuesto</h2>
+          <p>Control de ingresos y gastos del área</p>
+        </div>
+        <button class="btn btn-primary" onclick="openBudgetModal()">+ Nuevo movimiento</button>
+      </div>
+
+      <div class="stat-grid" id="budgetStats"></div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Movimientos</h3></div>
+        <div id="budgetTable"></div>
+      </div>
+    </div>
+
+    <!-- MENUS -->
+    <div class="view" id="view-menus">
+      <div class="view-header">
+        <div>
+          <h2>Menús diarios</h2>
+          <p>Control del comedor / menú del personal por día, con precio incluido IGV</p>
+        </div>
+        <button class="btn btn-primary" onclick="openMenuModal()">+ Registrar menú</button>
+      </div>
+
+      <div class="stat-grid" id="menuStats"></div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Registro diario</h3>
+          <div style="display:flex;gap:8px;">
+            <select class="search-box" id="menuMesFiltro" style="width:150px;"></select>
+            <select class="search-box" id="menuAnioFiltro" style="width:100px;"></select>
+          </div>
+        </div>
+        <div id="menuTable"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Histórico anual <span id="menuHistoricoAnio" class="mono" style="color:var(--ink-soft);font-weight:400;"></span></h3></div>
+        <div id="menuHistoricoTable"></div>
+      </div>
+    </div>
+
+    <!-- DOCUMENTOS Y CONTRATOS -->
+    <div class="view" id="view-boletas">
+      <div class="view-header">
+        <div>
+          <h2>Documentos y Contratos</h2>
+          <p>Carga de documentos → control de vencimientos → renovación o cierre → historial por colaborador</p>
+        </div>
+      </div>
+
+      <div id="docsAviso"></div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>1. Carga de documentos</h3>
+        </div>
+        <div style="padding:16px 18px;">
+          <div class="field-row">
+            <div class="field">
+              <label>Colaborador</label>
+              <select id="boletaEmployeeSelect"></select>
+            </div>
+            <div class="field">
+              <label>Tipo de documento</label>
+              <select id="boletaCategoria" onchange="toggleBoletaFields()">
+                <option value="contrato">Contrato</option>
+                <option value="anexo">Anexo</option>
+                <option value="autorizacion">Autorización</option>
+                <option value="boleta">Boleta de pago</option>
+                <option value="sctr">SCTR</option>
+                <option value="pension">Pensión</option>
+                <option value="salud">Salud</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field" id="boletaPeriodoField">
+              <label>Periodo (ej. 2026-07)</label>
+              <input type="text" id="boletaPeriodo" placeholder="2026-07">
+            </div>
+            <div class="field" id="boletaVigenciaField" style="display:none;">
+              <label>Vigencia / vencimiento</label>
+              <input type="date" id="boletaVigencia">
+            </div>
+          </div>
+          <div class="upload-row">
+            <input type="file" id="boletaFile" accept=".pdf,.jpg,.jpeg,.png">
+            <button class="btn btn-accent btn-sm" onclick="uploadBoleta()">Subir</button>
+          </div>
+          <p class="hint">Formatos aceptados: PDF, JPG, PNG. Se guarda de forma privada en este navegador.</p>
+        </div>
+      </div>
+
+      <div class="tabs-sub">
+        <button class="tab-sub-btn active" data-boleta-filter="todos">Todos</button>
+        <button class="tab-sub-btn" data-boleta-filter="contrato">Contratos</button>
+        <button class="tab-sub-btn" data-boleta-filter="anexo">Anexos</button>
+        <button class="tab-sub-btn" data-boleta-filter="autorizacion">Autorizaciones</button>
+        <button class="tab-sub-btn" data-boleta-filter="boleta">Boletas de pago</button>
+        <button class="tab-sub-btn" data-boleta-filter="sctr">SCTR</button>
+        <button class="tab-sub-btn" data-boleta-filter="pension">Pensión</button>
+        <button class="tab-sub-btn" data-boleta-filter="salud">Salud</button>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>2. Documentos y control de vencimientos</h3></div>
+        <div id="boletaTable"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>4. Historial documental por colaborador</h3>
+          <select class="search-box" id="historialEmployeeSelect" style="width:240px;"></select>
+        </div>
+        <div id="historialTable"></div>
+      </div>
+    </div>
+
+    <!-- ASISTENCIA -->
+    <div class="view" id="view-asistencia">
+      <div class="view-header">
+        <div>
+          <h2>Asistencia y Horarios</h2>
+          <p>Registro diario → validación automática → reportes mensuales → base para nómina</p>
+        </div>
+      </div>
+
+      <div class="tabs-sub">
+        <button class="tab-sub-btn active" data-asist-tab="registro" onclick="switchAsistTab('registro')">1. Registro diario</button>
+        <button class="tab-sub-btn" data-asist-tab="faltas" onclick="switchAsistTab('faltas')">Faltas</button>
+        <button class="tab-sub-btn" data-asist-tab="descansos" onclick="switchAsistTab('descansos')">Descansos médicos</button>
+        <button class="tab-sub-btn" data-asist-tab="reportes" onclick="switchAsistTab('reportes')">3-4. Reportes mensuales y nómina</button>
+      </div>
+
+      <!-- REGISTRO DIARIO -->
+      <div id="asistRegistroBlock">
+        <div class="panel">
+          <div class="panel-head"><h3>Registrar ingreso, salida, horas extras y permisos</h3></div>
+          <div style="padding:16px 18px;">
+            <div class="field-row">
+              <div class="field"><label>Colaborador</label><select id="regEmployeeSelect" onchange="showHorarioAsignado()"></select></div>
+              <div class="field"><label>Fecha</label><input type="date" id="regFecha"></div>
+            </div>
+            <p class="hint" id="regHorarioAsignado" style="margin-top:-6px;"></p>
+            <div class="field-row">
+              <div class="field"><label>Hora de ingreso</label><input type="time" id="regHoraIngreso"></div>
+              <div class="field"><label>Hora de salida</label><input type="time" id="regHoraSalida"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Horas extras (opcional)</label><input type="number" step="0.5" id="regHorasExtras" placeholder="0"></div>
+              <div class="field"><label>Permiso (opcional)</label><input id="regPermiso" placeholder="Ej. permiso médico, trámite personal"></div>
+            </div>
+            <button class="btn btn-accent btn-sm" onclick="saveRegistroDiario()">Registrar</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Registros del día (validación automática vs. horario asignado)</h3></div>
+          <div id="registroDiarioTable"></div>
+        </div>
+      </div>
+
+      <!-- FALTAS -->
+      <div id="asistFaltasBlock" style="display:none;">
+        <div class="panel">
+          <div class="panel-head"><h3>Registrar falta</h3></div>
+          <div style="padding:16px 18px;">
+            <div class="field-row">
+              <div class="field"><label>Colaborador</label><select id="faltaEmployeeSelect"></select></div>
+              <div class="field"><label>Fecha</label><input type="date" id="faltaFecha"></div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>Tipo</label>
+                <select id="faltaTipo">
+                  <option value="Inasistencia injustificada">Inasistencia injustificada</option>
+                  <option value="Tardanza">Tardanza</option>
+                  <option value="Abandono de puesto">Abandono de puesto</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+              <div class="field"><label>Observación (opcional)</label><input id="faltaObservacion"></div>
+            </div>
+            <button class="btn btn-accent btn-sm" onclick="saveFalta()">Registrar falta</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Faltas registradas</h3></div>
+          <div id="faltasTable"></div>
+        </div>
+      </div>
+
+      <!-- DESCANSOS MEDICOS -->
+      <div id="asistDescansosBlock" style="display:none;">
+        <div class="panel">
+          <div class="panel-head"><h3>Registrar descanso médico</h3></div>
+          <div style="padding:16px 18px;">
+            <div class="field-row">
+              <div class="field"><label>Colaborador</label><select id="descansoEmployeeSelect"></select></div>
+              <div class="field"><label>Motivo (opcional)</label><input id="descansoMotivo"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Fecha de inicio</label><input type="date" id="descansoInicio" onchange="updateDescansoDias()"></div>
+              <div class="field"><label>Fecha de fin</label><input type="date" id="descansoFin" onchange="updateDescansoDias()"></div>
+            </div>
+            <div class="field" style="max-width:200px;"><label>Días (automático)</label><input type="text" id="descansoDias" readonly style="background:#F3F1EA;color:var(--ink-soft);"></div>
+            <div class="upload-row">
+              <input type="file" id="descansoFile" accept=".pdf,.jpg,.jpeg,.png">
+              <button class="btn btn-accent btn-sm" onclick="saveDescanso()">Registrar descanso</button>
+            </div>
+            <p class="hint">Puedes adjuntar el certificado de descanso médico (opcional).</p>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Descansos médicos registrados</h3></div>
+          <div id="descansosTable"></div>
+        </div>
+      </div>
+
+      <!-- REPORTES MENSUALES -->
+      <div id="asistReportesBlock" style="display:none;">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Reporte mensual: asistencia, tardanzas, ausencias y horas para nómina</h3>
+            <div style="display:flex;gap:8px;">
+              <select class="search-box" id="reporteMesSelect" style="width:150px;"></select>
+              <select class="search-box" id="reporteAnioSelect" style="width:100px;"></select>
+              <button class="btn btn-ghost btn-sm" onclick="exportReporteMensualCsv()">Exportar CSV</button>
+            </div>
+          </div>
+          <div id="reporteMensualTable"></div>
+          <p class="hint" style="padding:0 18px 16px;">El monto estimado se calcula con el sueldo diario ÷ 8 horas × horas trabajadas + horas extras, como referencia para la elaboración de la nómina. No reemplaza el cálculo oficial de planilla.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- INVENTARIO -->
+    <div class="view" id="view-inventario">
+      <div class="view-header">
+        <div>
+          <h2>Inventario</h2>
+          <p>Bitácora de inventario del área: artículos, entradas y salidas</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-ghost" onclick="loadOfficeTemplate()">Cargar artículos de oficina</button>
+          <button class="btn btn-ghost" onclick="printInventoryActa()">Imprimir acta para firmar</button>
+          <button class="btn btn-ghost" onclick="exportInventoryCsv()">Exportar CSV</button>
+          <button class="btn btn-primary" onclick="openItemModal()">+ Nuevo artículo</button>
+        </div>
+      </div>
+
+      <div class="stat-grid" id="invStats"></div>
+      <div id="invAviso"></div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Artículos</h3>
+          <input class="search-box" id="invSearch" placeholder="Buscar artículo...">
+        </div>
+        <div id="invItemsTable"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Registro rápido</h3></div>
+        <div style="padding:16px 18px;">
+          <div class="field-row">
+            <div class="field"><label>Artículo</label><select id="movItemSelect"></select></div>
+            <div class="field"><label>Cantidad</label><input type="number" id="movCantidad" min="0"></div>
+          </div>
+          <div class="field"><label>Entregado a / recibido de (nombre)</label><input id="movEntregadoA" placeholder="Ej. Juan Pérez"></div>
+          <div style="display:flex;gap:8px;margin-top:4px;">
+            <button class="btn btn-primary" style="flex:1;" onclick="saveMovement('entrada')">+ Entrada (agregar stock)</button>
+            <button class="btn btn-danger" style="flex:1;" onclick="saveMovement('salida')">− Salida (quitar stock)</button>
+          </div>
+          <details style="margin-top:14px;">
+            <summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--ink-soft);">Agregar motivo, responsable o fecha (opcional)</summary>
+            <div class="field-row" style="margin-top:12px;">
+              <div class="field"><label>Motivo</label><input id="movMotivo" placeholder="Ej. compra, entrega, merma"></div>
+              <div class="field"><label>Responsable del registro</label><input id="movResponsable"></div>
+            </div>
+            <div class="field" style="max-width:200px;"><label>Fecha</label><input type="date" id="movFecha"></div>
+          </details>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Bitácora de movimientos</h3></div>
+        <div id="invMovTable"></div>
+      </div>
+    </div>
+
+    <!-- BIENESTAR -->
+    <div class="view" id="view-bienestar">
+      <div class="view-header">
+        <div>
+          <h2>Bienestar y Clima Laboral</h2>
+          <p>Cumpleaños y eventos → encuestas de clima → capacitaciones y reconocimientos</p>
+        </div>
+      </div>
+
+      <div class="tabs-sub">
+        <button class="tab-sub-btn active" data-bien-tab="eventos" onclick="switchBienTab('eventos')">1. Cumpleaños y eventos</button>
+        <button class="tab-sub-btn" data-bien-tab="encuestas" onclick="switchBienTab('encuestas')">2. Encuestas de clima</button>
+        <button class="tab-sub-btn" data-bien-tab="capacitaciones" onclick="switchBienTab('capacitaciones')">3. Capacitaciones y reconocimientos</button>
+      </div>
+
+      <!-- EVENTOS -->
+      <div id="bienEventosBlock">
+        <div id="eventosAviso"></div>
+        <div class="panel">
+          <div class="panel-head"><h3>Registrar evento</h3></div>
+          <div style="padding:16px 18px;">
+            <div class="field-row">
+              <div class="field"><label>Nombre del evento</label><input id="eventoNombre" placeholder="Ej. Aniversario de la empresa"></div>
+              <div class="field">
+                <label>Tipo</label>
+                <select id="eventoTipo">
+                  <option value="Evento de empresa">Evento de empresa</option>
+                  <option value="Aniversario laboral">Aniversario laboral</option>
+                  <option value="Actividad de integración">Actividad de integración</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Fecha</label><input type="date" id="eventoFecha"></div>
+              <div class="field"><label>Colaborador relacionado (opcional)</label><select id="eventoEmployeeSelect"><option value="">— No aplica —</option></select></div>
+            </div>
+            <div class="field" style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="eventoRecurrente" style="width:auto;">
+              <label style="margin:0;" for="eventoRecurrente">Se repite cada año</label>
+            </div>
+            <button class="btn btn-accent btn-sm" onclick="saveEvento()">Registrar evento</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Eventos registrados</h3></div>
+          <div id="eventosTable"></div>
+        </div>
+      </div>
+
+      <!-- ENCUESTAS -->
+      <div id="bienEncuestasBlock" style="display:none;">
+        <div class="stat-grid" id="encuestaStats"></div>
+        <div class="panel">
+          <div class="panel-head"><h3>Registrar encuesta de clima laboral</h3></div>
+          <div style="padding:16px 18px;">
+            <div class="field-row">
+              <div class="field"><label>Título / tema</label><input id="encuestaTitulo" placeholder="Ej. Clima laboral 2do trimestre"></div>
+              <div class="field"><label>Área evaluada</label>
+                <select id="encuestaArea">
+                  <option value="General">General (toda la empresa)</option>
+                  <option value="Administración">Administración</option>
+                  <option value="Producción">Producción</option>
+                  <option value="Contabilidad">Contabilidad</option>
+                </select>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Fecha</label><input type="date" id="encuestaFecha"></div>
+              <div class="field"><label>Resultado (1 a 5)</label><input type="number" step="0.1" min="1" max="5" id="encuestaResultado"></div>
+            </div>
+            <div class="field"><label>Acciones a tomar</label><textarea id="encuestaAcciones" style="min-height:60px;font-family:'Inter';" placeholder="Ej. reforzar comunicación entre turnos, mejorar comedor"></textarea></div>
+            <button class="btn btn-accent btn-sm" onclick="saveEncuesta()">Registrar encuesta</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Encuestas registradas</h3></div>
+          <div id="encuestasTable"></div>
+        </div>
+      </div>
+
+      <!-- CAPACITACIONES Y RECONOCIMIENTOS -->
+      <div id="bienCapacitacionesBlock" style="display:none;">
+        <div class="panel">
+          <div class="panel-head"><h3>Registrar capacitación</h3></div>
+          <div style="padding:16px 18px;">
+            <div class="field-row">
+              <div class="field"><label>Nombre de la capacitación</label><input id="capNombre" placeholder="Ej. Seguridad y salud en el trabajo"></div>
+              <div class="field"><label>Fecha</label><input type="date" id="capFecha"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Horas</label><input type="number" id="capHoras"></div>
+              <div class="field"><label>N° de participantes</label><input type="number" id="capParticipantes"></div>
+            </div>
+            <div class="field"><label>Notas (opcional)</label><input id="capNotas" placeholder="Ej. capacitador, temas cubiertos"></div>
+            <button class="btn btn-accent btn-sm" onclick="saveCapacitacion()">Registrar capacitación</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Capacitaciones registradas</h3></div>
+          <div id="capacitacionesTable"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Registrar reconocimiento</h3></div>
+          <div style="padding:16px 18px;">
+            <div class="field-row">
+              <div class="field"><label>Colaborador</label><select id="reconEmployeeSelect"></select></div>
+              <div class="field"><label>Fecha</label><input type="date" id="reconFecha"></div>
+            </div>
+            <div class="field"><label>Motivo del reconocimiento</label><input id="reconMotivo" placeholder="Ej. colaborador del mes, puntualidad ejemplar"></div>
+            <button class="btn btn-accent btn-sm" onclick="saveReconocimiento()">Registrar reconocimiento</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Reconocimientos registrados</h3></div>
+          <div id="reconocimientosTable"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EPP Y LIMPIEZA -->
+    <div class="view" id="view-epp">
+      <div class="view-header">
+        <div>
+          <h2>EPP y Limpieza</h2>
+          <p>Asignación de EPP → control de stock → alertas de vencimiento o desgaste → registro de limpieza</p>
+        </div>
+      </div>
+
+      <div class="tabs-sub">
+        <button class="tab-sub-btn active" data-epp-tab="asignacion" onclick="switchEppTab('asignacion')">1. Asignación de EPP</button>
+        <button class="tab-sub-btn" data-epp-tab="stock" onclick="switchEppTab('stock')">2-3. Stock y vencimientos</button>
+        <button class="tab-sub-btn" data-epp-tab="limpieza" onclick="switchEppTab('limpieza')">4. Registro de limpieza</button>
+      </div>
+
+      <!-- ASIGNACION EPP -->
+      <div id="eppAsignacionBlock">
+        <div class="panel">
+          <div class="panel-head"><h3>Entregar EPP a un colaborador</h3></div>
+          <div style="padding:16px 18px;">
+            <div class="field-row">
+              <div class="field"><label>Colaborador</label><select id="eppEmployeeSelect"></select></div>
+              <div class="field">
+                <label>Artículo EPP</label>
+                <div style="display:flex;gap:6px;">
+                  <select id="eppItemSelect" onchange="updateEppCodigoPreview()" style="flex:1;"></select>
+                  <button class="btn btn-ghost btn-sm" type="button" onclick="openItemModal(null,'EPP (Protección Personal)')" title="Agregar nuevo artículo EPP">+ Agregar</button>
+                  <button class="btn btn-danger btn-sm" type="button" onclick="quickRemoveEppItem()" title="Quitar artículo seleccionado">Quitar</button>
+                </div>
+                <p class="hint" id="eppCodigoPreview" style="margin-top:6px;"></p>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Cantidad</label><input type="number" id="eppCantidad" min="1" value="1"></div>
+              <div class="field"><label>Fecha de entrega</label><input type="date" id="eppFecha"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Vida útil (días)</label><input type="number" id="eppVidaUtil" value="90"></div>
+              <div class="field"><label>Vencimiento / desgaste (automático)</label><input type="text" id="eppVencimientoPreview" readonly style="background:#F3F1EA;color:var(--ink-soft);"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Fecha de reposición</label><input type="date" id="eppFechaReposicion"></div>
+              <div class="field">
+                <label>Estado del EPP entregado</label>
+                <select id="eppEstado">
+                  <option value="Nuevo">Nuevo</option>
+                  <option value="Usado">Usado</option>
+                  <option value="Vencido">Vencido</option>
+                </select>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Responsable de entrega</label><input id="eppResponsableEntrega" placeholder="Ej. supervisor de almacén"></div>
+              <div class="field" style="display:flex;align-items:flex-end;gap:8px;padding-bottom:9px;">
+                <input type="checkbox" id="eppFirmaTrabajador" style="width:auto;">
+                <label style="margin:0;" for="eppFirmaTrabajador">Firma del trabajador recibida</label>
+              </div>
+            </div>
+            <div class="field"><label>Notas (opcional)</label><input id="eppNotas" placeholder="Ej. talla, observación"></div>
+            <button class="btn btn-accent btn-sm" onclick="saveAsignacionEpp()">Registrar entrega</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Entregas registradas</h3></div>
+          <div id="eppAsignacionesTable"></div>
+        </div>
+      </div>
+
+      <!-- STOCK Y VENCIMIENTOS -->
+      <div id="eppStockBlock" style="display:none;">
+        <div id="eppAviso"></div>
+        <div class="panel">
+          <div class="panel-head"><h3>Stock de EPP y limpieza (consumo mensual)</h3></div>
+          <div id="eppStockTable"></div>
+        </div>
+      </div>
+
+      <!-- REGISTRO DE LIMPIEZA -->
+      <div id="eppLimpiezaBlock" style="display:none;">
+        <div class="panel">
+          <div class="panel-head"><h3>Registrar limpieza</h3></div>
+          <div style="padding:16px 18px;">
+            <div class="field-row">
+              <div class="field"><label>Área / ubicación</label>
+                <select id="limpiezaArea">
+                  <option value="Almacén Central">Almacén Central</option>
+                  <option value="Recursos Humanos">Recursos Humanos</option>
+                  <option value="Administración">Administración</option>
+                  <option value="Contabilidad">Contabilidad</option>
+                  <option value="Gerencia General">Gerencia General</option>
+                  <option value="Logística">Logística</option>
+                  <option value="Comedor">Comedor</option>
+                  <option value="Otros">Otros</option>
+                </select>
+              </div>
+              <div class="field"><label>Fecha</label><input type="date" id="limpiezaFecha"></div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>Frecuencia</label>
+                <select id="limpiezaFrecuencia">
+                  <option value="Diaria">Diaria</option>
+                  <option value="Semanal">Semanal</option>
+                  <option value="Quincenal">Quincenal</option>
+                  <option value="Mensual">Mensual</option>
+                </select>
+              </div>
+              <div class="field"><label>Responsable</label><input id="limpiezaResponsable"></div>
+            </div>
+            <div class="field"><label>Materiales usados</label><input id="limpiezaMateriales" placeholder="Ej. desinfectante, paños de microfibra"></div>
+            <button class="btn btn-accent btn-sm" onclick="saveLimpieza()">Registrar limpieza</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Registros de limpieza</h3></div>
+          <div id="limpiezaTable"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BASE DE DATOS -->
+    <div class="view" id="view-basedatos">
+      <div class="view-header">
+        <div>
+          <h2>Base de datos de trabajadores</h2>
+          <p>Registro histórico de todos los colaboradores que han pasado por la empresa, activos e inactivos</p>
+        </div>
+        <button class="btn btn-ghost" onclick="exportDatabaseCsv()">Exportar CSV</button>
+      </div>
+      <div class="field" style="max-width:280px;margin-bottom:14px;">
+        <input class="search-box" id="basedatosSearch" style="width:100%;" placeholder="Buscar por nombre o DNI/RUC...">
+      </div>
+      <div class="panel">
+        <div id="basedatosTable"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL EMPLEADO -->
+<div class="modal-overlay" id="employeeModalOverlay">
+  <div class="modal" style="max-width:640px;">
+    <h3 id="employeeModalTitle">Nuevo colaborador</h3>
+    <input type="hidden" id="empId">
+
+    <div class="field"><label>Nombre completo</label><input id="empNombre"></div>
+    <div class="field-row">
+      <div class="field"><label>DNI o RUC</label><input id="empDni"></div>
+      <div class="field">
+        <label>Estado</label>
+        <select id="empEstado"><option value="activo">Activo</option><option value="inactivo">Inactivo</option></select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Fecha de nacimiento</label><input type="date" id="empFechaNacimiento"></div>
+      <div class="field">
+        <label>Estado civil</label>
+        <select id="empEstadoCivil">
+          <option value="Soltero(a)">Soltero(a)</option>
+          <option value="Casado(a)">Casado(a)</option>
+          <option value="Conviviente">Conviviente</option>
+          <option value="Divorciado(a)">Divorciado(a)</option>
+          <option value="Viudo(a)">Viudo(a)</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Domicilio</label><input id="empDomicilio"></div>
+      <div class="field"><label>Ciudad</label><input id="empCiudad"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Correo 1</label><input type="email" id="empCorreo1"></div>
+      <div class="field"><label>Correo 2 (opcional)</label><input type="email" id="empCorreo2"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Celular 1</label><input id="empCelular1"></div>
+      <div class="field"><label>Celular 2 (opcional)</label><input id="empCelular2"></div>
+    </div>
+
+    <div class="field-row">
+      <div class="field"><label>Cargo o puesto</label><input id="empCargo"></div>
+      <div class="field">
+        <label>Área de trabajo</label>
+        <select id="empArea">
+          <option value="Administración">Administración</option>
+          <option value="Producción">Producción</option>
+          <option value="Contabilidad">Contabilidad</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field"><label>Sueldo diario (S/)</label><input type="number" step="0.01" id="empSueldoDiario" oninput="updateSueldoMensual()"></div>
+      <div class="field"><label>Sueldo mensual (automático)</label><input type="text" id="empSueldoMensual" readonly style="background:#F3F1EA;color:var(--ink-soft);"></div>
+    </div>
+
+    <div class="field-row">
+      <div class="field"><label>Horario — hora de entrada</label><input type="time" id="empHoraEntrada"></div>
+      <div class="field"><label>Horario — hora de salida</label><input type="time" id="empHoraSalida"></div>
+    </div>
+
+    <div class="field-row">
+      <div class="field"><label>Fecha de ingreso</label><input type="date" id="empFechaIngreso"></div>
+      <div class="field"><label>Fecha fin de contrato</label><input type="date" id="empFechaFin"></div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Régimen de salud</label>
+        <select id="empSalud"><option value="EsSalud">EsSalud</option><option value="SIS">SIS</option><option value="EPS">EPS</option></select>
+      </div>
+      <div class="field"><label>Vencimiento cobertura de salud (opcional)</label><input type="date" id="empFechaSalud"></div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Sistema de pensión</label>
+        <select id="empPension" onchange="toggleAfpField()"><option value="AFP">AFP</option><option value="ONP">ONP</option></select>
+      </div>
+      <div class="field" id="afpNombreField">
+        <label>AFP</label>
+        <select id="empAfpNombre">
+          <option value="Integra">Integra</option>
+          <option value="Prima">Prima</option>
+          <option value="Habitat">Habitat</option>
+          <option value="Profuturo">Profuturo</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field"><label>Vigencia SCTR</label><input type="date" id="empVigenciaSctr"></div>
+      <div class="field"><label>Vigencia Seguro Vida Ley</label><input type="date" id="empVigenciaVidaLey"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Vigencia EMO (Examen Médico Ocupacional)</label><input type="date" id="empFechaEmo"></div>
+      <div class="field"></div>
+    </div>
+
+    <h3 style="font-size:14px;margin:18px 0 10px;color:var(--ink-soft);">Licencia de conducir</h3>
+    <div class="field-row">
+      <div class="field">
+        <label>¿Tiene licencia de conducir?</label>
+        <select id="empTieneLicencia" onchange="toggleLicenciaFields()"><option value="no">No</option><option value="si">Sí</option></select>
+      </div>
+      <div class="field" id="empLicenciaCategoriaField" style="display:none;"><label>Categoría</label><input id="empLicenciaCategoria" placeholder="Ej. A-I, A-IIa, A-IIIc"></div>
+    </div>
+    <div class="field-row" id="empLicenciaDatosRow" style="display:none;">
+      <div class="field"><label>Número de licencia</label><input id="empLicenciaNumero"></div>
+      <div class="field"><label>Vigencia</label><input type="date" id="empLicenciaVigencia"></div>
+    </div>
+
+    <h3 style="font-size:14px;margin:18px 0 10px;color:var(--ink-soft);">Referencia familiar</h3>
+    <div class="field-row">
+      <div class="field"><label>Nombre</label><input id="empRefNombre"></div>
+      <div class="field"><label>Parentesco</label><input id="empRefParentesco" placeholder="Ej. Madre, esposo(a), hermano(a)"></div>
+    </div>
+    <div class="field"><label>Teléfono de referencia</label><input id="empRefTelefono"></div>
+
+    <div class="field"><label>Notas</label><textarea id="empNotas" style="min-height:60px;font-family:'Inter';"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeEmployeeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveEmployee()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PRESUPUESTO -->
+<div class="modal-overlay" id="budgetModalOverlay">
+  <div class="modal" style="max-width:440px;">
+    <h3>Nuevo movimiento</h3>
+    <div class="field">
+      <label>Tipo</label>
+      <select id="budTipo"><option value="gasto">Gasto</option><option value="ingreso">Ingreso / asignación</option></select>
+    </div>
+    <div class="field"><label>Categoría</label><input id="budCategoria" placeholder="Ej. EPP, capacitación, comedor"></div>
+    <div class="field-row">
+      <div class="field"><label>Monto (S/)</label><input type="number" step="0.01" id="budMonto"></div>
+      <div class="field"><label>Fecha</label><input type="date" id="budFecha"></div>
+    </div>
+    <div class="field"><label>Descripción</label><input id="budDesc"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeBudgetModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveBudget()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MENU -->
+<div class="modal-overlay" id="menuModalOverlay">
+  <div class="modal" style="max-width:420px;">
+    <h3>Registrar menú del día</h3>
+    <div class="field-row">
+      <div class="field"><label>Fecha</label><input type="date" id="menuFecha" onchange="updateMenuDia()"></div>
+      <div class="field"><label>Día</label><input type="text" id="menuDia" readonly style="background:#F3F1EA;color:var(--ink-soft);"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Cantidad de raciones</label><input type="number" id="menuCantidad" oninput="updateMenuTotal()"></div>
+      <div class="field"><label>Precio por ración (incl. IGV, S/)</label><input type="number" step="0.01" id="menuPrecio" oninput="updateMenuTotal()"></div>
+    </div>
+    <div class="field"><label>Total del día (automático)</label><input type="text" id="menuTotal" readonly style="background:#F3F1EA;color:var(--ink-soft);"></div>
+    <div class="field"><label>Menú (entrada / segundo / bebida)</label><textarea id="menuDetalle" style="min-height:70px;font-family:'Inter';"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeMenuModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveMenu()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ARTICULO INVENTARIO -->
+<div class="modal-overlay" id="itemModalOverlay">
+  <div class="modal" style="max-width:480px;">
+    <h3 id="itemModalTitle">Nuevo artículo</h3>
+    <input type="hidden" id="itemId">
+    <div class="field-row">
+      <div class="field"><label>Nombre del artículo</label><input id="itemNombre" placeholder="Ej. Hojas bond A4"></div>
+      <div class="field"><label>Código (opcional)</label><input id="itemCodigo" placeholder="Ej. EPP-001"></div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Categoría</label>
+        <select id="itemCategoria" onchange="toggleOtro('itemCategoria','itemCategoriaOtroField')">
+          <option value="Oficina">Oficina</option>
+          <option value="EPP (Protección Personal)">EPP (Protección Personal)</option>
+          <option value="Limpieza y mantenimiento">Limpieza y mantenimiento</option>
+          <option value="Otros">Otros</option>
+        </select>
+        <div id="itemCategoriaOtroField" style="display:none;margin-top:8px;"><input id="itemCategoriaOtro" placeholder="Especifica la categoría"></div>
+      </div>
+      <div class="field">
+        <label>Unidad</label>
+        <select id="itemUnidad" onchange="toggleOtro('itemUnidad','itemUnidadOtroField')">
+          <option value="Unidad (UND)">Unidad (UND)</option>
+          <option value="Caja (CJ)">Caja (CJ)</option>
+          <option value="Paquete (PQ)">Paquete (PQ)</option>
+          <option value="Resma">Resma — papel (500 hojas)</option>
+          <option value="Kilogramo (KG)">Kilogramo (KG)</option>
+          <option value="Litro (L)">Litro (L)</option>
+          <option value="Par">Par</option>
+          <option value="Rollo">Rollo</option>
+          <option value="Otros">Otros</option>
+        </select>
+        <div id="itemUnidadOtroField" style="display:none;margin-top:8px;"><input id="itemUnidadOtro" placeholder="Especifica la unidad"></div>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Stock actual</label><input type="number" id="itemStock" value="0"></div>
+      <div class="field"><label>Stock mínimo (avisa si baja de esto)</label><input type="number" id="itemStockMinimo" value="0"></div>
+    </div>
+    <details>
+      <summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--ink-soft);">Ubicación y notas (opcional)</summary>
+      <div style="margin-top:12px;">
+        <div class="field">
+          <label>Ubicación</label>
+          <select id="itemUbicacion" onchange="toggleOtro('itemUbicacion','itemUbicacionOtroField')">
+            <option value="Almacén Central">Almacén Central</option>
+            <option value="Recursos Humanos">Recursos Humanos</option>
+            <option value="Administración">Administración</option>
+            <option value="Contabilidad">Contabilidad</option>
+            <option value="Gerencia General">Gerencia General</option>
+            <option value="Logística">Logística</option>
+            <option value="Almacén SIMA Callao">Almacén SIMA Callao</option>
+            <option value="Almacén SIMA Chimbote">Almacén SIMA Chimbote</option>
+            <option value="Almacén SIMA Iquitos">Almacén SIMA Iquitos</option>
+            <option value="Almacén Caminos del Inca">Almacén Caminos del Inca</option>
+            <option value="Otros">Otros</option>
+          </select>
+          <div id="itemUbicacionOtroField" style="display:none;margin-top:8px;"><input id="itemUbicacionOtro" placeholder="Especifica la ubicación"></div>
+        </div>
+        <div class="field"><label>Notas</label><textarea id="itemNotas" style="min-height:50px;font-family:'Inter';"></textarea></div>
+      </div>
+    </details>
+    <div class="modal-actions" style="justify-content:space-between;">
+      <button class="btn btn-danger btn-sm" id="itemDeleteBtn" style="display:none;" onclick="deleteItem(document.getElementById('itemId').value); closeItemModal();">Eliminar artículo</button>
+      <div style="display:flex;gap:10px;margin-left:auto;">
+        <button class="btn btn-ghost" onclick="closeItemModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveItem()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------- Compatibilidad de almacenamiento ----------
+// Dentro de Claude.ai existe window.storage (persistente en la nube de Claude).
+// Fuera de Claude.ai (por ejemplo, alojado en GitHub Pages) no existe, así que
+// aquí se define un respaldo que usa localStorage del propio navegador,
+// para que la app funcione igual en ambos lugares sin perder datos.
+if(!window.storage){
+  window.storage = {
+    async get(key){
+      const v = localStorage.getItem('crmrrhh_'+key);
+      return v!==null ? {key, value:v} : null;
+    },
+    async set(key, value){
+      localStorage.setItem('crmrrhh_'+key, value);
+      return {key, value};
+    },
+    async delete(key){
+      localStorage.removeItem('crmrrhh_'+key);
+      return {key, deleted:true};
+    },
+    async list(prefix){
+      const keys = [];
+      for(let i=0;i<localStorage.length;i++){
+        const k = localStorage.key(i);
+        if(k && k.startsWith('crmrrhh_')){
+          const bare = k.slice(8);
+          if(!prefix || bare.startsWith(prefix)) keys.push(bare);
+        }
+      }
+      return {keys, prefix};
+    }
+  };
+}
+
+// ---------- Storage helpers ----------
+async function loadData(key, fallback){
+  try{
+    const r = await window.storage.get(key, false);
+    return r ? JSON.parse(r.value) : fallback;
+  }catch(e){ return fallback; }
+}
+async function saveData(key, value){
+  try{ await window.storage.set(key, JSON.stringify(value), false); }
+  catch(e){ console.error('storage error', e); showToast('No se pudo guardar. Intenta de nuevo.'); }
+}
+
+let employees = [];
+let budgetEntries = [];
+let menuEntries = [];
+let workerDocs = [];
+let faltas = [];
+let descansos = [];
+let registrosDiarios = [];
+let eppAsignaciones = [];
+let limpiezaRegistros = [];
+let inventoryItems = [];
+let inventoryMovements = [];
+let eventos = [];
+let encuestas = [];
+let capacitaciones = [];
+let reconocimientos = [];
+let templates = {};
+let currentDocType = 'contrato';
+let currentPlantillaType = 'contrato';
+let templateDirty = false;
+let currentBoletaFilter = 'todos';
+
+const DEFAULT_TEMPLATES = {
+  contrato: `CONTRATO DE TRABAJO
+
+En la ciudad de ____________, a los {{fecha}}, entre SERVING, en adelante EL EMPLEADOR, y {{nombre}}, identificado(a) con DNI N° {{dni}}, en adelante EL TRABAJADOR, se acuerda celebrar el presente contrato bajo las siguientes condiciones:
+
+PRIMERO: EL TRABAJADOR se desempeñará en el cargo de {{cargo}}.
+SEGUNDO: El presente contrato inicia el {{fechaIngreso}} y culmina el {{fechaFin}}.
+TERCERO: EL TRABAJADOR estará afiliado a {{salud}} y a {{pension}}.
+CUARTO: Ambas partes se someten a las disposiciones de la legislación laboral vigente.
+
+Firman en señal de conformidad:
+
+
+_______________________                    _______________________
+EL EMPLEADOR                                EL TRABAJADOR
+                                             {{nombre}}
+                                             DNI: {{dni}}`,
+
+  constanciaContrato: `CONSTANCIA DE ENTREGA DE CONTRATO
+
+Por medio del presente, se deja constancia de que con fecha {{fecha}}, se hizo entrega a {{nombre}}, identificado(a) con DNI N° {{dni}}, de un ejemplar de su contrato de trabajo correspondiente al cargo de {{cargo}}, con vigencia del {{fechaIngreso}} al {{fechaFin}}.
+
+El trabajador declara haber recibido el documento antes mencionado, conociendo y aceptando su contenido.
+
+
+_______________________
+Firma del trabajador
+{{nombre}} — DNI: {{dni}}`,
+
+  constanciaEpp: `CONSTANCIA DE ENTREGA DE EQUIPOS DE PROTECCIÓN PERSONAL (EPP)
+
+Con fecha {{fecha}}, se hace entrega a {{nombre}}, identificado(a) con DNI N° {{dni}}, cargo {{cargo}}, de los siguientes equipos de protección personal:
+
+  - Ítem: ______________________  Cantidad: ______
+  - Ítem: ______________________  Cantidad: ______
+  - Ítem: ______________________  Cantidad: ______
+
+El trabajador se compromete a utilizar correctamente los EPP entregados, mantenerlos en buen estado y solicitar su reposición en caso de deterioro o vencimiento.
+
+
+_______________________
+Firma del trabajador
+{{nombre}} — DNI: {{dni}}`,
+
+  constanciaBoletas: `CONSTANCIA DE ENTREGA DE BOLETAS DE PAGO
+
+Por medio del presente, se deja constancia de que con fecha {{fecha}}, se hizo entrega a {{nombre}}, identificado(a) con DNI N° {{dni}}, cargo {{cargo}}, de su(s) boleta(s) de pago correspondiente(s) al periodo: ______________________.
+
+El trabajador declara haber recibido el documento antes mencionado, conforme con los conceptos y montos allí detallados.
+
+
+_______________________
+Firma del trabajador
+{{nombre}} — DNI: {{dni}}`,
+
+  memorando: `MEMORANDO N° ____-2026-SERVING/RRHH
+
+PARA:      {{nombre}} — {{cargo}}
+DE:        Recursos Humanos
+FECHA:     {{fecha}}
+ASUNTO:    Llamada de atención por inasistencia / tardanza
+
+Por medio del presente documento, se comunica a usted que ha incurrido en la siguiente falta:
+
+  Fecha de la falta: ______________
+  Tipo de falta: ______________________________________
+  Descripción: _____________________________________________________
+  ___________________________________________________________________
+
+Se le exhorta a corregir esta conducta, recordándole que la reincidencia podrá derivar en las medidas disciplinarias establecidas en el Reglamento Interno de Trabajo.
+
+
+_______________________                    _______________________
+Recursos Humanos                            Trabajador (recibido)
+                                             {{nombre}} — DNI: {{dni}}`,
+
+  adenda: `ADENDA AL CONTRATO DE TRABAJO
+
+Conste por el presente documento la Adenda que celebran, de una parte SERVING, y de otra parte {{nombre}}, identificado(a) con DNI N° {{dni}}, quienes acuerdan modificar el contrato de trabajo suscrito, en los siguientes términos:
+
+PRIMERO: ______________________________________________________________
+SEGUNDO: ______________________________________________________________
+
+Las demás cláusulas del contrato original mantienen su plena vigencia.
+
+En señal de conformidad, firman en la fecha {{fecha}}.
+
+
+_______________________                    _______________________
+EL EMPLEADOR                                EL TRABAJADOR
+                                             {{nombre}} — DNI: {{dni}}`
+};
+
+const DOC_TYPES = [
+  {key:'contrato', label:'Contrato de trabajo'},
+  {key:'constanciaContrato', label:'Constancia entrega contrato'},
+  {key:'constanciaBoletas', label:'Constancia entrega boletas'},
+  {key:'constanciaEpp', label:'Constancia entrega EPP'},
+  {key:'memorando', label:'Memorando por faltas'},
+  {key:'adenda', label:'Adenda'}
+];
+
+// ---------- Init ----------
+async function init(){
+  employees = await loadData('employees', []);
+  budgetEntries = await loadData('budgetEntries', []);
+  menuEntries = await loadData('menuEntries', []);
+  templates = await loadData('templates', {});
+  DOC_TYPES.forEach(d=>{ if(!templates[d.key]) templates[d.key] = DEFAULT_TEMPLATES[d.key]; });
+
+  // Migración: versiones anteriores guardaban boletas en 'boletas'; ahora se unifican en 'workerDocs'
+  workerDocs = await loadData('workerDocs', null);
+  if(workerDocs === null){
+    const oldBoletas = await loadData('boletas', []);
+    workerDocs = oldBoletas.map(b=>({...b, categoria:'boleta', vigencia:null}));
+    await saveData('workerDocs', workerDocs);
+  }
+  faltas = await loadData('faltas', []);
+  descansos = await loadData('descansos', []);
+  registrosDiarios = await loadData('registrosDiarios', []);
+  eppAsignaciones = await loadData('eppAsignaciones', []);
+  limpiezaRegistros = await loadData('limpiezaRegistros', []);
+  inventoryItems = await loadData('inventoryItems', []);
+  inventoryMovements = await loadData('inventoryMovements', []);
+  eventos = await loadData('eventos', []);
+  encuestas = await loadData('encuestas', []);
+  capacitaciones = await loadData('capacitaciones', []);
+  reconocimientos = await loadData('reconocimientos', []);
+
+  document.querySelectorAll('.nav-item').forEach(el=>{
+    el.addEventListener('click', ()=>switchView(el.dataset.view));
+  });
+  document.querySelectorAll('.tab-sub-btn[data-filter]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab-sub-btn[data-filter]').forEach(b=>b.classList.remove('active'));
+      el.classList.add('active');
+      renderPersonalTable(el.dataset.filter);
+    });
+  });
+  document.querySelectorAll('.tab-sub-btn[data-boleta-filter]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab-sub-btn[data-boleta-filter]').forEach(b=>b.classList.remove('active'));
+      el.classList.add('active');
+      currentBoletaFilter = el.dataset.boletaFilter;
+      renderBoletas();
+    });
+  });
+  document.getElementById('personalSearch').addEventListener('input', ()=>{
+    const active = document.querySelector('.tab-sub-btn[data-filter].active');
+    renderPersonalTable(active ? active.dataset.filter : 'todos');
+  });
+  document.getElementById('basedatosSearch').addEventListener('input', renderBasedatos);
+  document.getElementById('invSearch').addEventListener('input', renderInventory);
+  document.getElementById('historialEmployeeSelect').addEventListener('change', renderHistorialDocumental);
+  document.getElementById('reporteMesSelect').addEventListener('change', ()=>{ currentReporteMes = document.getElementById('reporteMesSelect').value; renderReporteMensual(); });
+  document.getElementById('reporteAnioSelect').addEventListener('change', ()=>{ currentReporteAnio = document.getElementById('reporteAnioSelect').value; renderReporteMensual(); });
+  toggleBoletaFields();
+
+  renderDocTypeList();
+  renderPlantillaTypeList();
+  renderAll();
+}
+
+function switchView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelector('.nav-item[data-view="'+name+'"]').classList.add('active');
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+function daysUntilBirthday(fechaNacimiento){
+  if(!fechaNacimiento) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const bd = new Date(fechaNacimiento+'T00:00:00');
+  let next = new Date(today.getFullYear(), bd.getMonth(), bd.getDate());
+  if(next < today) next = new Date(today.getFullYear()+1, bd.getMonth(), bd.getDate());
+  return Math.round((next-today)/86400000);
+}
+function renderBirthdays(){
+  const upcoming = employees
+    .filter(e=>e.fechaNacimiento)
+    .map(e=>({e, dias: daysUntilBirthday(e.fechaNacimiento)}))
+    .filter(x=>x.dias!==null && x.dias<=30)
+    .sort((a,b)=>a.dias-b.dias);
+  const items = upcoming.map(({e,dias})=>{
+    const bd = new Date(e.fechaNacimiento+'T00:00:00');
+    const fechaTexto = bd.toLocaleDateString('es-PE',{day:'2-digit',month:'long'});
+    const texto = dias===0 ? '¡Hoy!' : (dias===1 ? 'Mañana' : `En ${dias} días`);
+    return `<div class="ticker-item">🎂 <b>${e.nombre}</b> — ${fechaTexto} (${texto})</div>`;
+  });
+  document.getElementById('birthdayTrack').innerHTML = items.length
+    ? items.join('')
+    : `<div class="ticker-empty" style="color:rgba(255,255,255,0.75);">No hay cumpleaños en los próximos 30 días.</div>`;
+}
+
+function daysUntil(dateStr){
+  if(!dateStr) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(dateStr+'T00:00:00');
+  return Math.round((d-today)/86400000);
+}
+function fmtDate(dateStr){
+  if(!dateStr) return '—';
+  const d = new Date(dateStr+'T00:00:00');
+  return d.toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'numeric'});
+}
+
+function renderAll(){
+  renderDashboard();
+  renderPersonalTable('todos');
+  populateEmployeeSelects();
+  renderDocPreview();
+  renderPlantillaPreview();
+  renderEmo();
+  renderBudget();
+  renderMenus();
+  renderBoletas();
+  renderFaltas();
+  renderDescansos();
+  renderRegistroDiario();
+  renderInventory();
+  renderBienestar();
+  renderEpp();
+  renderBasedatos();
+}
+
+// ---------- Dashboard ----------
+function renderDashboard(){
+  const activos = employees.filter(e=>e.estado==='activo');
+  const contratosPorVencer = employees.filter(e=>{
+    const d = daysUntil(e.fechaFin); return d!==null && d<=30 && d>=0 && e.estado==='activo';
+  });
+  const contratosVencidos = employees.filter(e=>{
+    const d = daysUntil(e.fechaFin); return d!==null && d<0 && e.estado==='activo';
+  });
+  const saludPorVencer = employees.filter(e=>{
+    const d = daysUntil(e.fechaSalud); return d!==null && d<=30 && d>=0;
+  });
+  const sctrPorVencer = employees.filter(e=>{
+    const d = daysUntil(e.vigenciaSctr); return d!==null && d<=30 && d>=0;
+  });
+  const vidaLeyPorVencer = employees.filter(e=>{
+    const d = daysUntil(e.vigenciaVidaLey); return d!==null && d<=30 && d>=0;
+  });
+  const emoPorVencer = employees.filter(e=>{
+    const d = daysUntil(e.fechaEmo); return d!==null && d<=30 && d>=0;
+  });
+  const licenciaPorVencer = employees.filter(e=>{
+    const d = daysUntil(e.licenciaVigencia); return e.tieneLicencia==='si' && d!==null && d<=30 && d>=0;
+  });
+
+  document.getElementById('dashStats').innerHTML = `
+    <div class="stat-card"><div class="num">${activos.length}</div><div class="label">Personal activo</div></div>
+    <div class="stat-card warn"><div class="num">${contratosPorVencer.length}</div><div class="label">Contratos por vencer (30 días)</div></div>
+    <div class="stat-card warn"><div class="num">${contratosVencidos.length}</div><div class="label">Contratos vencidos</div></div>
+    <div class="stat-card warn"><div class="num">${saludPorVencer.length}</div><div class="label">Coberturas de salud por vencer</div></div>
+  `;
+
+  const tickerItems = [];
+  contratosPorVencer.forEach(e=>{
+    const d = daysUntil(e.fechaFin);
+    tickerItems.push(`<div class="ticker-item">Contrato de <b>${e.nombre}</b> vence en ${d} día(s) — ${fmtDate(e.fechaFin)}</div>`);
+  });
+  saludPorVencer.forEach(e=>{
+    const d = daysUntil(e.fechaSalud);
+    tickerItems.push(`<div class="ticker-item">Cobertura de salud de <b>${e.nombre}</b> vence en ${d} día(s) — ${fmtDate(e.fechaSalud)}</div>`);
+  });
+  sctrPorVencer.forEach(e=>{
+    const d = daysUntil(e.vigenciaSctr);
+    tickerItems.push(`<div class="ticker-item">SCTR de <b>${e.nombre}</b> vence en ${d} día(s) — ${fmtDate(e.vigenciaSctr)}</div>`);
+  });
+  vidaLeyPorVencer.forEach(e=>{
+    const d = daysUntil(e.vigenciaVidaLey);
+    tickerItems.push(`<div class="ticker-item">Seguro Vida Ley de <b>${e.nombre}</b> vence en ${d} día(s) — ${fmtDate(e.vigenciaVidaLey)}</div>`);
+  });
+  emoPorVencer.forEach(e=>{
+    const d = daysUntil(e.fechaEmo);
+    tickerItems.push(`<div class="ticker-item">EMO de <b>${e.nombre}</b> vence en ${d} día(s) — ${fmtDate(e.fechaEmo)}</div>`);
+  });
+  licenciaPorVencer.forEach(e=>{
+    const d = daysUntil(e.licenciaVigencia);
+    tickerItems.push(`<div class="ticker-item">Licencia de conducir de <b>${e.nombre}</b> vence en ${d} día(s) — ${fmtDate(e.licenciaVigencia)}</div>`);
+  });
+  document.getElementById('tickerTrack').innerHTML = tickerItems.length
+    ? tickerItems.join('')
+    : `<div class="ticker-empty">No hay vencimientos próximos en los siguientes 30 días.</div>`;
+
+  renderBirthdays();
+
+  const rows = activos.slice(0,8).map(e=>`
+    <tr>
+      <td>${e.nombre}</td>
+      <td class="mono">${e.dni}</td>
+      <td>${e.cargo||'—'}</td>
+      <td>${fmtDate(e.fechaFin)}</td>
+      <td>${contractPill(e)}</td>
+    </tr>`).join('');
+  document.getElementById('dashActiveTable').innerHTML = activos.length ? `
+    <table>
+      <thead><tr><th>Nombre</th><th>DNI</th><th>Cargo</th><th>Fin de contrato</th><th>Estado</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>` : `<div class="empty">Aún no registras colaboradores. Ve a la sección Personal para agregar el primero.</div>`;
+}
+
+function contractPill(e){
+  const d = daysUntil(e.fechaFin);
+  if(d===null) return `<span class="pill pill-muted">Sin fecha</span>`;
+  if(d<0) return `<span class="pill pill-danger">Vencido</span>`;
+  if(d<=30) return `<span class="pill pill-warn">Vence en ${d}d</span>`;
+  return `<span class="pill pill-ok">Vigente</span>`;
+}
+
+// ---------- Personal ----------
+function renderPersonalTable(filter){
+  filter = filter || 'todos';
+  const q = (document.getElementById('personalSearch').value||'').toLowerCase();
+  let list = employees.filter(e=>
+    e.nombre.toLowerCase().includes(q) || (e.dni||'').includes(q)
+  );
+  if(filter==='activo') list = list.filter(e=>e.estado==='activo');
+  if(filter==='inactivo') list = list.filter(e=>e.estado==='inactivo');
+  if(filter==='porvencer') list = list.filter(e=>{ const d=daysUntil(e.fechaFin); return d!==null && d<=30; });
+  if(filter==='sis') list = list.filter(e=>e.salud==='SIS');
+  if(filter==='essalud') list = list.filter(e=>e.salud==='EsSalud');
+  if(filter==='eps') list = list.filter(e=>e.salud==='EPS');
+  if(filter==='administracion') list = list.filter(e=>e.area==='Administración');
+  if(filter==='produccion') list = list.filter(e=>e.area==='Producción');
+  if(filter==='contabilidad') list = list.filter(e=>e.area==='Contabilidad');
+
+  if(!list.length){
+    document.getElementById('personalTable').innerHTML = `<div class="empty">No hay colaboradores que coincidan.</div>`;
+    return;
+  }
+  const rows = list.map(e=>`
+    <tr>
+      <td><b>${e.nombre}</b></td>
+      <td class="mono">${e.dni}</td>
+      <td>${e.cargo||'—'}</td>
+      <td>${e.area||'—'}</td>
+      <td>${e.estado==='activo' ? '<span class="pill pill-ok">Activo</span>' : '<span class="pill pill-muted">Inactivo</span>'}</td>
+      <td>${e.salud}${e.fechaSalud ? ' · '+fmtDate(e.fechaSalud):''}</td>
+      <td>${e.pension}${e.pension==='AFP' && e.afpNombre ? ' ('+e.afpNombre+')':''}</td>
+      <td class="mono">S/ ${(e.sueldoMensual||0).toFixed(2)}</td>
+      <td>${fmtDate(e.fechaFin)}</td>
+      <td>${contractPill(e)}</td>
+      <td class="actions-cell">
+        <button class="btn btn-ghost btn-sm" onclick="openEmployeeModal('${e.id}')">Editar</button>
+        <button class="btn btn-accent btn-sm" onclick="downloadEmployeePdf('${e.id}')">PDF</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteEmployee('${e.id}')">Eliminar</button>
+      </td>
+    </tr>`).join('');
+  document.getElementById('personalTable').innerHTML = `
+    <table>
+      <thead><tr><th>Nombre</th><th>DNI/RUC</th><th>Cargo</th><th>Área</th><th>Estado</th><th>Salud</th><th>Pensión</th><th>Sueldo mensual</th><th>Fin contrato</th><th>Contrato</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function toggleAfpField(){
+  document.getElementById('afpNombreField').style.display = document.getElementById('empPension').value==='AFP' ? 'block':'none';
+}
+function toggleLicenciaFields(){
+  const tiene = document.getElementById('empTieneLicencia').value==='si';
+  document.getElementById('empLicenciaCategoriaField').style.display = tiene ? 'block':'none';
+  document.getElementById('empLicenciaDatosRow').style.display = tiene ? 'grid':'none';
+}
+
+const EMP_FIELD_IDS = ['empNombre','empDni','empDomicilio','empCiudad','empCorreo1','empCorreo2',
+  'empCelular1','empCelular2','empCargo','empSueldoDiario','empHoraEntrada','empHoraSalida','empFechaNacimiento','empFechaIngreso','empFechaFin',
+  'empFechaSalud','empVigenciaSctr','empVigenciaVidaLey','empFechaEmo','empLicenciaCategoria','empLicenciaNumero','empLicenciaVigencia',
+  'empRefNombre','empRefParentesco','empRefTelefono','empNotas'];
+
+function updateSueldoMensual(){
+  const diario = parseFloat(document.getElementById('empSueldoDiario').value) || 0;
+  document.getElementById('empSueldoMensual').value = 'S/ ' + (diario*30).toFixed(2);
+}
+
+function openEmployeeModal(id){
+  document.getElementById('employeeModalOverlay').classList.add('active');
+  document.getElementById('empId').value = id||'';
+  if(id){
+    const e = employees.find(x=>x.id===id);
+    document.getElementById('employeeModalTitle').textContent = 'Editar colaborador';
+    document.getElementById('empNombre').value = e.nombre;
+    document.getElementById('empDni').value = e.dni;
+    document.getElementById('empFechaNacimiento').value = e.fechaNacimiento||'';
+    document.getElementById('empEstadoCivil').value = e.estadoCivil||'Soltero(a)';
+    document.getElementById('empDomicilio').value = e.domicilio||'';
+    document.getElementById('empCiudad').value = e.ciudad||'';
+    document.getElementById('empCorreo1').value = e.correo1||'';
+    document.getElementById('empCorreo2').value = e.correo2||'';
+    document.getElementById('empCelular1').value = e.celular1||'';
+    document.getElementById('empCelular2').value = e.celular2||'';
+    document.getElementById('empCargo').value = e.cargo||'';
+    document.getElementById('empArea').value = e.area||'Administración';
+    document.getElementById('empSueldoDiario').value = e.sueldoDiario||'';
+    document.getElementById('empHoraEntrada').value = e.horaEntrada||'';
+    document.getElementById('empHoraSalida').value = e.horaSalida||'';
+    document.getElementById('empEstado').value = e.estado;
+    document.getElementById('empFechaIngreso').value = e.fechaIngreso||'';
+    document.getElementById('empFechaFin').value = e.fechaFin||'';
+    document.getElementById('empSalud').value = e.salud;
+    document.getElementById('empFechaSalud').value = e.fechaSalud||'';
+    document.getElementById('empPension').value = e.pension;
+    document.getElementById('empAfpNombre').value = e.afpNombre||'Integra';
+    document.getElementById('empVigenciaSctr').value = e.vigenciaSctr||'';
+    document.getElementById('empVigenciaVidaLey').value = e.vigenciaVidaLey||'';
+    document.getElementById('empFechaEmo').value = e.fechaEmo||'';
+    document.getElementById('empTieneLicencia').value = e.tieneLicencia||'no';
+    document.getElementById('empLicenciaCategoria').value = e.licenciaCategoria||'';
+    document.getElementById('empLicenciaNumero').value = e.licenciaNumero||'';
+    document.getElementById('empLicenciaVigencia').value = e.licenciaVigencia||'';
+    document.getElementById('empRefNombre').value = e.refNombre||'';
+    document.getElementById('empRefParentesco').value = e.refParentesco||'';
+    document.getElementById('empRefTelefono').value = e.refTelefono||'';
+    document.getElementById('empNotas').value = e.notas||'';
+  } else {
+    document.getElementById('employeeModalTitle').textContent = 'Nuevo colaborador';
+    EMP_FIELD_IDS.forEach(id2=>document.getElementById(id2).value='');
+    document.getElementById('empEstado').value='activo';
+    document.getElementById('empArea').value='Administración';
+    document.getElementById('empSalud').value='EsSalud';
+    document.getElementById('empPension').value='AFP';
+    document.getElementById('empAfpNombre').value='Integra';
+    document.getElementById('empEstadoCivil').value='Soltero(a)';
+    document.getElementById('empTieneLicencia').value='no';
+  }
+  updateSueldoMensual();
+  toggleAfpField();
+  toggleLicenciaFields();
+}
+function closeEmployeeModal(){ document.getElementById('employeeModalOverlay').classList.remove('active'); }
+
+async function saveEmployee(){
+  const nombre = document.getElementById('empNombre').value.trim();
+  const dni = document.getElementById('empDni').value.trim();
+  if(!nombre || !dni){ showToast('Nombre y DNI/RUC son obligatorios'); return; }
+  const id = document.getElementById('empId').value;
+  const sueldoDiario = parseFloat(document.getElementById('empSueldoDiario').value) || 0;
+  const data = {
+    id: id || ('e'+Date.now()),
+    nombre, dni,
+    domicilio: document.getElementById('empDomicilio').value.trim(),
+    ciudad: document.getElementById('empCiudad').value.trim(),
+    fechaNacimiento: document.getElementById('empFechaNacimiento').value,
+    estadoCivil: document.getElementById('empEstadoCivil').value,
+    correo1: document.getElementById('empCorreo1').value.trim(),
+    correo2: document.getElementById('empCorreo2').value.trim(),
+    celular1: document.getElementById('empCelular1').value.trim(),
+    celular2: document.getElementById('empCelular2').value.trim(),
+    cargo: document.getElementById('empCargo').value.trim(),
+    area: document.getElementById('empArea').value,
+    sueldoDiario,
+    sueldoMensual: sueldoDiario*30,
+    horaEntrada: document.getElementById('empHoraEntrada').value,
+    horaSalida: document.getElementById('empHoraSalida').value,
+    estado: document.getElementById('empEstado').value,
+    fechaIngreso: document.getElementById('empFechaIngreso').value,
+    fechaFin: document.getElementById('empFechaFin').value,
+    salud: document.getElementById('empSalud').value,
+    fechaSalud: document.getElementById('empFechaSalud').value,
+    pension: document.getElementById('empPension').value,
+    afpNombre: document.getElementById('empAfpNombre').value,
+    vigenciaSctr: document.getElementById('empVigenciaSctr').value,
+    vigenciaVidaLey: document.getElementById('empVigenciaVidaLey').value,
+    fechaEmo: document.getElementById('empFechaEmo').value,
+    tieneLicencia: document.getElementById('empTieneLicencia').value,
+    licenciaCategoria: document.getElementById('empLicenciaCategoria').value.trim(),
+    licenciaNumero: document.getElementById('empLicenciaNumero').value.trim(),
+    licenciaVigencia: document.getElementById('empLicenciaVigencia').value,
+    refNombre: document.getElementById('empRefNombre').value.trim(),
+    refParentesco: document.getElementById('empRefParentesco').value.trim(),
+    refTelefono: document.getElementById('empRefTelefono').value.trim(),
+    notas: document.getElementById('empNotas').value.trim()
+  };
+  if(id){ employees = employees.map(e=>e.id===id?data:e); }
+  else { employees.push(data); }
+  await saveData('employees', employees);
+  closeEmployeeModal();
+  renderAll();
+  showToast('Colaborador guardado');
+}
+
+function downloadEmployeePdf(id){
+  const e = employees.find(x=>x.id===id);
+  if(!e) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const marginX = 18;
+  let y = 20;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(16);
+  doc.text('SERVING · Ficha del colaborador', marginX, y); y+=10;
+  doc.setDrawColor(31,75,63); doc.setLineWidth(0.6); doc.line(marginX, y, 192, y); y+=10;
+
+  const section = (title)=>{
+    if(y>265){ doc.addPage(); y=20; }
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(31,75,63);
+    doc.text(title, marginX, y); y+=6;
+    doc.setTextColor(30,30,30);
+  };
+  const row = (label, value)=>{
+    if(y>270){ doc.addPage(); y=20; }
+    doc.setFont('helvetica','bold'); doc.setFontSize(10);
+    doc.text(label+':', marginX, y);
+    doc.setFont('helvetica','normal');
+    doc.text(String(value||'—'), marginX+50, y);
+    y+=6.5;
+  };
+
+  section('Datos personales');
+  row('Nombre completo', e.nombre);
+  row('DNI / RUC', e.dni);
+  row('Fecha de nacimiento', fmtDate(e.fechaNacimiento));
+  row('Estado civil', e.estadoCivil);
+  row('Domicilio', e.domicilio);
+  row('Ciudad', e.ciudad);
+  row('Correo 1', e.correo1);
+  row('Correo 2', e.correo2);
+  row('Celular 1', e.celular1);
+  row('Celular 2', e.celular2);
+  y+=3;
+
+  if(e.tieneLicencia==='si'){
+    section('Licencia de conducir');
+    row('Categoría', e.licenciaCategoria);
+    row('Número', e.licenciaNumero);
+    row('Vigencia', fmtDate(e.licenciaVigencia));
+    y+=3;
+  }
+
+  section('Datos laborales');
+  row('Cargo / puesto', e.cargo);
+  row('Área de trabajo', e.area);
+  row('Estado', e.estado==='activo' ? 'Activo':'Inactivo');
+  row('Fecha de ingreso', fmtDate(e.fechaIngreso));
+  row('Fecha fin de contrato', fmtDate(e.fechaFin));
+  row('Sueldo diario', 'S/ ' + (e.sueldoDiario||0).toFixed(2));
+  row('Sueldo mensual', 'S/ ' + (e.sueldoMensual||0).toFixed(2));
+  y+=3;
+
+  section('Salud y pensión');
+  row('Régimen de salud', e.salud);
+  row('Vencimiento cobertura salud', fmtDate(e.fechaSalud));
+  row('Sistema de pensión', e.pension + (e.pension==='AFP' ? ' - '+e.afpNombre : ''));
+  row('Vigencia SCTR', fmtDate(e.vigenciaSctr));
+  row('Vigencia Seguro Vida Ley', fmtDate(e.vigenciaVidaLey));
+  row('Vigencia EMO', fmtDate(e.fechaEmo));
+  y+=3;
+
+  section('Referencia familiar');
+  row('Nombre', e.refNombre);
+  row('Parentesco', e.refParentesco);
+  row('Teléfono', e.refTelefono);
+
+  if(e.notas){
+    y+=3; section('Notas');
+    doc.setFont('helvetica','normal'); doc.setFontSize(10);
+    const lines = doc.splitTextToSize(e.notas, 172);
+    doc.text(lines, marginX, y);
+  }
+
+  doc.save(`ficha_${e.nombre.replace(/\s+/g,'_')}.pdf`);
+}
+
+async function deleteEmployee(id){
+  if(!confirm('¿Eliminar este colaborador?')) return;
+  employees = employees.filter(e=>e.id!==id);
+  await saveData('employees', employees);
+  renderAll();
+  showToast('Colaborador eliminado');
+}
+
+// ---------- Carga masiva de personal desde Excel ----------
+const PERSONAL_EXCEL_HEADERS = ['Nombre completo','DNI o RUC','Fecha nacimiento','Estado civil','Domicilio','Ciudad',
+  'Correo 1','Correo 2','Celular 1','Celular 2','Cargo o puesto','Área','Sueldo diario','Hora entrada','Hora salida',
+  'Fecha ingreso','Fecha fin contrato','Estado','Régimen salud','Vencimiento salud','Sistema pensión','AFP',
+  'Vigencia SCTR','Vigencia Vida Ley','Vigencia EMO','Tiene licencia','Categoría licencia','Número licencia','Vigencia licencia',
+  'Referencia nombre','Referencia parentesco','Referencia teléfono','Notas'];
+
+function downloadPersonalTemplate(){
+  const ejemplo = ['Juan Pérez Quispe','45678912','1990-05-14','Soltero(a)','Av. Los Álamos 123','Lima',
+    'juan.perez@correo.com','','987654321','','Asistente administrativo','Administración','60','08:00','17:00',
+    '2026-01-15','2027-01-15','activo','EsSalud','','AFP','Integra',
+    '2026-06-01','2026-06-01','2026-06-01','no','','','',
+    'María Pérez','Madre','987000000','Colaborador de prueba, puedes borrar esta fila'];
+  const ws = XLSX.utils.aoa_to_sheet([PERSONAL_EXCEL_HEADERS, ejemplo]);
+  ws['!cols'] = PERSONAL_EXCEL_HEADERS.map(()=>({wch:20}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Personal');
+  XLSX.writeFile(wb, 'plantilla_personal_serving.xlsx');
+}
+
+function normalizeExcelDate(val){
+  if(val===undefined || val===null || val==='') return '';
+  if(val instanceof Date) return val.toISOString().slice(0,10);
+  const s = String(val).trim();
+  if(!s) return '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  return isNaN(d) ? '' : d.toISOString().slice(0,10);
+}
+function normalizeExcelTime(val){
+  if(val===undefined || val===null || val==='') return '';
+  if(val instanceof Date) return String(val.getHours()).padStart(2,'0')+':'+String(val.getMinutes()).padStart(2,'0');
+  const m = String(val).trim().match(/^(\d{1,2}):(\d{2})/);
+  return m ? m[1].padStart(2,'0')+':'+m[2] : '';
+}
+
+function uploadPersonalExcel(file){
+  if(!file) return;
+  const statusEl = document.getElementById('personalExcelStatus');
+  const reader = new FileReader();
+  reader.onload = async (ev)=>{
+    try{
+      const data = new Uint8Array(ev.target.result);
+      const wb = XLSX.read(data, {type:'array', cellDates:true});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+      let nuevos=0, actualizados=0, omitidos=0;
+      rows.forEach(row=>{
+        const nombre = String(row['Nombre completo']||'').trim();
+        const dni = String(row['DNI o RUC']||'').trim();
+        if(!nombre || !dni){ omitidos++; return; }
+        const sueldoDiario = parseFloat(row['Sueldo diario'])||0;
+        const estadoRaw = String(row['Estado']||'activo').toLowerCase();
+        const tieneLicenciaRaw = String(row['Tiene licencia']||'no').toLowerCase();
+        const data = {
+          nombre, dni,
+          fechaNacimiento: normalizeExcelDate(row['Fecha nacimiento']),
+          estadoCivil: String(row['Estado civil']||'Soltero(a)').trim() || 'Soltero(a)',
+          domicilio: String(row['Domicilio']||'').trim(),
+          ciudad: String(row['Ciudad']||'').trim(),
+          correo1: String(row['Correo 1']||'').trim(),
+          correo2: String(row['Correo 2']||'').trim(),
+          celular1: String(row['Celular 1']||'').trim(),
+          celular2: String(row['Celular 2']||'').trim(),
+          cargo: String(row['Cargo o puesto']||'').trim(),
+          area: String(row['Área']||'Administración').trim() || 'Administración',
+          sueldoDiario, sueldoMensual: sueldoDiario*30,
+          horaEntrada: normalizeExcelTime(row['Hora entrada']),
+          horaSalida: normalizeExcelTime(row['Hora salida']),
+          fechaIngreso: normalizeExcelDate(row['Fecha ingreso']),
+          fechaFin: normalizeExcelDate(row['Fecha fin contrato']),
+          estado: estadoRaw.includes('inactiv') ? 'inactivo' : 'activo',
+          salud: String(row['Régimen salud']||'EsSalud').trim() || 'EsSalud',
+          fechaSalud: normalizeExcelDate(row['Vencimiento salud']),
+          pension: String(row['Sistema pensión']||'AFP').trim() || 'AFP',
+          afpNombre: String(row['AFP']||'Integra').trim() || 'Integra',
+          vigenciaSctr: normalizeExcelDate(row['Vigencia SCTR']),
+          vigenciaVidaLey: normalizeExcelDate(row['Vigencia Vida Ley']),
+          fechaEmo: normalizeExcelDate(row['Vigencia EMO']),
+          tieneLicencia: tieneLicenciaRaw.startsWith('s') ? 'si' : 'no',
+          licenciaCategoria: String(row['Categoría licencia']||'').trim(),
+          licenciaNumero: String(row['Número licencia']||'').trim(),
+          licenciaVigencia: normalizeExcelDate(row['Vigencia licencia']),
+          refNombre: String(row['Referencia nombre']||'').trim(),
+          refParentesco: String(row['Referencia parentesco']||'').trim(),
+          refTelefono: String(row['Referencia teléfono']||'').trim(),
+          notas: String(row['Notas']||'').trim()
+        };
+        const existing = employees.find(e=>e.dni===dni);
+        if(existing){ Object.assign(existing, data, {id: existing.id}); actualizados++; }
+        else { employees.push({...data, id:'e'+Date.now()+Math.random().toString(36).slice(2,7)}); nuevos++; }
+      });
+      await saveData('employees', employees);
+      renderAll();
+      statusEl.textContent = `Carga completa: ${nuevos} colaborador(es) nuevo(s), ${actualizados} actualizado(s)` + (omitidos ? `, ${omitidos} fila(s) omitida(s) por falta de nombre o DNI/RUC.` : '.');
+      showToast('Carga masiva completada');
+    }catch(err){
+      console.error(err);
+      statusEl.textContent = '';
+      showToast('No se pudo leer el archivo. Verifica que sea un Excel válido (.xlsx)');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  document.getElementById('personalExcelFile').value = '';
+}
+
+function populateEmployeeSelects(){
+  const opts = employees.map(e=>`<option value="${e.id}">${e.nombre} — ${e.dni}</option>`).join('');
+  const empty = `<option value="">Sin colaboradores registrados</option>`;
+  document.getElementById('docEmployeeSelect').innerHTML = employees.length ? opts : empty;
+  document.getElementById('boletaEmployeeSelect').innerHTML = employees.length ? opts : empty;
+  document.getElementById('faltaEmployeeSelect').innerHTML = employees.length ? opts : empty;
+  document.getElementById('descansoEmployeeSelect').innerHTML = employees.length ? opts : empty;
+  document.getElementById('regEmployeeSelect').innerHTML = employees.length ? opts : empty;
+  document.getElementById('eventoEmployeeSelect').innerHTML = `<option value="">— No aplica —</option>` + opts;
+  document.getElementById('reconEmployeeSelect').innerHTML = employees.length ? opts : empty;
+  document.getElementById('eppEmployeeSelect').innerHTML = employees.length ? opts : empty;
+}
+
+// ---------- Documentos ----------
+function renderDocTypeList(){
+  document.getElementById('docTypeList').innerHTML = DOC_TYPES.map(d=>
+    `<button class="doc-type-btn ${d.key===currentDocType?'active':''}" onclick="selectDocType('${d.key}')">${d.label}</button>`
+  ).join('');
+}
+function selectDocType(key){
+  if(templateDirty && !confirm('Tienes cambios sin guardar en la plantilla actual. ¿Cambiar de todos modos?')) return;
+  currentDocType = key; templateDirty = false;
+  renderDocTypeList();
+  renderDocPreview();
+}
+function fillTemplate(tpl, e){
+  const today = new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'long',year:'numeric'});
+  return tpl
+    .replaceAll('{{nombre}}', e ? e.nombre : '________________')
+    .replaceAll('{{dni}}', e ? e.dni : '________')
+    .replaceAll('{{cargo}}', e ? (e.cargo||'________') : '________')
+    .replaceAll('{{fechaIngreso}}', e ? fmtDate(e.fechaIngreso) : '____/____/______')
+    .replaceAll('{{fechaFin}}', e ? fmtDate(e.fechaFin) : '____/____/______')
+    .replaceAll('{{salud}}', e ? e.salud : '________')
+    .replaceAll('{{pension}}', e ? (e.pension + (e.afpNombre? ' - '+e.afpNombre:'')) : '________')
+    .replaceAll('{{fecha}}', today);
+}
+function renderDocPreview(){
+  const docType = DOC_TYPES.find(d=>d.key===currentDocType);
+  document.getElementById('docPreviewTitle').textContent = docType.label;
+  const empId = document.getElementById('docEmployeeSelect').value;
+  const e = employees.find(x=>x.id===empId);
+  const tpl = templates[currentDocType] || DEFAULT_TEMPLATES[currentDocType];
+  document.getElementById('docTextarea').value = fillTemplate(tpl, e);
+  templateDirty = false;
+}
+function markTemplateDirty(){ templateDirty = true; }
+async function resetTemplate(){
+  if(!confirm('Esto restaura la plantilla original para este documento (se pierden tus ediciones guardadas). ¿Continuar?')) return;
+  templates[currentDocType] = DEFAULT_TEMPLATES[currentDocType];
+  await saveData('templates', templates);
+  renderDocPreview();
+  showToast('Plantilla restaurada');
+}
+function downloadDoc(){
+  const empId = document.getElementById('docEmployeeSelect').value;
+  const e = employees.find(x=>x.id===empId);
+  const text = document.getElementById('docTextarea').value;
+  const blob = new Blob([text], {type:'text/plain;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const nameTag = e ? e.nombre.replace(/\s+/g,'_') : 'documento';
+  a.href = url; a.download = `${currentDocType}_${nameTag}.txt`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function printDoc(){
+  const text = document.getElementById('docTextarea').value;
+  const w = window.open('', '_blank');
+  w.document.write(`<pre style="font-family:'IBM Plex Mono',monospace;font-size:13px;white-space:pre-wrap;padding:40px;line-height:1.6;">${text.replace(/</g,'&lt;')}</pre>`);
+  w.document.close();
+  w.focus();
+  setTimeout(()=>w.print(), 300);
+}
+
+// ---------- Plantillas (modelos formales de la empresa) ----------
+function renderPlantillaTypeList(){
+  document.getElementById('plantillaTypeList').innerHTML = DOC_TYPES.map(d=>
+    `<button class="doc-type-btn ${d.key===currentPlantillaType?'active':''}" onclick="selectPlantillaType('${d.key}')">${d.label}</button>`
+  ).join('');
+}
+function selectPlantillaType(key){
+  currentPlantillaType = key;
+  renderPlantillaTypeList();
+  renderPlantillaPreview();
+}
+function renderPlantillaPreview(){
+  const docType = DOC_TYPES.find(d=>d.key===currentPlantillaType);
+  if(!docType) return;
+  document.getElementById('plantillaPreviewTitle').textContent = docType.label;
+  document.getElementById('plantillaTextarea').value = templates[currentPlantillaType] || DEFAULT_TEMPLATES[currentPlantillaType];
+}
+async function savePlantilla(){
+  templates[currentPlantillaType] = document.getElementById('plantillaTextarea').value;
+  await saveData('templates', templates);
+  showToast('Plantilla guardada. Ya se usará en Documentos.');
+  if(currentDocType===currentPlantillaType) renderDocPreview();
+}
+async function resetPlantillaDefault(){
+  if(!confirm('Esto reemplaza el texto actual por la plantilla original del sistema. ¿Continuar?')) return;
+  document.getElementById('plantillaTextarea').value = DEFAULT_TEMPLATES[currentPlantillaType];
+}
+async function importPlantillaFile(){
+  const fileInput = document.getElementById('plantillaFile');
+  if(!fileInput.files.length){ showToast('Selecciona un archivo .docx o .txt'); return; }
+  const file = fileInput.files[0];
+  try{
+    if(file.name.toLowerCase().endsWith('.docx')){
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({arrayBuffer});
+      document.getElementById('plantillaTextarea').value = result.value;
+    } else {
+      const text = await file.text();
+      document.getElementById('plantillaTextarea').value = text;
+    }
+    showToast('Archivo cargado. Revisa el texto y presiona "Guardar plantilla".');
+  }catch(err){
+    console.error(err);
+    showToast('No se pudo leer el archivo. Prueba con .docx o .txt');
+  }
+}
+
+// ---------- EMO ----------
+function emoPill(e){
+  const d = daysUntil(e.fechaEmo);
+  if(d===null) return `<span class="pill pill-muted">Sin registro</span>`;
+  if(d<0) return `<span class="pill pill-danger">Vencido</span>`;
+  if(d<=30) return `<span class="pill pill-warn">Vence en ${d}d</span>`;
+  return `<span class="pill pill-ok">Vigente</span>`;
+}
+function renderEmo(){
+  const conEmo = employees.filter(e=>e.fechaEmo);
+  const vencidos = conEmo.filter(e=>daysUntil(e.fechaEmo)<0);
+  const porVencer = conEmo.filter(e=>{ const d=daysUntil(e.fechaEmo); return d>=0 && d<=30; });
+  document.getElementById('emoStats').innerHTML = `
+    <div class="stat-card"><div class="num">${conEmo.length}</div><div class="label">Con EMO registrado</div></div>
+    <div class="stat-card warn"><div class="num">${porVencer.length}</div><div class="label">Por vencer (30 días)</div></div>
+    <div class="stat-card warn"><div class="num">${vencidos.length}</div><div class="label">EMO vencido</div></div>
+  `;
+
+  let avisoHtml = '';
+  if(vencidos.length){
+    const chips = vencidos.map(e=>`<span class="aviso-chip">${e.nombre} — venció ${fmtDate(e.fechaEmo)}</span>`).join('');
+    avisoHtml += `<div class="aviso-box danger"><div class="aviso-title">⚠ EMO vencido</div><div class="aviso-list">${chips}</div></div>`;
+  }
+  if(porVencer.length){
+    const chips = porVencer.map(e=>{
+      const d = daysUntil(e.fechaEmo);
+      return `<span class="aviso-chip">${e.nombre} — vence en ${d} día(s) (${fmtDate(e.fechaEmo)})</span>`;
+    }).join('');
+    avisoHtml += `<div class="aviso-box warn"><div class="aviso-title">Aviso: EMO por vencer</div><div class="aviso-list">${chips}</div></div>`;
+  }
+  document.getElementById('emoAviso').innerHTML = avisoHtml;
+
+  const sorted = [...employees].sort((a,b)=>(a.fechaEmo||'9999').localeCompare(b.fechaEmo||'9999'));
+  const rows = sorted.map(e=>`
+    <tr>
+      <td><b>${e.nombre}</b></td>
+      <td class="mono">${e.dni}</td>
+      <td>${e.cargo||'—'}</td>
+      <td>${e.area||'—'}</td>
+      <td>${fmtDate(e.fechaEmo)}</td>
+      <td>${emoPill(e)}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="openEmployeeModal('${e.id}')">Actualizar EMO</button></td>
+    </tr>`).join('');
+  document.getElementById('emoTable').innerHTML = employees.length ? `
+    <table><thead><tr><th>Nombre</th><th>DNI</th><th>Cargo</th><th>Área</th><th>Vigencia EMO</th><th>Estado</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>` : `<div class="empty">Aún no registras colaboradores.</div>`;
+}
+
+// Save edited (non-template-default) text back as the stored template for reuse next time, per doc type
+document.addEventListener('DOMContentLoaded', ()=>{
+  const ta = document.getElementById('docTextarea');
+  if(ta){
+    ta.addEventListener('blur', async ()=>{
+      // store as the working template only if user explicitly wants — keep default template intact,
+      // this is intentionally not auto-saved to avoid overwriting the base template with employee-specific text.
+    });
+  }
+});
+
+// ---------- Presupuesto ----------
+function openBudgetModal(){
+  document.getElementById('budgetModalOverlay').classList.add('active');
+  document.getElementById('budTipo').value='gasto';
+  document.getElementById('budCategoria').value='';
+  document.getElementById('budMonto').value='';
+  document.getElementById('budFecha').value = new Date().toISOString().slice(0,10);
+  document.getElementById('budDesc').value='';
+}
+function closeBudgetModal(){ document.getElementById('budgetModalOverlay').classList.remove('active'); }
+async function saveBudget(){
+  const monto = parseFloat(document.getElementById('budMonto').value);
+  const categoria = document.getElementById('budCategoria').value.trim();
+  if(!categoria || isNaN(monto)){ showToast('Completa categoría y monto'); return; }
+  budgetEntries.push({
+    id:'b'+Date.now(),
+    tipo: document.getElementById('budTipo').value,
+    categoria, monto,
+    fecha: document.getElementById('budFecha').value,
+    descripcion: document.getElementById('budDesc').value.trim()
+  });
+  await saveData('budgetEntries', budgetEntries);
+  closeBudgetModal();
+  renderBudget();
+  showToast('Movimiento registrado');
+}
+async function deleteBudget(id){
+  budgetEntries = budgetEntries.filter(b=>b.id!==id);
+  await saveData('budgetEntries', budgetEntries);
+  renderBudget();
+}
+function renderBudget(){
+  const ingresos = budgetEntries.filter(b=>b.tipo==='ingreso').reduce((s,b)=>s+b.monto,0);
+  const gastos = budgetEntries.filter(b=>b.tipo==='gasto').reduce((s,b)=>s+b.monto,0);
+  const saldo = ingresos - gastos;
+  document.getElementById('budgetStats').innerHTML = `
+    <div class="stat-card ok"><div class="num">S/ ${ingresos.toFixed(2)}</div><div class="label">Ingresos / asignado</div></div>
+    <div class="stat-card warn"><div class="num">S/ ${gastos.toFixed(2)}</div><div class="label">Gastos</div></div>
+    <div class="stat-card ${saldo<0?'warn':'ok'}"><div class="num">S/ ${saldo.toFixed(2)}</div><div class="label">Saldo disponible</div></div>
+  `;
+  const sorted = [...budgetEntries].sort((a,b)=> (b.fecha||'').localeCompare(a.fecha||''));
+  const rows = sorted.map(b=>`
+    <tr>
+      <td>${fmtDate(b.fecha)}</td>
+      <td>${b.tipo==='ingreso' ? '<span class="pill pill-ok">Ingreso</span>' : '<span class="pill pill-warn">Gasto</span>'}</td>
+      <td>${b.categoria}</td>
+      <td>${b.descripcion||'—'}</td>
+      <td class="mono">S/ ${b.monto.toFixed(2)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteBudget('${b.id}')">Eliminar</button></td>
+    </tr>`).join('');
+  document.getElementById('budgetTable').innerHTML = sorted.length ? `
+    <table><thead><tr><th>Fecha</th><th>Tipo</th><th>Categoría</th><th>Descripción</th><th>Monto</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>` : `<div class="empty">Aún no registras movimientos de presupuesto.</div>`;
+}
+
+// ---------- Menus ----------
+const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+let currentMenuMesFiltro = 'todos';
+let currentMenuAnioFiltro = 'todos';
+
+function diaSemanaDe(fecha){
+  if(!fecha) return '';
+  const d = new Date(fecha+'T00:00:00');
+  return DIAS_SEMANA[d.getDay()];
+}
+function updateMenuDia(){
+  document.getElementById('menuDia').value = diaSemanaDe(document.getElementById('menuFecha').value);
+}
+function updateMenuTotal(){
+  const cant = parseFloat(document.getElementById('menuCantidad').value)||0;
+  const precio = parseFloat(document.getElementById('menuPrecio').value)||0;
+  document.getElementById('menuTotal').value = 'S/ ' + (cant*precio).toFixed(2);
+}
+function openMenuModal(){
+  document.getElementById('menuModalOverlay').classList.add('active');
+  document.getElementById('menuFecha').value = new Date().toISOString().slice(0,10);
+  document.getElementById('menuCantidad').value='';
+  document.getElementById('menuPrecio').value='';
+  document.getElementById('menuDetalle').value='';
+  updateMenuDia();
+  updateMenuTotal();
+}
+function closeMenuModal(){ document.getElementById('menuModalOverlay').classList.remove('active'); }
+async function saveMenu(){
+  const fecha = document.getElementById('menuFecha').value;
+  const detalle = document.getElementById('menuDetalle').value.trim();
+  if(!fecha || !detalle){ showToast('Completa fecha y menú'); return; }
+  const cantidad = parseInt(document.getElementById('menuCantidad').value)||0;
+  const precio = parseFloat(document.getElementById('menuPrecio').value)||0;
+  menuEntries.push({
+    id:'m'+Date.now(), fecha,
+    dia: diaSemanaDe(fecha),
+    cantidad, precio,
+    total: cantidad*precio,
+    detalle
+  });
+  await saveData('menuEntries', menuEntries);
+  closeMenuModal();
+  renderMenus();
+  showToast('Menú registrado');
+}
+async function deleteMenu(id){
+  menuEntries = menuEntries.filter(m=>m.id!==id);
+  await saveData('menuEntries', menuEntries);
+  renderMenus();
+}
+
+function isoWeek(dateStr){
+  const d = new Date(dateStr+'T00:00:00');
+  d.setDate(d.getDate() + 4 - (d.getDay()||7));
+  const yearStart = new Date(d.getFullYear(),0,1);
+  const week = Math.ceil((((d-yearStart)/86400000)+1)/7);
+  return d.getFullYear()+'-S'+week;
+}
+
+function populateMenuFilters(){
+  const years = Array.from(new Set(menuEntries.map(m=>m.fecha.slice(0,4)))).sort().reverse();
+  const anioSel = document.getElementById('menuAnioFiltro');
+  const currentYear = new Date().getFullYear().toString();
+  const yearOptions = years.length ? years : [currentYear];
+  if(!yearOptions.includes(currentYear)) yearOptions.unshift(currentYear);
+  anioSel.innerHTML = yearOptions.map(y=>`<option value="${y}">${y}</option>`).join('');
+  if(!yearOptions.includes(currentMenuAnioFiltro)) currentMenuAnioFiltro = yearOptions[0];
+  anioSel.value = currentMenuAnioFiltro;
+
+  const mesSel = document.getElementById('menuMesFiltro');
+  mesSel.innerHTML = `<option value="todos">Todos los meses</option>` + MESES.map((m,i)=>`<option value="${i}">${m}</option>`).join('');
+  mesSel.value = currentMenuMesFiltro;
+}
+
+function renderMenus(){
+  populateMenuFilters();
+
+  const today = new Date().toISOString().slice(0,10);
+  const todayEntries = menuEntries.filter(m=>m.fecha===today);
+  const totalHoy = todayEntries.reduce((s,m)=>s+(m.total||0),0);
+
+  const currentWeek = isoWeek(today);
+  const weekEntries = menuEntries.filter(m=>isoWeek(m.fecha)===currentWeek);
+  const totalSemana = weekEntries.reduce((s,m)=>s+(m.total||0),0);
+
+  const [curY, curM] = [today.slice(0,4), today.slice(5,7)];
+  const monthEntries = menuEntries.filter(m=>m.fecha.slice(0,4)===curY && m.fecha.slice(5,7)===curM);
+  const totalMes = monthEntries.reduce((s,m)=>s+(m.total||0),0);
+
+  document.getElementById('menuStats').innerHTML = `
+    <div class="stat-card"><div class="num">S/ ${totalHoy.toFixed(2)}</div><div class="label">Total de hoy</div></div>
+    <div class="stat-card"><div class="num">S/ ${totalSemana.toFixed(2)}</div><div class="label">Total semana actual</div></div>
+    <div class="stat-card"><div class="num">S/ ${totalMes.toFixed(2)}</div><div class="label">Total mes actual</div></div>
+  `;
+
+  let filtered = menuEntries.filter(m=>m.fecha.slice(0,4)===currentMenuAnioFiltro);
+  if(currentMenuMesFiltro!=='todos') filtered = filtered.filter(m=>parseInt(m.fecha.slice(5,7))-1===parseInt(currentMenuMesFiltro));
+  const sorted = [...filtered].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const rows = sorted.map(m=>`
+    <tr>
+      <td>${fmtDate(m.fecha)}</td>
+      <td>${m.dia||diaSemanaDe(m.fecha)}</td>
+      <td>${m.detalle}</td>
+      <td class="mono">${m.cantidad}</td>
+      <td class="mono">S/ ${(m.precio||0).toFixed(2)}</td>
+      <td class="mono">S/ ${(m.total||0).toFixed(2)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteMenu('${m.id}')">Eliminar</button></td>
+    </tr>`).join('');
+  document.getElementById('menuTable').innerHTML = sorted.length ? `
+    <table><thead><tr><th>Fecha</th><th>Día</th><th>Menú</th><th>Raciones</th><th>Precio (IGV incl.)</th><th>Total</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>` : `<div class="empty">No hay menús registrados para este periodo.</div>`;
+
+  renderMenuHistorico();
+}
+
+function renderMenuHistorico(){
+  document.getElementById('menuHistoricoAnio').textContent = currentMenuAnioFiltro;
+  const yearEntries = menuEntries.filter(m=>m.fecha.slice(0,4)===currentMenuAnioFiltro);
+  const rows = MESES.map((mesNombre, i)=>{
+    const mm = String(i+1).padStart(2,'0');
+    const entriesMes = yearEntries.filter(m=>m.fecha.slice(5,7)===mm);
+    const raciones = entriesMes.reduce((s,m)=>s+(m.cantidad||0),0);
+    const total = entriesMes.reduce((s,m)=>s+(m.total||0),0);
+    return `<tr>
+      <td>${mesNombre}</td>
+      <td class="mono">${entriesMes.length}</td>
+      <td class="mono">${raciones}</td>
+      <td class="mono">S/ ${total.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+  const totalAnio = yearEntries.reduce((s,m)=>s+(m.total||0),0);
+  document.getElementById('menuHistoricoTable').innerHTML = `
+    <table><thead><tr><th>Mes</th><th>Días registrados</th><th>Raciones</th><th>Total S/</th></tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr><td><b>Total del año</b></td><td></td><td></td><td class="mono"><b>S/ ${totalAnio.toFixed(2)}</b></td></tr></tfoot></table>`;
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  const mesSel = document.getElementById('menuMesFiltro');
+  const anioSel = document.getElementById('menuAnioFiltro');
+  if(mesSel) mesSel.addEventListener('change', ()=>{ currentMenuMesFiltro = mesSel.value; renderMenus(); });
+  if(anioSel) anioSel.addEventListener('change', ()=>{ currentMenuAnioFiltro = anioSel.value; renderMenus(); });
+});
+
+// ---------- Documentos y Contratos (carga, vencimientos, renovación/cierre, historial) ----------
+const BOLETA_CATEGORIAS = {contrato:'Contrato', anexo:'Anexo', autorizacion:'Autorización', boleta:'Boleta de pago', sctr:'SCTR', pension:'Pensión', salud:'Salud'};
+
+function toggleBoletaFields(){
+  const cat = document.getElementById('boletaCategoria').value;
+  document.getElementById('boletaPeriodoField').style.display = cat==='boleta' ? 'block':'none';
+  document.getElementById('boletaVigenciaField').style.display = cat==='boleta' ? 'none':'block';
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  const sel = document.getElementById('boletaCategoria');
+  if(sel) sel.addEventListener('change', toggleBoletaFields);
+});
+
+function renderDocsAviso(){
+  const conVigencia = workerDocs.filter(b=>b.vigencia);
+  const vencidos = conVigencia.filter(b=>daysUntil(b.vigencia)<0);
+  const porVencer = conVigencia.filter(b=>{ const d=daysUntil(b.vigencia); return d>=0 && d<=30; });
+  let html = '';
+  if(vencidos.length){
+    const chips = vencidos.map(b=>{
+      const e = employees.find(x=>x.id===b.empId);
+      return `<span class="aviso-chip">${e?e.nombre:'(colaborador eliminado)'} — ${BOLETA_CATEGORIAS[b.categoria]} venció ${fmtDate(b.vigencia)}</span>`;
+    }).join('');
+    html += `<div class="aviso-box danger"><div class="aviso-title">⚠ Documentos vencidos</div><div class="aviso-list">${chips}</div></div>`;
+  }
+  if(porVencer.length){
+    const chips = porVencer.map(b=>{
+      const e = employees.find(x=>x.id===b.empId);
+      const d = daysUntil(b.vigencia);
+      return `<span class="aviso-chip">${e?e.nombre:'(colaborador eliminado)'} — ${BOLETA_CATEGORIAS[b.categoria]} vence en ${d} día(s) (${fmtDate(b.vigencia)})</span>`;
+    }).join('');
+    html += `<div class="aviso-box warn"><div class="aviso-title">Aviso: documentos por vencer (30 días)</div><div class="aviso-list">${chips}</div></div>`;
+  }
+  document.getElementById('docsAviso').innerHTML = html;
+}
+
+async function renovarDocumento(id){
+  const b = workerDocs.find(x=>x.id===id);
+  if(!b) return;
+  const nueva = prompt('Nueva fecha de vigencia (AAAA-MM-DD):', b.vigencia||'');
+  if(!nueva) return;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(nueva)){ showToast('Formato de fecha inválido. Usa AAAA-MM-DD'); return; }
+  b.vigencia = nueva;
+  b.historial = b.historial || [];
+  b.historial.push({accion:'Renovación', fecha: new Date().toISOString().slice(0,10), detalle:`Nueva vigencia: ${fmtDate(nueva)}`});
+  await saveData('workerDocs', workerDocs);
+  renderBoletas();
+  showToast('Documento renovado');
+}
+
+async function cerrarContrato(id){
+  const b = workerDocs.find(x=>x.id===id);
+  if(!b) return;
+  const e = employees.find(x=>x.id===b.empId);
+  if(!e){ showToast('El colaborador ya no existe'); return; }
+  if(!confirm(`Esto marcará a ${e.nombre} como Inactivo y cerrará este contrato. ¿Continuar?`)) return;
+  e.estado = 'inactivo';
+  b.historial = b.historial || [];
+  b.historial.push({accion:'Cierre', fecha: new Date().toISOString().slice(0,10), detalle:'Contrato cerrado, colaborador marcado como inactivo'});
+  await saveData('employees', employees);
+  await saveData('workerDocs', workerDocs);
+  renderAll();
+  showToast('Contrato cerrado y colaborador actualizado a Inactivo');
+}
+
+function uploadBoleta(){
+  const empId = document.getElementById('boletaEmployeeSelect').value;
+  const categoria = document.getElementById('boletaCategoria').value;
+  const periodo = document.getElementById('boletaPeriodo').value.trim();
+  const vigencia = document.getElementById('boletaVigencia').value;
+  const fileInput = document.getElementById('boletaFile');
+  if(!empId || !fileInput.files.length){ showToast('Selecciona colaborador y archivo'); return; }
+  if(categoria==='boleta' && !periodo){ showToast('Indica el periodo de la boleta'); return; }
+  const file = fileInput.files[0];
+  if(file.size > 4*1024*1024){ showToast('El archivo es muy grande (máx. 4MB)'); return; }
+  const reader = new FileReader();
+  reader.onload = async ()=>{
+    workerDocs.push({
+      id:'p'+Date.now(),
+      empId, categoria,
+      periodo: categoria==='boleta' ? periodo : '',
+      vigencia: categoria==='boleta' ? null : (vigencia||null),
+      fileName: file.name,
+      fileType: file.type,
+      fileData: reader.result,
+      fecha: new Date().toISOString().slice(0,10),
+      historial: [{accion:'Carga', fecha: new Date().toISOString().slice(0,10), detalle:`Documento cargado: ${BOLETA_CATEGORIAS[categoria]}`}]
+    });
+    await saveData('workerDocs', workerDocs);
+    fileInput.value=''; document.getElementById('boletaPeriodo').value=''; document.getElementById('boletaVigencia').value='';
+    renderBoletas();
+    showToast('Documento subido');
+  };
+  reader.readAsDataURL(file);
+}
+async function deleteBoleta(id){
+  workerDocs = workerDocs.filter(b=>b.id!==id);
+  await saveData('workerDocs', workerDocs);
+  renderBoletas();
+}
+function downloadBoleta(id){
+  const b = workerDocs.find(x=>x.id===id);
+  if(!b) return;
+  const a = document.createElement('a');
+  a.href = b.fileData; a.download = b.fileName;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+function docVigenciaPill(b){
+  if(b.categoria==='boleta') return `<span class="pill pill-muted">—</span>`;
+  if(!b.vigencia) return `<span class="pill pill-muted">Sin vigencia</span>`;
+  const d = daysUntil(b.vigencia);
+  if(d<0) return `<span class="pill pill-danger">Vencido</span>`;
+  if(d<=30) return `<span class="pill pill-warn">Vence en ${d}d</span>`;
+  return `<span class="pill pill-ok">Vigente</span>`;
+}
+function renderBoletas(){
+  renderDocsAviso();
+  let list = currentBoletaFilter==='todos' ? workerDocs : workerDocs.filter(b=>b.categoria===currentBoletaFilter);
+  const sorted = [...list].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const rows = sorted.map(b=>{
+    const e = employees.find(x=>x.id===b.empId);
+    const tieneVigencia = b.categoria!=='boleta';
+    return `<tr>
+      <td>${e ? e.nombre : '(colaborador eliminado)'}</td>
+      <td><span class="pill pill-muted">${BOLETA_CATEGORIAS[b.categoria]||b.categoria}</span></td>
+      <td class="mono">${b.periodo || (b.vigencia ? fmtDate(b.vigencia) : '—')}</td>
+      <td>${docVigenciaPill(b)}</td>
+      <td>${b.fileName}</td>
+      <td>${fmtDate(b.fecha)}</td>
+      <td class="actions-cell">
+        <button class="btn btn-ghost btn-sm" onclick="downloadBoleta('${b.id}')">Descargar</button>
+        ${tieneVigencia ? `<button class="btn btn-accent btn-sm" onclick="renovarDocumento('${b.id}')">Renovar</button>` : ''}
+        ${b.categoria==='contrato' ? `<button class="btn btn-danger btn-sm" onclick="cerrarContrato('${b.id}')">Cerrar</button>` : ''}
+        <button class="btn btn-danger btn-sm" onclick="deleteBoleta('${b.id}')">Eliminar</button>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('boletaTable').innerHTML = sorted.length ? `
+    <table><thead><tr><th>Colaborador</th><th>Tipo</th><th>Periodo / vigencia</th><th>Estado</th><th>Archivo</th><th>Subido</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>` : `<div class="empty">Aún no subes documentos en esta categoría.</div>`;
+
+  renderHistorialDocumental();
+}
+
+// ---------- Historial documental por colaborador ----------
+function populateHistorialSelect(){
+  const sel = document.getElementById('historialEmployeeSelect');
+  const prev = sel.value;
+  sel.innerHTML = employees.length
+    ? employees.map(e=>`<option value="${e.id}">${e.nombre} — ${e.dni}</option>`).join('')
+    : `<option value="">Sin colaboradores registrados</option>`;
+  if(prev && employees.some(e=>e.id===prev)) sel.value = prev;
+}
+function renderHistorialDocumental(){
+  populateHistorialSelect();
+  const empId = document.getElementById('historialEmployeeSelect').value;
+  const docs = workerDocs.filter(b=>b.empId===empId);
+  const eventos = [];
+  docs.forEach(b=>{
+    (b.historial||[{accion:'Carga', fecha:b.fecha, detalle:`Documento cargado: ${BOLETA_CATEGORIAS[b.categoria]}`}]).forEach(h=>{
+      eventos.push({...h, categoria: b.categoria, fileName: b.fileName});
+    });
+  });
+  eventos.sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const rows = eventos.map(ev=>`
+    <tr>
+      <td>${fmtDate(ev.fecha)}</td>
+      <td><span class="pill pill-muted">${BOLETA_CATEGORIAS[ev.categoria]||ev.categoria}</span></td>
+      <td>${ev.accion}</td>
+      <td>${ev.detalle||'—'}</td>
+      <td>${ev.fileName||'—'}</td>
+    </tr>`).join('');
+  document.getElementById('historialTable').innerHTML = eventos.length ? `
+    <table><thead><tr><th>Fecha</th><th>Documento</th><th>Acción</th><th>Detalle</th><th>Archivo</th></tr></thead>
+    <tbody>${rows}</tbody></table>` : `<div class="empty">Este colaborador aún no tiene documentos cargados.</div>`;
+}
+
+// ---------- Base de datos ----------
+function renderBasedatos(){
+  const q = (document.getElementById('basedatosSearch').value||'').toLowerCase();
+  const list = employees.filter(e=> e.nombre.toLowerCase().includes(q) || (e.dni||'').includes(q));
+  const rows = list.map(e=>`
+    <tr>
+      <td><b>${e.nombre}</b></td>
+      <td class="mono">${e.dni}</td>
+      <td>${e.cargo||'—'}</td>
+      <td>${e.area||'—'}</td>
+      <td>${e.estado==='activo' ? '<span class="pill pill-ok">Activo</span>' : '<span class="pill pill-muted">Inactivo</span>'}</td>
+      <td>${fmtDate(e.fechaIngreso)}</td>
+      <td>${fmtDate(e.fechaFin)}</td>
+      <td>${e.ciudad||'—'}</td>
+      <td>${e.celular1||'—'}</td>
+    </tr>`).join('');
+  document.getElementById('basedatosTable').innerHTML = list.length ? `
+    <table><thead><tr><th>Nombre</th><th>DNI/RUC</th><th>Cargo</th><th>Área</th><th>Estado</th><th>Ingreso</th><th>Fin contrato</th><th>Ciudad</th><th>Celular</th></tr></thead>
+    <tbody>${rows}</tbody></table>` : `<div class="empty">No hay registros que coincidan con la búsqueda.</div>`;
+}
+function exportDatabaseCsv(){
+  if(!employees.length){ showToast('No hay colaboradores registrados'); return; }
+  const headers = ['Nombre','DNI/RUC','FechaNacimiento','EstadoCivil','Domicilio','Ciudad','Correo1','Correo2','Celular1','Celular2','Cargo','Área','SueldoDiario','SueldoMensual','Estado','FechaIngreso','FechaFin','Salud','FechaSalud','Pension','AFP','VigenciaSCTR','VigenciaVidaLey','VigenciaEMO','LicenciaConducir','LicenciaCategoria','LicenciaNumero','LicenciaVigencia','RefNombre','RefParentesco','RefTelefono'];
+  const escape = v => `"${String(v||'').replace(/"/g,'""')}"`;
+  const lines = [headers.join(',')];
+  employees.forEach(e=>{
+    lines.push([e.nombre,e.dni,e.fechaNacimiento,e.estadoCivil,e.domicilio,e.ciudad,e.correo1,e.correo2,e.celular1,e.celular2,e.cargo,e.area,
+      e.sueldoDiario,e.sueldoMensual,e.estado,e.fechaIngreso,e.fechaFin,e.salud,e.fechaSalud,e.pension,e.afpNombre,
+      e.vigenciaSctr,e.vigenciaVidaLey,e.fechaEmo,e.tieneLicencia==='si'?'Sí':'No',e.licenciaCategoria,e.licenciaNumero,e.licenciaVigencia,
+      e.refNombre,e.refParentesco,e.refTelefono].map(escape).join(','));
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'base_datos_trabajadores_serving.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ---------- Asistencia: Faltas y descansos médicos ----------
+function switchAsistTab(tab){
+  document.querySelectorAll('[data-asist-tab]').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`[data-asist-tab="${tab}"]`).classList.add('active');
+  document.getElementById('asistRegistroBlock').style.display = tab==='registro' ? 'block':'none';
+  document.getElementById('asistFaltasBlock').style.display = tab==='faltas' ? 'block':'none';
+  document.getElementById('asistDescansosBlock').style.display = tab==='descansos' ? 'block':'none';
+  document.getElementById('asistReportesBlock').style.display = tab==='reportes' ? 'block':'none';
+  if(tab==='reportes') renderReporteMensual();
+}
+
+// ---------- Registro diario (ingreso, salida, horas extras, permisos) ----------
+function horaAminutos(hora){
+  if(!hora) return null;
+  const [h,m] = hora.split(':').map(Number);
+  return h*60+m;
+}
+function showHorarioAsignado(){
+  const e = employees.find(x=>x.id===document.getElementById('regEmployeeSelect').value);
+  const el = document.getElementById('regHorarioAsignado');
+  if(e && (e.horaEntrada || e.horaSalida)){
+    el.textContent = `Horario asignado: ${e.horaEntrada||'—'} a ${e.horaSalida||'—'}`;
+  } else {
+    el.textContent = e ? 'Este colaborador no tiene horario asignado (defínelo en su ficha para validar tardanzas).' : '';
+  }
+}
+async function saveRegistroDiario(){
+  const empId = document.getElementById('regEmployeeSelect').value;
+  const fecha = document.getElementById('regFecha').value;
+  const horaIngreso = document.getElementById('regHoraIngreso').value;
+  const horaSalida = document.getElementById('regHoraSalida').value;
+  if(!empId || !fecha){ showToast('Selecciona colaborador y fecha'); return; }
+  const e = employees.find(x=>x.id===empId);
+  let horasTrabajadas = 0;
+  if(horaIngreso && horaSalida){
+    horasTrabajadas = Math.max(0, (horaAminutos(horaSalida)-horaAminutos(horaIngreso))/60);
+  }
+  let tardanza = false;
+  if(horaIngreso && e && e.horaEntrada){
+    tardanza = horaAminutos(horaIngreso) > horaAminutos(e.horaEntrada);
+  }
+  registrosDiarios.push({
+    id:'rd'+Date.now(), empId, fecha, horaIngreso, horaSalida,
+    horasTrabajadas: Math.round(horasTrabajadas*100)/100,
+    horasExtras: parseFloat(document.getElementById('regHorasExtras').value)||0,
+    permiso: document.getElementById('regPermiso').value.trim(),
+    tardanza
+  });
+  await saveData('registrosDiarios', registrosDiarios);
+  document.getElementById('regHoraIngreso').value=''; document.getElementById('regHoraSalida').value='';
+  document.getElementById('regHorasExtras').value=''; document.getElementById('regPermiso').value='';
+  renderRegistroDiario();
+  showToast('Registro guardado');
+}
+async function deleteRegistroDiario(id){
+  registrosDiarios = registrosDiarios.filter(r=>r.id!==id);
+  await saveData('registrosDiarios', registrosDiarios);
+  renderRegistroDiario();
+}
+function renderRegistroDiario(){
+  const sorted = [...registrosDiarios].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const rows = sorted.map(r=>{
+    const e = employees.find(x=>x.id===r.empId);
+    let validacion = '<span class="pill pill-muted">Sin horario asignado</span>';
+    if(e && e.horaEntrada && r.horaIngreso){
+      validacion = r.tardanza ? '<span class="pill pill-danger">Tardanza</span>' : '<span class="pill pill-ok">Puntual</span>';
+    }
+    return `<tr>
+      <td>${e ? e.nombre : '(colaborador eliminado)'}</td>
+      <td>${fmtDate(r.fecha)}</td>
+      <td class="mono">${r.horaIngreso||'—'}</td>
+      <td class="mono">${r.horaSalida||'—'}</td>
+      <td class="mono">${r.horasTrabajadas}h</td>
+      <td class="mono">${r.horasExtras}h</td>
+      <td>${r.permiso||'—'}</td>
+      <td>${validacion}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteRegistroDiario('${r.id}')">Eliminar</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('registroDiarioTable').innerHTML = sorted.length ? `
+    <table><thead><tr><th>Colaborador</th><th>Fecha</th><th>Ingreso</th><th>Salida</th><th>Horas</th><th>Extras</th><th>Permiso</th><th>Validación</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>` : `<div class="empty">Aún no registras asistencia diaria.</div>`;
+}
+
+// ---------- Reportes mensuales (asistencia, tardanzas, ausencias, base para nómina) ----------
+let currentReporteMes = new Date().getMonth();
+let currentReporteAnio = new Date().getFullYear().toString();
+
+function populateReporteFiltros(){
+  const mesSel = document.getElementById('reporteMesSelect');
+  mesSel.innerHTML = MESES.map((m,i)=>`<option value="${i}">${m}</option>`).join('');
+  mesSel.value = currentReporteMes;
+  const years = Array.from(new Set([
+    ...registrosDiarios.map(r=>r.fecha.slice(0,4)),
+    ...faltas.map(f=>f.fecha.slice(0,4)),
+    new Date().getFullYear().toString()
+  ]));
+  const anioSel = document.getElementById('reporteAnioSelect');
+  anioSel.innerHTML = years.sort().reverse().map(y=>`<option value="${y}">${y}</option>`).join('');
+  anioSel.value = currentReporteAnio;
+}
+function renderReporteMensual(){
+  populateReporteFiltros();
+  const mm = String(parseInt(currentReporteMes)+1).padStart(2,'0');
+  const activos = employees.filter(e=>e.estado==='activo');
+  const rows = activos.map(e=>{
+    const regsMes = registrosDiarios.filter(r=>r.empId===e.id && r.fecha.slice(0,4)===currentReporteAnio && r.fecha.slice(5,7)===mm);
+    const faltasMes = faltas.filter(f=>f.empId===e.id && f.fecha.slice(0,4)===currentReporteAnio && f.fecha.slice(5,7)===mm);
+    const tardanzasMes = regsMes.filter(r=>r.tardanza).length;
+    const diasAsistidos = regsMes.length;
+    const horasTrabajadas = regsMes.reduce((s,r)=>s+(r.horasTrabajadas||0),0);
+    const horasExtras = regsMes.reduce((s,r)=>s+(r.horasExtras||0),0);
+    const tarifaHora = (e.sueldoDiario||0)/8;
+    const montoEstimado = (horasTrabajadas*tarifaHora) + (horasExtras*tarifaHora*1.25);
+    return {e, diasAsistidos, tardanzasMes, ausencias: faltasMes.length, horasTrabajadas, horasExtras, montoEstimado};
+  });
+  const bodyRows = rows.map(r=>`
+    <tr>
+      <td><b>${r.e.nombre}</b></td>
+      <td class="mono">${r.diasAsistidos}</td>
+      <td class="mono">${r.tardanzasMes}</td>
+      <td class="mono">${r.ausencias}</td>
+      <td class="mono">${r.horasTrabajadas.toFixed(1)}h</td>
+      <td class="mono">${r.horasExtras.toFixed(1)}h</td>
+      <td class="mono">S/ ${r.montoEstimado.toFixed(2)}</td>
+    </tr>`).join('');
+  document.getElementById('reporteMensualTable').innerHTML = rows.length ? `
+    <table><thead><tr><th>Colaborador</th><th>Días asistidos</th><th>Tardanzas</th><th>Ausencias</th><th>Horas trabajadas</th><th>Horas extras</th><th>Monto estimado (nómina)</th></tr></thead>
+    <tbody>${bodyRows}</tbody></table>` : `<div class="empty">No hay colaboradores activos para este reporte.</div>`;
+}
+function exportReporteMensualCsv(){
+  const mm = String(parseInt(currentReporteMes)+1).padStart(2,'0');
+  const activos = employees.filter(e=>e.estado==='activo');
+  if(!activos.length){ showToast('No hay colaboradores activos'); return; }
+  const headers = ['Colaborador','DiasAsistidos','Tardanzas','Ausencias','HorasTrabajadas','HorasExtras','MontoEstimado'];
+  const escape = v => `"${String(v||'').replace(/"/g,'""')}"`;
+  const lines = [headers.join(',')];
+  activos.forEach(e=>{
+    const regsMes = registrosDiarios.filter(r=>r.empId===e.id && r.fecha.slice(0,4)===currentReporteAnio && r.fecha.slice(5,7)===mm);
+    const faltasMes = faltas.filter(f=>f.empId===e.id && f.fecha.slice(0,4)===currentReporteAnio && f.fecha.slice(5,7)===mm);
+    const horasTrabajadas = regsMes.reduce((s,r)=>s+(r.horasTrabajadas||0),0);
+    const horasExtras = regsMes.reduce((s,r)=>s+(r.horasExtras||0),0);
+    const tarifaHora = (e.sueldoDiario||0)/8;
+    const montoEstimado = (horasTrabajadas*tarifaHora) + (horasExtras*tarifaHora*1.25);
+    lines.push([e.nombre, regsMes.length, regsMes.filter(r=>r.tardanza).length, faltasMes.length, horasTrabajadas.toFixed(1), horasExtras.toFixed(1), montoEstimado.toFixed(2)].map(escape).join(','));
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `reporte_asistencia_${currentReporteAnio}-${mm}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+async function saveFalta(){
+  const empId = document.getElementById('faltaEmployeeSelect').value;
+  const fecha = document.getElementById('faltaFecha').value;
+  if(!empId || !fecha){ showToast('Selecciona colaborador y fecha'); return; }
+  faltas.push({
+    id:'f'+Date.now(), empId, fecha,
+    tipo: document.getElementById('faltaTipo').value,
+    observacion: document.getElementById('faltaObservacion').value.trim()
+  });
+  await saveData('faltas', faltas);
+  document.getElementById('faltaFecha').value=''; document.getElementById('faltaObservacion').value='';
+  renderFaltas();
+  showToast('Falta registrada');
+}
+async function deleteFalta(id){
+  faltas = faltas.filter(f=>f.id!==id);
+  await saveData('faltas', faltas);
+  renderFaltas();
+}
+function renderFaltas(){
+  const sorted = [...faltas].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const rows = sorted.map(f=>{
+    const e = employees.find(x=>x.id===f.empId);
+    return `<tr>
+      <td>${e ? e.nombre : '(colaborador eliminado)'}</td>
+      <td>${fmtDate(f.fecha)}</td>
+      <td><span class="pill pill-warn">${f.tipo}</span></td>
+      <td>${f.observacion||'—'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteFalta('${f.id}')">Eliminar</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('faltasTable').innerHTML = sorted.length ? `
+    <table><thead><tr><th>Colaborador</th><th>Fecha</th><th>Tipo</th><th>Observación</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>` : `<div class="empty">Aún no registras faltas.</div>`;
+}
+
+function updateDescansoDias(){
+  const ini = document.getElementById('descansoInicio').value;
+  const fin = document.getElementById('descansoFin').value;
+  if(!ini || !fin){ document.getElementById('descansoDias').value=''; return; }
+  const d1 = new Date(ini+'T00:00:00'), d2 = new Date(fin+'T00:00:00');
+  const dias = Math.round((d2-d1)/86400000)+1;
+  document.getElementById('descansoDias').value = dias>0 ? dias+' día(s)' : 'Rango inválido';
+}
+function saveDescanso(){
+  const empId = document.getElementById('descansoEmployeeSelect').value;
+  const inicio = document.getElementById('descansoInicio').value;
+  const fin = document.getElementById('descansoFin').value;
+  if(!empId || !inicio || !fin){ showToast('Completa colaborador, fecha de inicio y fin'); return; }
+  const dias = Math.round((new Date(fin+'T00:00:00')-new Date(inicio+'T00:00:00'))/86400000)+1;
+  const motivo = document.getElementById('descansoMotivo').value.trim();
+  const fileInput = document.getElementById('descansoFile');
+  const registrar = (fileData, fileName)=>{
+    descansos.push({
+      id:'d'+Date.now(), empId, inicio, fin, dias, motivo,
+      fileData: fileData||null, fileName: fileName||null,
+      fechaRegistro: new Date().toISOString().slice(0,10)
+    });
+    saveData('descansos', descansos).then(()=>{
+      document.getElementById('descansoInicio').value='';
+      document.getElementById('descansoFin').value='';
+      document.getElementById('descansoDias').value='';
+      document.getElementById('descansoMotivo').value='';
+      fileInput.value='';
+      renderDescansos();
+      showToast('Descanso médico registrado');
+    });
+  };
+  if(fileInput.files.length){
+    const reader = new FileReader();
+    reader.onload = ()=>registrar(reader.result, fileInput.files[0].name);
+    reader.readAsDataURL(fileInput.files[0]);
+  } else {
+    registrar(null, null);
+  }
+}
+async function deleteDescanso(id){
+  descansos = descansos.filter(d=>d.id!==id);
+  await saveData('descansos', descansos);
+  renderDescansos();
+}
+function downloadDescansoFile(id){
+  const d = descansos.find(x=>x.id===id);
+  if(!d || !d.fileData) return;
+  const a = document.createElement('a');
+  a.href = d.fileData; a.download = d.fileName;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+function renderDescansos(){
+  const sorted = [...descansos].sort((a,b)=>(b.inicio||'').localeCompare(a.inicio||''));
+  const rows = sorted.map(d=>{
+    const e = employees.find(x=>x.id===d.empId);
+    return `<tr>
+      <td>${e ? e.nombre : '(colaborador eliminado)'}</td>
+      <td>${fmtDate(d.inicio)} — ${fmtDate(d.fin)}</td>
+      <td class="mono">${d.dias}</td>
+      <td>${d.motivo||'—'}</td>
+      <td class="actions-cell">
+        ${d.fileData ? `<button class="btn btn-ghost btn-sm" onclick="downloadDescansoFile('${d.id}')">Descargar</button>` : ''}
+        <button class="btn btn-danger btn-sm" onclick="deleteDescanso('${d.id}')">Eliminar</button>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('descansosTable').innerHTML = sorted.length ? `
+    <table><thead><tr><th>Colaborador</th><th>Periodo</th><th>Días</th><th>Motivo</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>` : `<div class="empty">Aún no registras descansos médicos.</div>`;
+}
+
+// ---------- Inventario ----------
+function toggleOtro(selectId, wrapId){
+  const isOtro = document.getElementById(selectId).value === 'Otros';
+  document.getElementById(wrapId).style.display = isOtro ? 'block' : 'none';
+}
+function setSelectOrOtro(selectId, otroFieldId, otroWrapId, value, predefinedValues){
+  const sel = document.getElementById(selectId);
+  if(value && predefinedValues.includes(value)){
+    sel.value = value;
+    document.getElementById(otroWrapId).style.display = 'none';
+    document.getElementById(otroFieldId).value = '';
+  } else if(value){
+    sel.value = 'Otros';
+    document.getElementById(otroWrapId).style.display = 'block';
+    document.getElementById(otroFieldId).value = value;
+  } else {
+    sel.selectedIndex = 0;
+    document.getElementById(otroWrapId).style.display = 'none';
+    document.getElementById(otroFieldId).value = '';
+  }
+}
+function getSelectOrOtroValue(selectId, otroFieldId){
+  const sel = document.getElementById(selectId).value;
+  return sel==='Otros' ? document.getElementById(otroFieldId).value.trim() : sel;
+}
+
+const CATEGORIA_VALORES = ['Oficina','EPP (Protección Personal)','Limpieza y mantenimiento'];
+const UNIDAD_VALORES = ['Unidad (UND)','Caja (CJ)','Paquete (PQ)','Resma','Kilogramo (KG)','Litro (L)','Par','Rollo'];
+const UBICACION_VALORES = ['Almacén Central','Recursos Humanos','Administración','Contabilidad','Gerencia General','Logística','Almacén SIMA Callao','Almacén SIMA Chimbote','Almacén SIMA Iquitos','Almacén Caminos del Inca'];
+
+function openItemModal(id, presetCategoria){
+  document.getElementById('itemModalOverlay').classList.add('active');
+  document.getElementById('itemId').value = id||'';
+  if(id){
+    const it = inventoryItems.find(x=>x.id===id);
+    document.getElementById('itemModalTitle').textContent = 'Editar artículo';
+    document.getElementById('itemNombre').value = it.nombre;
+    document.getElementById('itemCodigo').value = it.codigo||'';
+    setSelectOrOtro('itemCategoria','itemCategoriaOtro','itemCategoriaOtroField', it.categoria, CATEGORIA_VALORES);
+    setSelectOrOtro('itemUnidad','itemUnidadOtro','itemUnidadOtroField', it.unidad, UNIDAD_VALORES);
+    setSelectOrOtro('itemUbicacion','itemUbicacionOtro','itemUbicacionOtroField', it.ubicacion, UBICACION_VALORES);
+    document.getElementById('itemStock').value = it.stock;
+    document.getElementById('itemStockMinimo').value = it.stockMinimo;
+    document.getElementById('itemNotas').value = it.notas||'';
+    document.getElementById('itemDeleteBtn').style.display = 'inline-flex';
+  } else {
+    document.getElementById('itemModalTitle').textContent = 'Nuevo artículo';
+    document.getElementById('itemNombre').value = '';
+    document.getElementById('itemCodigo').value = '';
+    document.getElementById('itemNotas').value = '';
+    setSelectOrOtro('itemCategoria','itemCategoriaOtro','itemCategoriaOtroField', presetCategoria||'', CATEGORIA_VALORES);
+    setSelectOrOtro('itemUnidad','itemUnidadOtro','itemUnidadOtroField', '', UNIDAD_VALORES);
+    setSelectOrOtro('itemUbicacion','itemUbicacionOtro','itemUbicacionOtroField', '', UBICACION_VALORES);
+    document.getElementById('itemStock').value = 0;
+    document.getElementById('itemStockMinimo').value = 0;
+    document.getElementById('itemDeleteBtn').style.display = 'none';
+  }
+}
+function closeItemModal(){ document.getElementById('itemModalOverlay').classList.remove('active'); }
+async function saveItem(){
+  const nombre = document.getElementById('itemNombre').value.trim();
+  if(!nombre){ showToast('El nombre del artículo es obligatorio'); return; }
+  const id = document.getElementById('itemId').value;
+  const data = {
+    id: id || ('i'+Date.now()),
+    nombre,
+    codigo: document.getElementById('itemCodigo').value.trim(),
+    categoria: getSelectOrOtroValue('itemCategoria','itemCategoriaOtro'),
+    unidad: getSelectOrOtroValue('itemUnidad','itemUnidadOtro'),
+    stock: parseFloat(document.getElementById('itemStock').value)||0,
+    stockMinimo: parseFloat(document.getElementById('itemStockMinimo').value)||0,
+    ubicacion: getSelectOrOtroValue('itemUbicacion','itemUbicacionOtro'),
+    notas: document.getElementById('itemNotas').value.trim()
+  };
+  if(id){ inventoryItems = inventoryItems.map(it=>it.id===id?data:it); }
+  else { inventoryItems.push(data); }
+  await saveData('inventoryItems', inventoryItems);
+  closeItemModal();
+  renderInventory();
+  if(document.getElementById('eppItemSelect')) populateEppItemSelect();
+  showToast('Artículo guardado');
+}
+async function deleteItem(id){
+  if(!confirm('¿Eliminar este artículo? También se perderá su historial de movimientos.')) return;
+  inventoryItems = inventoryItems.filter(it=>it.id!==id);
+  inventoryMovements = inventoryMovements.filter(m=>m.itemId!==id);
+  await saveData('inventoryItems', inventoryItems);
+  await saveData('inventoryMovements', inventoryMovements);
+  renderInventory();
+  if(document.getElementById('eppItemSelect')) populateEppItemSelect();
+}
+
+function populateInventorySelect(){
+  const sel = document.getElementById('movItemSelect');
+  sel.innerHTML = inventoryItems.length
+    ? inventoryItems.map(it=>`<option value="${it.id}">${it.nombre} (stock: ${it.stock} ${it.unidad||''})</option>`).join('')
+    : `<option value="">Registra un artículo primero</option>`;
+}
+
+async function saveMovement(tipo){
+  const itemId = document.getElementById('movItemSelect').value;
+  const cantidad = parseFloat(document.getElementById('movCantidad').value);
+  const fecha = document.getElementById('movFecha').value || new Date().toISOString().slice(0,10);
+  if(!itemId || !cantidad || cantidad<=0){ showToast('Selecciona un artículo e indica una cantidad válida'); return; }
+  const item = inventoryItems.find(it=>it.id===itemId);
+  if(!item) return;
+  if(tipo==='salida' && cantidad>item.stock){
+    if(!confirm(`El stock actual es ${item.stock}. Esta salida dejaría el stock en negativo. ¿Registrar de todas formas?`)) return;
+  }
+  item.stock = tipo==='entrada' ? item.stock+cantidad : item.stock-cantidad;
+  inventoryMovements.push({
+    id:'mv'+Date.now(), itemId, tipo, cantidad, fecha,
+    entregadoA: document.getElementById('movEntregadoA').value.trim(),
+    motivo: document.getElementById('movMotivo').value.trim(),
+    responsable: document.getElementById('movResponsable').value.trim(),
+    saldoResultante: item.stock
+  });
+  await saveData('inventoryItems', inventoryItems);
+  await saveData('inventoryMovements', inventoryMovements);
+  document.getElementById('movCantidad').value=''; document.getElementById('movEntregadoA').value=''; document.getElementById('movMotivo').value=''; document.getElementById('movResponsable').value='';
+  renderInventory();
+  showToast(tipo==='entrada' ? 'Entrada registrada' : 'Salida registrada');
+}
+
+async function quickAdjust(itemId, tipo){
+  const item = inventoryItems.find(it=>it.id===itemId);
+  if(!item) return;
+  if(tipo==='salida' && item.stock<=0){ showToast('No hay stock disponible para quitar'); return; }
+  item.stock = tipo==='entrada' ? item.stock+1 : item.stock-1;
+  inventoryMovements.push({
+    id:'mv'+Date.now(), itemId, tipo, cantidad:1,
+    fecha: new Date().toISOString().slice(0,10),
+    entregadoA:'', motivo:'Ajuste rápido', responsable:'',
+    saldoResultante: item.stock
+  });
+  await saveData('inventoryItems', inventoryItems);
+  await saveData('inventoryMovements', inventoryMovements);
+  renderInventory();
+}
+async function deleteMovement(id){
+  inventoryMovements = inventoryMovements.filter(m=>m.id!==id);
+  await saveData('inventoryMovements', inventoryMovements);
+  renderInventory();
+}
+
+function renderInventory(){
+  populateInventorySelect();
+  if(!document.getElementById('movFecha').value) document.getElementById('movFecha').value = new Date().toISOString().slice(0,10);
+
+  const stockBajo = inventoryItems.filter(it=>it.stock<=it.stockMinimo);
+  const movimientosMes = inventoryMovements.filter(m=>m.fecha && m.fecha.slice(0,7)===new Date().toISOString().slice(0,7));
+  document.getElementById('invStats').innerHTML = `
+    <div class="stat-card"><div class="num">${inventoryItems.length}</div><div class="label">Artículos en inventario</div></div>
+    <div class="stat-card warn"><div class="num">${stockBajo.length}</div><div class="label">Con stock bajo</div></div>
+    <div class="stat-card"><div class="num">${movimientosMes.length}</div><div class="label">Movimientos este mes</div></div>
+  `;
+
+  document.getElementById('invAviso').innerHTML = stockBajo.length ? `
+    <div class="aviso-box warn">
+      <div class="aviso-title">Aviso: stock bajo</div>
+      <div class="aviso-list">${stockBajo.map(it=>`<span class="aviso-chip">${it.nombre} — quedan ${it.stock} ${it.unidad||''} (mínimo ${it.stockMinimo})</span>`).join('')}</div>
+    </div>` : '';
+
+  const q = (document.getElementById('invSearch').value||'').toLowerCase();
+  const filteredItems = inventoryItems.filter(it=>it.nombre.toLowerCase().includes(q));
+  const itemRows = filteredItems.map(it=>{
+    const bajo = it.stock<=it.stockMinimo;
+    return `<tr>
+      <td><b>${it.nombre}</b>${it.categoria ? `<div style="font-size:11px;color:var(--ink-soft);">${it.categoria}</div>`:''}</td>
+      <td class="mono">${it.stock} ${it.unidad||''}</td>
+      <td class="mono">${it.stockMinimo} ${it.unidad||''}</td>
+      <td>${bajo ? '<span class="pill pill-danger">Stock bajo</span>' : '<span class="pill pill-ok">OK</span>'}</td>
+      <td class="actions-cell">
+        <button class="btn btn-primary btn-sm" onclick="quickAdjust('${it.id}','entrada')" title="Agregar 1">+1</button>
+        <button class="btn btn-danger btn-sm" onclick="quickAdjust('${it.id}','salida')" title="Quitar 1">−1</button>
+        <button class="btn btn-ghost btn-sm" onclick="openItemModal('${it.id}')">Editar</button>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('invItemsTable').innerHTML = filteredItems.length ? `
+    <table><thead><tr><th>Artículo</th><th>Stock</th><th>Mínimo</th><th>Estado</th><th></th></tr></thead>
+    <tbody>${itemRows}</tbody></table>` : `<div class="empty">Aún no registras artículos en el inventario.</div>`;
+
+  const sortedMov = [...inventoryMovements].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const movRows = sortedMov.map(m=>{
+    const it = inventoryItems.find(x=>x.id===m.itemId);
+    return `<tr>
+      <td>${fmtDate(m.fecha)}</td>
+      <td>${it ? it.nombre : '(artículo eliminado)'}</td>
+      <td>${m.tipo==='entrada' ? '<span class="pill pill-ok">Entrada</span>' : '<span class="pill pill-warn">Salida</span>'}</td>
+      <td class="mono">${m.cantidad}</td>
+      <td class="mono">${m.saldoResultante}</td>
+      <td>${m.entregadoA||'—'}</td>
+      <td>${m.motivo||'—'}</td>
+      <td>${m.responsable||'—'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteMovement('${m.id}')">Eliminar</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('invMovTable').innerHTML = sortedMov.length ? `
+    <table><thead><tr><th>Fecha</th><th>Artículo</th><th>Tipo</th><th>Cantidad</th><th>Saldo</th><th>Entregado a</th><th>Motivo</th><th>Responsable</th><th></th></tr></thead>
+    <tbody>${movRows}</tbody></table>` : `<div class="empty">Aún no registras movimientos de inventario.</div>`;
+}
+
+function exportInventoryCsv(){
+  if(!inventoryMovements.length){ showToast('No hay movimientos registrados'); return; }
+  const headers = ['Fecha','Artículo','Tipo','Cantidad','SaldoResultante','EntregadoA','Motivo','Responsable'];
+  const escape = v => `"${String(v||'').replace(/"/g,'""')}"`;
+  const lines = [headers.join(',')];
+  [...inventoryMovements].sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')).forEach(m=>{
+    const it = inventoryItems.find(x=>x.id===m.itemId);
+    lines.push([m.fecha, it?it.nombre:'', m.tipo, m.cantidad, m.saldoResultante, m.entregadoA, m.motivo, m.responsable].map(escape).join(','));
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'bitacora_inventario_serving.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ---------- Plantilla de artículos de oficina ----------
+const OFFICE_TEMPLATE_ITEMS = [
+  // Papelería básica → Oficina
+  {nombre:'Hojas bond A4', categoria:'Oficina', unidad:'Resma', stockMinimo:5},
+  {nombre:'Hojas oficio', categoria:'Oficina', unidad:'Resma', stockMinimo:2},
+  {nombre:'Cuadernos', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:10},
+  {nombre:'Agendas', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:10},
+  {nombre:'Carpetas manila', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:50},
+  {nombre:'Separadores', categoria:'Oficina', unidad:'Paquete (PQ)', stockMinimo:5},
+  // Escritura y corrección → Oficina
+  {nombre:'Lapiceros (azul, negro, rojo)', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:30},
+  {nombre:'Lápices', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:20},
+  {nombre:'Resaltadores', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:15},
+  {nombre:'Correctores', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:10},
+  // Organización → Oficina
+  {nombre:'Clips', categoria:'Oficina', unidad:'Caja (CJ)', stockMinimo:5},
+  {nombre:'Ganchos', categoria:'Oficina', unidad:'Caja (CJ)', stockMinimo:5},
+  {nombre:'Grapadoras', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:5},
+  {nombre:'Grapas', categoria:'Oficina', unidad:'Caja (CJ)', stockMinimo:10},
+  {nombre:'Perforadoras', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:2},
+  {nombre:'Cinta adhesiva y dispensadores', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:10},
+  {nombre:'Sujetapapeles y bandejas organizadoras', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:5},
+  // Equipos y accesorios → Oficina
+  {nombre:'Impresora', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:2},
+  {nombre:'Cartuchos / tóner', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:4},
+  {nombre:'Calculadora', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:5},
+  {nombre:'Teléfono fijo o inalámbrico', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:1},
+  {nombre:'Reloj de pared', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:1},
+  {nombre:'Tijeras', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:5},
+  {nombre:'Cutter', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:5},
+  // Almacenamiento → Oficina
+  {nombre:'Archivadores', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:10},
+  {nombre:'Cajas archivadoras', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:5},
+  {nombre:'Carpetas colgantes', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:50},
+  {nombre:'Etiquetas adhesivas', categoria:'Oficina', unidad:'Rollo', stockMinimo:5},
+  {nombre:'Libreros o estantes', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:2},
+  // Limpieza y mantenimiento
+  {nombre:'Paños de microfibra', categoria:'Limpieza y mantenimiento', unidad:'Unidad (UND)', stockMinimo:10},
+  {nombre:'Alcohol', categoria:'Limpieza y mantenimiento', unidad:'Litro (L)', stockMinimo:5},
+  {nombre:'Desinfectante', categoria:'Limpieza y mantenimiento', unidad:'Litro (L)', stockMinimo:5},
+  {nombre:'Basureros', categoria:'Limpieza y mantenimiento', unidad:'Unidad (UND)', stockMinimo:5},
+  {nombre:'Bolsas de basura', categoria:'Limpieza y mantenimiento', unidad:'Caja (CJ)', stockMinimo:1},
+  {nombre:'Ambientadores', categoria:'Limpieza y mantenimiento', unidad:'Unidad (UND)', stockMinimo:5}
+];
+
+
+async function loadOfficeTemplate(){
+  if(!confirm('Esto agrega los artículos típicos de oficina (papelería, organización, equipos, almacenamiento, limpieza) a tu inventario, con stock inicial en 0 y el mínimo sugerido. Los artículos que ya tengas registrados (mismo nombre) no se duplican. ¿Continuar?')) return;
+  const existentes = new Set(inventoryItems.map(it=>it.nombre.toLowerCase().trim()));
+  let agregados = 0;
+  OFFICE_TEMPLATE_ITEMS.forEach(tpl=>{
+    if(existentes.has(tpl.nombre.toLowerCase().trim())) return;
+    inventoryItems.push({
+      id:'i'+Date.now()+Math.random().toString(36).slice(2,7),
+      nombre: tpl.nombre, categoria: tpl.categoria, unidad: tpl.unidad,
+      stock: 0, stockMinimo: tpl.stockMinimo, ubicacion:'', notas:''
+    });
+    agregados++;
+  });
+  await saveData('inventoryItems', inventoryItems);
+  renderInventory();
+  showToast(agregados ? `${agregados} artículo(s) agregado(s)` : 'Esos artículos ya estaban registrados');
+}
+
+function printInventoryActa(){
+  if(!inventoryItems.length){ showToast('Aún no tienes artículos registrados'); return; }
+  const categorias = Array.from(new Set(inventoryItems.map(it=>it.categoria||'Sin categoría')));
+  let bodyHtml = '';
+  categorias.forEach(cat=>{
+    const items = inventoryItems.filter(it=>(it.categoria||'Sin categoría')===cat);
+    bodyHtml += `<h3 style="font-family:'Fraunces',serif;font-size:15px;margin:18px 0 6px;">${cat}</h3>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:10px;">
+        <thead><tr>
+          <th style="text-align:left;border-bottom:1px solid #ccc;padding:6px;">Artículo</th>
+          <th style="text-align:left;border-bottom:1px solid #ccc;padding:6px;">Unidad</th>
+          <th style="text-align:left;border-bottom:1px solid #ccc;padding:6px;">Stock sistema</th>
+          <th style="text-align:left;border-bottom:1px solid #ccc;padding:6px;">Mínimo</th>
+          <th style="text-align:left;border-bottom:1px solid #ccc;padding:6px;">Cantidad verificada</th>
+          <th style="text-align:left;border-bottom:1px solid #ccc;padding:6px;">Observación</th>
+        </tr></thead>
+        <tbody>
+          ${items.map(it=>`<tr>
+            <td style="padding:6px;border-bottom:1px solid #eee;">${it.nombre}</td>
+            <td style="padding:6px;border-bottom:1px solid #eee;">${it.unidad||'—'}</td>
+            <td style="padding:6px;border-bottom:1px solid #eee;">${it.stock}</td>
+            <td style="padding:6px;border-bottom:1px solid #eee;">${it.stockMinimo}</td>
+            <td style="padding:6px;border-bottom:1px solid #eee;">________</td>
+            <td style="padding:6px;border-bottom:1px solid #eee;">________________</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  });
+  const today = new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'long',year:'numeric'});
+  const w = window.open('', '_blank');
+  w.document.write(`
+    <html><head><title>Acta de inventario</title></head>
+    <body style="font-family:Arial,sans-serif;padding:40px;color:#1F2A24;">
+      <h2 style="font-family:'Fraunces',serif;">ACTA DE VERIFICACIÓN DE INVENTARIO — SERVING</h2>
+      <p>Fecha de verificación: ${today}</p>
+      ${bodyHtml}
+      <div style="margin-top:60px;display:flex;justify-content:space-between;">
+        <div style="text-align:center;width:45%;">
+          <div style="border-top:1px solid #000;padding-top:6px;">Realizado por</div>
+        </div>
+        <div style="text-align:center;width:45%;">
+          <div style="border-top:1px solid #000;padding-top:6px;">Visto bueno / Jefatura</div>
+        </div>
+      </div>
+    </body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(()=>w.print(), 300);
+}
+
+// ---------- Bienestar y Clima Laboral ----------
+function switchBienTab(tab){
+  document.querySelectorAll('[data-bien-tab]').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`[data-bien-tab="${tab}"]`).classList.add('active');
+  document.getElementById('bienEventosBlock').style.display = tab==='eventos' ? 'block':'none';
+  document.getElementById('bienEncuestasBlock').style.display = tab==='encuestas' ? 'block':'none';
+  document.getElementById('bienCapacitacionesBlock').style.display = tab==='capacitaciones' ? 'block':'none';
+}
+
+// -- Eventos (incluye cumpleaños automáticos) --
+async function saveEvento(){
+  const nombre = document.getElementById('eventoNombre').value.trim();
+  const fecha = document.getElementById('eventoFecha').value;
+  if(!nombre || !fecha){ showToast('Completa nombre y fecha del evento'); return; }
+  eventos.push({
+    id:'ev'+Date.now(), nombre, fecha,
+    tipo: document.getElementById('eventoTipo').value,
+    empId: document.getElementById('eventoEmployeeSelect').value || null,
+    recurrente: document.getElementById('eventoRecurrente').checked
+  });
+  await saveData('eventos', eventos);
+  document.getElementById('eventoNombre').value=''; document.getElementById('eventoFecha').value=''; document.getElementById('eventoRecurrente').checked=false;
+  renderBienestar();
+  showToast('Evento registrado');
+}
+async function deleteEvento(id){
+  eventos = eventos.filter(e=>e.id!==id);
+  await saveData('eventos', eventos);
+  renderBienestar();
+}
+function proximaFechaEvento(ev){
+  if(!ev.recurrente) return ev.fecha;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const orig = new Date(ev.fecha+'T00:00:00');
+  let next = new Date(today.getFullYear(), orig.getMonth(), orig.getDate());
+  if(next < today) next = new Date(today.getFullYear()+1, orig.getMonth(), orig.getDate());
+  return next.toISOString().slice(0,10);
+}
+function renderEventosAviso(){
+  const items = [];
+  employees.filter(e=>e.fechaNacimiento).forEach(e=>{
+    const d = daysUntilBirthday(e.fechaNacimiento);
+    if(d!==null && d<=30){
+      const bd = new Date(e.fechaNacimiento+'T00:00:00');
+      items.push({texto:`🎂 Cumpleaños de <b>${e.nombre}</b> — ${bd.toLocaleDateString('es-PE',{day:'2-digit',month:'long'})}`, dias:d});
+    }
+  });
+  eventos.forEach(ev=>{
+    const prox = proximaFechaEvento(ev);
+    const d = daysUntil(prox);
+    if(d!==null && d>=0 && d<=30){
+      items.push({texto:`${ev.nombre} — ${fmtDate(prox)} (${d===0?'¡Hoy!':'en '+d+' día(s)'})`, dias:d});
+    }
+  });
+  items.sort((a,b)=>a.dias-b.dias);
+  document.getElementById('eventosAviso').innerHTML = items.length ? `
+    <div class="aviso-box warn">
+      <div class="aviso-title">Próximos cumpleaños y eventos (30 días)</div>
+      <div class="aviso-list">${items.map(i=>`<span class="aviso-chip">${i.texto}</span>`).join('')}</div>
+    </div>` : '';
+}
+function renderEventosTable(){
+  const sorted = [...eventos].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const rows = sorted.map(ev=>{
+    const e = employees.find(x=>x.id===ev.empId);
+    return `<tr>
+      <td><b>${ev.nombre}</b></td>
+      <td>${ev.tipo}</td>
+      <td>${fmtDate(ev.fecha)}</td>
+      <td>${ev.recurrente ? '<span class="pill pill-ok">Anual</span>' : '<span class="pill pill-muted">Único</span>'}</td>
+      <td>${e ? e.nombre : '—'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteEvento('${ev.id}')">Eliminar</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('eventosTable').innerHTML = sorted.length ? `
+    <table><thead><tr><th>Evento</th><th>Tipo</th><th>Fecha</th><th>Repetición</th><th>Colaborador</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>` : `<div class="empty">Aún no registras eventos.</div>`;
+}
+
+// -- Encuestas de clima laboral --
+async function saveEncuesta(){
+  const titulo = document.getElementById('encuestaTitulo').value.trim();
+  const fecha = document.getElementById('encuestaFecha').value;
+  const resultado = parseFloat(document.getElementById('encuestaResultado').value);
+  if(!titulo || !fecha || isNaN(resultado)){ showToast('Completa título, fecha y resultado'); return; }
+  encuestas.push({
+    id:'enc'+Date.now(), titulo, fecha, resultado,
+    area: document.getElementById('encuestaArea').value,
+    acciones: document.getElementById('encuestaAcciones').value.trim()
+  });
+  await saveData('encuestas', encuestas);
+  document.getElementById('encuestaTitulo').value=''; document.getElementById('encuestaFecha').value='';
+  document.getElementById('encuestaResultado').value=''; document.getElementById('encuestaAcciones').value='';
+  renderBienestar();
+  showToast('Encuesta registrada');
+}
+async function deleteEncuesta(id){
+  encuestas = encuestas.filter(e=>e.id!==id);
+  await saveData('encuestas', encuestas);
+  renderBienestar();
+}
+function renderEncuestas(){
+  const promedio = encuestas.length ? (encuestas.reduce((s,e)=>s+e.resultado,0)/encuestas.length) : 0;
+  const ultima = [...encuestas].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''))[0];
+  document.getElementById('encuestaStats').innerHTML = `
+    <div class="stat-card"><div class="num">${encuestas.length}</div><div class="label">Encuestas registradas</div></div>
+    <div class="stat-card ${promedio && promedio<3.5 ? 'warn':'ok'}"><div class="num">${promedio.toFixed(1)}</div><div class="label">Resultado promedio (1-5)</div></div>
+    <div class="stat-card"><div class="num" style="font-size:20px;">${ultima ? fmtDate(ultima.fecha) : '—'}</div><div class="label">Última encuesta</div></div>
+  `;
+  const sorted = [...encuestas].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const rows = sorted.map(e=>`
+    <tr>
+      <td><b>${e.titulo}</b></td>
+      <td>${e.area}</td>
+      <td>${fmtDate(e.fecha)}</td>
+      <td class="mono">${e.resultado.toFixed(1)}</td>
+      <td>${e.acciones||'—'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteEncuesta('${e.id}')">Eliminar</button></td>
+    </tr>`).join('');
+  document.getElementById('encuestasTable').innerHTML = sorted.length ? `
+    <table><thead><tr><th>Título</th><th>Área</th><th>Fecha</th><th>Resultado</th><th>Acciones a tomar</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>` : `<div class="empty">Aún no registras encuestas de clima laboral.</div>`;
+}
+
+// -- Capacitaciones y reconocimientos --
+async function saveCapacitacion(){
+  const nombre = document.getElementById('capNombre').value.trim();
+  const fecha = document.getElementById('capFecha').value;
+  if(!nombre || !fecha){ showToast('Completa nombre y fecha de la capacitación'); return; }
+  capacitaciones.push({
+    id:'cap'+Date.now(), nombre, fecha,
+    horas: parseFloat(document.getElementById('capHoras').value)||0,
+    participantes: parseInt(document.getElementById('capParticipantes').value)||0,
+    notas: document.getElementById('capNotas').value.trim()
+  });
+  await saveData('capacitaciones', capacitaciones);
+  document.getElementById('capNombre').value=''; document.getElementById('capFecha').value='';
+  document.getElementById('capHoras').value=''; document.getElementById('capParticipantes').value=''; document.getElementById('capNotas').value='';
+  renderBienestar();
+  showToast('Capacitación registrada');
+}
+async function deleteCapacitacion(id){
+  capacitaciones = capacitaciones.filter(c=>c.id!==id);
+  await saveData('capacitaciones', capacitaciones);
+  renderBienestar();
+}
+function renderCapacitaciones(){
+  const sorted = [...capacitaciones].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const rows = sorted.map(c=>`
+    <tr>
+      <td><b>${c.nombre}</b></td>
+      <td>${fmtDate(c.fecha)}</td>
+      <td class="mono">${c.horas}h</td>
+      <td class="mono">${c.participantes}</td>
+      <td>${c.notas||'—'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteCapacitacion('${c.id}')">Eliminar</button></td>
+    </tr>`).join('');
+  document.getElementById('capacitacionesTable').innerHTML = sorted.length ? `
+    <table><thead><tr><th>Capacitación</th><th>Fecha</th><th>Horas</th><th>Participantes</th><th>Notas</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>` : `<div class="empty">Aún no registras capacitaciones.</div>`;
+}
+async function saveReconocimiento(){
+  const empId = document.getElementById('reconEmployeeSelect').value;
+  const motivo = document.getElementById('reconMotivo').value.trim();
+  const fecha = document.getElementById('reconFecha').value;
+  if(!empId || !motivo || !fecha){ showToast('Completa colaborador, motivo y fecha'); return; }
+  reconocimientos.push({ id:'rec'+Date.now(), empId, motivo, fecha });
+  await saveData('reconocimientos', reconocimientos);
+  document.getElementById('reconMotivo').value=''; document.getElementById('reconFecha').value='';
+  renderBienestar();
+  showToast('Reconocimiento registrado');
+}
+async function deleteReconocimiento(id){
+  reconocimientos = reconocimientos.filter(r=>r.id!==id);
+  await saveData('reconocimientos', reconocimientos);
+  renderBienestar();
+}
+function renderReconocimientos(){
+  const sorted = [...reconocimientos].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const rows = sorted.map(r=>{
+    const e = employees.find(x=>x.id===r.empId);
+    return `<tr>
+      <td><b>${e ? e.nombre : '(colaborador eliminado)'}</b></td>
+      <td>${r.motivo}</td>
+      <td>${fmtDate(r.fecha)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteReconocimiento('${r.id}')">Eliminar</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('reconocimientosTable').innerHTML = sorted.length ? `
+    <table><thead><tr><th>Colaborador</th><th>Motivo</th><th>Fecha</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>` : `<div class="empty">Aún no registras reconocimientos.</div>`;
+}
+
+function renderBienestar(){
+  renderEventosAviso();
+  renderEventosTable();
+  renderEncuestas();
+  renderCapacitaciones();
+  renderReconocimientos();
+}
+
+// ---------- EPP y Limpieza ----------
+function switchEppTab(tab){
+  document.querySelectorAll('[data-epp-tab]').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`[data-epp-tab="${tab}"]`).classList.add('active');
+  document.getElementById('eppAsignacionBlock').style.display = tab==='asignacion' ? 'block':'none';
+  document.getElementById('eppStockBlock').style.display = tab==='stock' ? 'block':'none';
+  document.getElementById('eppLimpiezaBlock').style.display = tab==='limpieza' ? 'block':'none';
+}
+
+function populateEppItemSelect(){
+  const sel = document.getElementById('eppItemSelect');
+  const eppItems = inventoryItems.filter(it=>it.categoria==='EPP (Protección Personal)');
+  sel.innerHTML = eppItems.length
+    ? eppItems.map(it=>`<option value="${it.id}">${it.codigo?`[${it.codigo}] `:''}${it.nombre} (stock: ${it.stock} ${it.unidad||''})</option>`).join('')
+    : `<option value="">Registra artículos EPP en Inventario primero</option>`;
+  updateEppVencimientoPreview();
+  updateEppCodigoPreview();
+}
+function updateEppCodigoPreview(){
+  const it = inventoryItems.find(x=>x.id===document.getElementById('eppItemSelect').value);
+  document.getElementById('eppCodigoPreview').textContent = it && it.codigo ? `Código: ${it.codigo}` : '';
+}
+async function quickRemoveEppItem(){
+  const itemId = document.getElementById('eppItemSelect').value;
+  if(!itemId){ showToast('No hay artículo seleccionado'); return; }
+  await deleteItem(itemId);
+}
+function updateEppVencimientoPreview(){
+  const fecha = document.getElementById('eppFecha').value;
+  const dias = parseInt(document.getElementById('eppVidaUtil').value)||0;
+  if(!fecha){ document.getElementById('eppVencimientoPreview').value=''; return; }
+  const d = new Date(fecha+'T00:00:00');
+  d.setDate(d.getDate()+dias);
+  const fechaCalc = d.toISOString().slice(0,10);
+  document.getElementById('eppVencimientoPreview').value = fmtDate(fechaCalc);
+  if(!document.getElementById('eppFechaReposicion').value){
+    document.getElementById('eppFechaReposicion').value = fechaCalc;
+  }
+}
+
+async function saveAsignacionEpp(){
+  const empId = document.getElementById('eppEmployeeSelect').value;
+  const itemId = document.getElementById('eppItemSelect').value;
+  const cantidad = parseFloat(document.getElementById('eppCantidad').value)||0;
+  const fecha = document.getElementById('eppFecha').value;
+  const vidaUtilDias = parseInt(document.getElementById('eppVidaUtil').value)||0;
+  if(!empId || !itemId || !cantidad || !fecha){ showToast('Completa colaborador, artículo, cantidad y fecha'); return; }
+  const item = inventoryItems.find(it=>it.id===itemId);
+  const e = employees.find(x=>x.id===empId);
+  if(!item || !e) return;
+  if(cantidad>item.stock){
+    if(!confirm(`El stock de ${item.nombre} es ${item.stock}. Esta entrega dejaría el stock en negativo. ¿Continuar?`)) return;
+  }
+  const fVenc = new Date(fecha+'T00:00:00');
+  fVenc.setDate(fVenc.getDate()+vidaUtilDias);
+  const fechaVencimiento = fVenc.toISOString().slice(0,10);
+  const responsableEntrega = document.getElementById('eppResponsableEntrega').value.trim();
+
+  item.stock -= cantidad;
+  await saveData('inventoryItems', inventoryItems);
+  inventoryMovements.push({
+    id:'mv'+Date.now(), itemId, tipo:'salida', cantidad, fecha,
+    entregadoA: e.nombre, motivo:'Asignación de EPP', responsable: responsableEntrega,
+    saldoResultante: item.stock
+  });
+  await saveData('inventoryMovements', inventoryMovements);
+
+  eppAsignaciones.push({
+    id:'eppa'+Date.now(), empId, itemId, cantidad, fecha,
+    vidaUtilDias, fechaVencimiento,
+    fechaReposicion: document.getElementById('eppFechaReposicion').value || fechaVencimiento,
+    estado: document.getElementById('eppEstado').value,
+    responsableEntrega,
+    firmaTrabajador: document.getElementById('eppFirmaTrabajador').checked,
+    codigo: item.codigo || '',
+    notas: document.getElementById('eppNotas').value.trim()
+  });
+  await saveData('eppAsignaciones', eppAsignaciones);
+
+  document.getElementById('eppCantidad').value=1; document.getElementById('eppNotas').value='';
+  document.getElementById('eppResponsableEntrega').value=''; document.getElementById('eppFirmaTrabajador').checked=false;
+  document.getElementById('eppFechaReposicion').value=''; document.getElementById('eppEstado').selectedIndex=0;
+  renderEpp();
+  showToast('Entrega de EPP registrada');
+}
+async function deleteAsignacionEpp(id){
+  eppAsignaciones = eppAsignaciones.filter(a=>a.id!==id);
+  await saveData('eppAsignaciones', eppAsignaciones);
+  renderEpp();
+}
+async function toggleFirmaAsignacion(id){
+  const a = eppAsignaciones.find(x=>x.id===id);
+  if(!a) return;
+  a.firmaTrabajador = !a.firmaTrabajador;
+  await saveData('eppAsignaciones', eppAsignaciones);
+  renderAsignacionesEpp();
+}
+function eppVencimientoPill(a){
+  const d = daysUntil(a.fechaVencimiento);
+  if(d===null) return `<span class="pill pill-muted">—</span>`;
+  if(d<0) return `<span class="pill pill-danger">Vencido / desgastado</span>`;
+  if(d<=30) return `<span class="pill pill-warn">Vence en ${d}d</span>`;
+  return `<span class="pill pill-ok">Vigente</span>`;
+}
+function eppEstadoPill(estado){
+  if(estado==='Nuevo') return `<span class="pill pill-ok">Nuevo</span>`;
+  if(estado==='Vencido') return `<span class="pill pill-danger">Vencido</span>`;
+  return `<span class="pill pill-warn">Usado</span>`;
+}
+function renderAsignacionesEpp(){
+  const sorted = [...eppAsignaciones].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const rows = sorted.map(a=>{
+    const e = employees.find(x=>x.id===a.empId);
+    const it = inventoryItems.find(x=>x.id===a.itemId);
+    return `<tr>
+      <td>${e ? e.nombre : '(colaborador eliminado)'}</td>
+      <td>${it ? it.nombre : '(artículo eliminado)'}${a.codigo ? `<div style="font-size:11px;color:var(--ink-soft);">${a.codigo}</div>`:''}</td>
+      <td class="mono">${a.cantidad}</td>
+      <td>${fmtDate(a.fecha)}</td>
+      <td>${fmtDate(a.fechaReposicion||a.fechaVencimiento)}</td>
+      <td>${eppVencimientoPill(a)}</td>
+      <td>${eppEstadoPill(a.estado)}</td>
+      <td>${a.responsableEntrega||'—'}</td>
+      <td><span class="pill ${a.firmaTrabajador?'pill-ok':'pill-muted'}" style="cursor:pointer;" onclick="toggleFirmaAsignacion('${a.id}')">${a.firmaTrabajador?'Firmado':'Sin firma'}</span></td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteAsignacionEpp('${a.id}')">Eliminar</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('eppAsignacionesTable').innerHTML = sorted.length ? `
+    <table><thead><tr><th>Colaborador</th><th>Artículo</th><th>Cantidad</th><th>Entrega</th><th>Reposición</th><th>Vigencia</th><th>Estado</th><th>Responsable</th><th>Firma</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>` : `<div class="empty">Aún no registras entregas de EPP.</div>`;
+}
+
+// -- Stock EPP y limpieza con consumo mensual --
+function renderEppStock(){
+  const items = inventoryItems.filter(it=>it.categoria==='EPP (Protección Personal)' || it.categoria==='Limpieza y mantenimiento');
+  const hoy = new Date().toISOString().slice(0,7);
+  const stockBajo = items.filter(it=>it.stock<=it.stockMinimo);
+  const eppPorVencer = eppAsignaciones.filter(a=>{ const d=daysUntil(a.fechaVencimiento); return d!==null && d<=30; });
+
+  let avisoHtml = '';
+  if(stockBajo.length){
+    avisoHtml += `<div class="aviso-box warn"><div class="aviso-title">Aviso: stock bajo de EPP/limpieza</div><div class="aviso-list">${stockBajo.map(it=>`<span class="aviso-chip">${it.nombre} — quedan ${it.stock} ${it.unidad||''}</span>`).join('')}</div></div>`;
+  }
+  const vencidos = eppPorVencer.filter(a=>daysUntil(a.fechaVencimiento)<0);
+  const porVencer = eppPorVencer.filter(a=>daysUntil(a.fechaVencimiento)>=0);
+  if(vencidos.length){
+    avisoHtml += `<div class="aviso-box danger"><div class="aviso-title">⚠ EPP vencido / desgastado</div><div class="aviso-list">${vencidos.map(a=>{
+      const e=employees.find(x=>x.id===a.empId); const it=inventoryItems.find(x=>x.id===a.itemId);
+      return `<span class="aviso-chip">${e?e.nombre:'—'} — ${it?it.nombre:'—'} venció ${fmtDate(a.fechaVencimiento)}</span>`;
+    }).join('')}</div></div>`;
+  }
+  if(porVencer.length){
+    avisoHtml += `<div class="aviso-box warn"><div class="aviso-title">Aviso: EPP por vencer / desgastar (30 días)</div><div class="aviso-list">${porVencer.map(a=>{
+      const e=employees.find(x=>x.id===a.empId); const it=inventoryItems.find(x=>x.id===a.itemId);
+      const d=daysUntil(a.fechaVencimiento);
+      return `<span class="aviso-chip">${e?e.nombre:'—'} — ${it?it.nombre:'—'} vence en ${d} día(s)</span>`;
+    }).join('')}</div></div>`;
+  }
+  document.getElementById('eppAviso').innerHTML = avisoHtml;
+
+  const rows = items.map(it=>{
+    const consumoMes = inventoryMovements.filter(m=>m.itemId===it.id && m.tipo==='salida' && m.fecha && m.fecha.slice(0,7)===hoy).reduce((s,m)=>s+m.cantidad,0);
+    const bajo = it.stock<=it.stockMinimo;
+    return `<tr>
+      <td><b>${it.codigo?`[${it.codigo}] `:''}${it.nombre}</b><div style="font-size:11px;color:var(--ink-soft);">${it.categoria}</div></td>
+      <td class="mono">${it.stock} ${it.unidad||''}</td>
+      <td class="mono">${it.stockMinimo} ${it.unidad||''}</td>
+      <td class="mono">${consumoMes} ${it.unidad||''}</td>
+      <td>${bajo ? '<span class="pill pill-danger">Reponer</span>' : '<span class="pill pill-ok">OK</span>'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('eppStockTable').innerHTML = items.length ? `
+    <table><thead><tr><th>Artículo</th><th>Stock actual</th><th>Mínimo</th><th>Consumo este mes</th><th>Reposición</th></tr></thead>
+    <tbody>${rows}</tbody></table>` : `<div class="empty">Aún no tienes artículos de EPP o limpieza en Inventario.</div>`;
+}
+
+// -- Registro de limpieza --
+async function saveLimpieza(){
+  const area = document.getElementById('limpiezaArea').value;
+  const fecha = document.getElementById('limpiezaFecha').value;
+  const responsable = document.getElementById('limpiezaResponsable').value.trim();
+  if(!fecha || !responsable){ showToast('Completa fecha y responsable'); return; }
+  limpiezaRegistros.push({
+    id:'lmp'+Date.now(), area, fecha, responsable,
+    frecuencia: document.getElementById('limpiezaFrecuencia').value,
+    materiales: document.getElementById('limpiezaMateriales').value.trim()
+  });
+  await saveData('limpiezaRegistros', limpiezaRegistros);
+  document.getElementById('limpiezaFecha').value=''; document.getElementById('limpiezaResponsable').value=''; document.getElementById('limpiezaMateriales').value='';
+  renderEpp();
+  showToast('Limpieza registrada');
+}
+async function deleteLimpieza(id){
+  limpiezaRegistros = limpiezaRegistros.filter(l=>l.id!==id);
+  await saveData('limpiezaRegistros', limpiezaRegistros);
+  renderEpp();
+}
+function renderLimpieza(){
+  const sorted = [...limpiezaRegistros].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const rows = sorted.map(l=>`
+    <tr>
+      <td>${l.area}</td>
+      <td>${fmtDate(l.fecha)}</td>
+      <td>${l.frecuencia}</td>
+      <td>${l.responsable}</td>
+      <td>${l.materiales||'—'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteLimpieza('${l.id}')">Eliminar</button></td>
+    </tr>`).join('');
+  document.getElementById('limpiezaTable').innerHTML = sorted.length ? `
+    <table><thead><tr><th>Área</th><th>Fecha</th><th>Frecuencia</th><th>Responsable</th><th>Materiales usados</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>` : `<div class="empty">Aún no registras limpiezas.</div>`;
+}
+
+function renderEpp(){
+  populateEppItemSelect();
+  renderAsignacionesEpp();
+  renderEppStock();
+  renderLimpieza();
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  const f = document.getElementById('eppFecha'), v = document.getElementById('eppVidaUtil');
+  if(f) f.addEventListener('change', updateEppVencimientoPreview);
+  if(v) v.addEventListener('input', updateEppVencimientoPreview);
+});
+
+init();
+</script>
+</body>
+</html>
