@@ -189,19 +189,25 @@ tr:hover td{background:#FAF9F6;}
       <div class="eyebrow">Serving</div>
       <h1>RRHH</h1>
     </div>
+    <div style="padding:0 14px 12px;position:relative;">
+      <input type="text" id="globalSearchInput" placeholder="Buscar colaborador, préstamo, documento..." class="search-box" style="width:100%;" oninput="ejecutarBusquedaGlobal(this.value)" onfocus="ejecutarBusquedaGlobal(this.value)">
+      <div id="globalSearchResults" style="display:none;position:absolute;left:14px;right:14px;top:44px;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.12);z-index:50;max-height:360px;overflow-y:auto;"></div>
+    </div>
     <div class="nav-item active" data-view="dashboard"><span class="nav-icon">&#9673;</span> Inicio</div>
     <div class="nav-item" data-view="personal"><span class="nav-icon">&#9782;</span> Personal</div>
     <div class="nav-item" data-view="documentos"><span class="nav-icon">&#9998;</span> Documentos</div>
     <div class="nav-item" data-view="emo"><span class="nav-icon">&#127973;</span> EMO</div>
     <div class="nav-item" data-view="presupuesto"><span class="nav-icon">&#9878;</span> Presupuesto</div>
-    <div class="nav-item" data-view="menus"><span class="nav-icon">&#9749;</span> Menús diarios</div>
+    <div class="nav-item" data-view="menus"><span class="nav-icon">&#9749;</span> Alimentación general</div>
     <div class="nav-item" data-view="boletas"><span class="nav-icon">&#128190;</span> Documentos y Contratos</div>
     <div class="nav-item" data-view="asistencia"><span class="nav-icon">&#128203;</span> Asistencia y Horarios</div>
     <div class="nav-item" data-view="inventario"><span class="nav-icon">&#128230;</span> Inventario</div>
     <div class="nav-item" data-view="bienestar"><span class="nav-icon">&#127807;</span> Bienestar</div>
     <div class="nav-item" data-view="epp"><span class="nav-icon">&#129508;</span> EPP</div>
     <div class="nav-item" data-view="seguros"><span class="nav-icon">&#128737;</span> Seguros</div>
+    <div class="nav-item" data-view="planilla"><span class="nav-icon">&#127974;</span> Planilla y Cuentas Bancarias</div>
     <div class="nav-item" data-view="basedatos"><span class="nav-icon">&#128193;</span> Base de datos</div>
+    <div class="nav-item" data-view="comite"><span class="nav-icon">&#9878;</span> Comité de Seguridad</div>
     <div class="sidebar-footer">Datos guardados en tu navegador, de forma privada.</div>
     <div style="padding:12px 14px 4px;display:flex;flex-direction:column;gap:8px;">
       <button class="sidebar-action-btn" onclick="toggleDarkMode()"><span id="darkModeIcon">&#9789;</span> <span id="darkModeLabel">Modo noche</span></button>
@@ -210,6 +216,7 @@ tr:hover td{background:#FAF9F6;}
       <button class="sidebar-action-btn" onclick="document.getElementById('restoreBackupFile').click()">&#8593; Restaurar respaldo</button>
       <input type="file" id="restoreBackupFile" accept=".json" style="display:none;" onchange="restaurarRespaldo(this.files[0])">
       <button class="sidebar-action-btn" onclick="document.getElementById('claveModalOverlay').classList.add('active')">&#128272; Cambiar contraseña</button>
+      <button class="sidebar-action-btn" onclick="mostrarEspacioAlmacenamiento()">&#128202; Ver espacio usado</button>
     </div>
   </div>
 
@@ -225,6 +232,8 @@ tr:hover td{background:#FAF9F6;}
       </div>
 
       <div class="stat-grid" id="dashStats"></div>
+
+      <div id="respaldoAvisoDash"></div>
 
       <div class="ticker-wrap">
         <div class="ticker-label">Vencimientos en los próximos 30 días</div>
@@ -272,7 +281,6 @@ tr:hover td{background:#FAF9F6;}
         <button class="tab-sub-btn" data-filter="eps">Régimen EPS</button>
         <button class="tab-sub-btn" data-filter="administracion">Área: Administración</button>
         <button class="tab-sub-btn" data-filter="produccion">Área: Producción</button>
-        <button class="tab-sub-btn" data-filter="contabilidad">Área: Contabilidad</button>
       </div>
 
       <div id="personalBulkBar" style="display:none;align-items:center;gap:10px;background:var(--primary-light);border:1px solid var(--primary);border-radius:8px;padding:10px 14px;margin-bottom:12px;">
@@ -435,6 +443,42 @@ tr:hover td{background:#FAF9F6;}
       </div>
 
       <!-- EDITOR DE WORD EN LINEA -->
+      <div class="panel">
+        <div class="panel-head"><h3>Editor de Word en línea</h3></div>
+        <div style="padding:16px 18px;">
+          <p class="hint" style="margin:0 0 12px;">Abre un archivo .docx o .pdf, edítalo aquí mismo, y guárdalo como modelo reutilizable en una categoría (por ejemplo "Constancia entrega de EPP"). Luego podrás generar el mismo documento para cada trabajador con sus datos ya completados.</p>
+          <div class="field-row" style="align-items:flex-end;">
+            <div class="field"><label>Abrir archivo (.docx o .pdf)</label><input type="file" id="wordEditorFile" accept=".docx,.pdf"></div>
+            <div class="field"><button class="btn btn-accent btn-sm" onclick="abrirWordEnEditor()">Abrir en el editor</button></div>
+          </div>
+          <p id="wordEditorOpenStatus" class="hint" style="margin:4px 0 0;"></p>
+        </div>
+      </div>
+
+      <div class="panel" id="wordEditorPanel" style="display:none;">
+        <div class="panel-head">
+          <h3 id="wordEditorNombreDoc" contenteditable="true" style="outline:none;">Documento</h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-ghost btn-sm" onclick="imprimirWordEditor()">Imprimir</button>
+            <button class="btn btn-ghost btn-sm" onclick="descargarWordEditor()">Descargar Word</button>
+            <button class="btn btn-ghost btn-sm" onclick="descargarEditorPdf()">Descargar PDF</button>
+            <button class="btn btn-primary btn-sm" onclick="wordEditorGuardarComo()">Guardar como modelo</button>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('wordEditorPanel').style.display='none';">Cerrar</button>
+          </div>
+        </div>
+        <div id="wordEditorDatosColaborador" style="padding:16px 18px;border-bottom:1px solid var(--border);transition:outline 0.2s;">
+          <p class="hint" style="margin:0 0 10px;">Elige al colaborador, coloca el cursor donde va su nombre dentro del documento, y presiona "Insertar".</p>
+          <div class="field-row" style="align-items:flex-end;">
+            <div class="field"><label>Colaborador</label><select id="modeloEmployeeSelect"></select></div>
+            <div class="field"><label>Vigencia desde (opcional)</label><input type="date" id="modeloVigenciaInicio"></div>
+            <div class="field"><label>Vigencia hasta (opcional)</label><input type="date" id="modeloVigenciaFin"></div>
+            <div class="field"><button class="btn btn-accent btn-sm" onclick="insertarDatosColaboradorEnEditor()">Insertar</button></div>
+          </div>
+        </div>
+        <div id="wordEditorContent" contenteditable="true" style="padding:24px 28px;min-height:400px;font-family:'Times New Roman',serif;font-size:14px;line-height:1.6;outline:none;background:#fff;"></div>
+      </div>
+
+      <div id="modelosPorCategoria"></div>
     </div>
 
     <!-- EMO -->
@@ -478,34 +522,70 @@ tr:hover td{background:#FAF9F6;}
     <div class="view" id="view-menus">
       <div class="view-header">
         <div>
-          <h2>Menús diarios</h2>
-          <p>Control del comedor / menú del personal por día, con precio incluido IGV</p>
+          <h2>Alimentación general</h2>
+          <p>Control de comedor, cenas y agua del personal, con precio incluido IGV</p>
         </div>
-        <button class="btn btn-primary" onclick="openMenuModal()">+ Registrar menú o cena</button>
+        <button class="btn btn-primary" onclick="openMenuModal()">+ Registrar menú, cena o agua</button>
       </div>
 
       <div class="stat-grid" id="menuStats"></div>
 
-      <div class="panel">
-        <div class="panel-head">
-          <h3>Registro diario</h3>
-          <div style="display:flex;gap:8px;">
-            <select class="search-box" id="menuTipoFiltro" style="width:130px;">
-              <option value="todos">Todos</option>
-              <option value="Menú">Solo Menú</option>
-              <option value="Cena">Solo Cena</option>
-            </select>
-            <select class="search-box" id="menuMesFiltro" style="width:150px;"></select>
-            <select class="search-box" id="menuAnioFiltro" style="width:100px;"></select>
-            <button class="btn btn-primary btn-sm" onclick="descargarReporteMenusPdf()">Descargar PDF</button>
-          </div>
-        </div>
-        <div id="menuTable"></div>
+      <div class="tabs-sub">
+        <button class="tab-sub-btn active" data-alim-tab="registro" onclick="switchAlimTab('registro')">1. Registro diario</button>
+        <button class="tab-sub-btn" data-alim-tab="pagos" onclick="switchAlimTab('pagos')">2. Pagado / Pendiente de pago</button>
       </div>
 
-      <div class="panel">
-        <div class="panel-head"><h3>Histórico anual <span id="menuHistoricoAnio" class="mono" style="color:var(--ink-soft);font-weight:400;"></span></h3></div>
-        <div id="menuHistoricoTable"></div>
+      <div id="alimRegistroBlock">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Registro diario</h3>
+            <div style="display:flex;gap:8px;">
+              <select class="search-box" id="menuTipoFiltro" style="width:130px;">
+                <option value="todos">Todos</option>
+                <option value="Menú">Solo Menú</option>
+                <option value="Cena">Solo Cena</option>
+                <option value="Agua">Solo Agua</option>
+              </select>
+              <select class="search-box" id="menuMesFiltro" style="width:150px;"></select>
+              <select class="search-box" id="menuAnioFiltro" style="width:100px;"></select>
+              <button class="btn btn-primary btn-sm" onclick="descargarReporteMenusPdf()">Descargar PDF</button>
+            </div>
+          </div>
+          <div id="menuTable"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Histórico anual <span id="menuHistoricoAnio" class="mono" style="color:var(--ink-soft);font-weight:400;"></span></h3></div>
+          <div id="menuHistoricoTable"></div>
+        </div>
+      </div>
+
+      <div id="alimPagosBlock" style="display:none;">
+        <div class="stat-grid" id="alimPagosStats"></div>
+        <div class="panel">
+          <div class="panel-head"><h3>Gasto mensual por tipo <span id="alimChartAnio" class="mono" style="color:var(--ink-soft);font-weight:400;"></span></h3></div>
+          <div id="alimGastoChart" style="padding:16px 18px;"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Control de pagos</h3>
+            <div style="display:flex;gap:8px;">
+              <select class="search-box" id="alimPagoEstadoFiltro" style="width:170px;">
+                <option value="todos">Todos los estados</option>
+                <option value="pendiente">Solo pendiente de pago</option>
+                <option value="pagado">Solo pagado</option>
+              </select>
+              <select class="search-box" id="alimPagoTipoFiltro" style="width:130px;">
+                <option value="todos">Todos</option>
+                <option value="Menú">Solo Menú</option>
+                <option value="Cena">Solo Cena</option>
+                <option value="Agua">Solo Agua</option>
+              </select>
+              <button class="btn btn-primary btn-sm" onclick="descargarControlPagosPdf()">Descargar PDF</button>
+            </div>
+          </div>
+          <div id="alimPagosTable"></div>
+        </div>
       </div>
     </div>
 
@@ -628,6 +708,7 @@ tr:hover td{background:#FAF9F6;}
         <button class="tab-sub-btn" data-asist-tab="permisos" onclick="switchAsistTab('permisos')">Permisos</button>
         <button class="tab-sub-btn" data-asist-tab="descansos" onclick="switchAsistTab('descansos')">Descansos médicos</button>
         <button class="tab-sub-btn" data-asist-tab="prestamos" onclick="switchAsistTab('prestamos')">Préstamos y adelantos</button>
+        <button class="tab-sub-btn" data-asist-tab="formatomanual" onclick="switchAsistTab('formatomanual')">Formato de asistencia manual</button>
         <button class="tab-sub-btn" data-asist-tab="reportes" onclick="switchAsistTab('reportes')">3-4. Reportes mensuales y nómina</button>
       </div>
 
@@ -809,6 +890,42 @@ tr:hover td{background:#FAF9F6;}
         </div>
       </div>
 
+      <!-- FORMATO DE ASISTENCIA MANUAL -->
+      <div id="asistFormatoManualBlock" style="display:none;">
+        <div class="panel">
+          <div class="panel-head"><h3>Formato de asistencia manual del día</h3></div>
+          <div style="padding:16px 18px;">
+            <div class="field-row" style="align-items:flex-end;">
+              <div class="field"><label>Fecha</label><input type="date" id="formatoManualFecha" onchange="cargarFormatoManualFecha()"></div>
+              <div class="field">
+                <label>Filtrar por área</label>
+                <select id="formatoManualAreaFiltro" onchange="filtrarFormatoManualPorArea()">
+                  <option value="todas">Todas las áreas</option>
+                  <option value="Administración">Administración</option>
+                  <option value="Producción">Producción</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>+ Agregar trabajador a esta lista</label>
+                <div style="display:flex;gap:8px;">
+                  <select id="formatoManualAgregarSelect" style="flex:1;"></select>
+                  <button class="btn btn-ghost btn-sm" onclick="agregarTrabajadorFormatoManual()">Agregar</button>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px;">
+              <button class="btn btn-ghost btn-sm" onclick="cargarActivosFormatoManual()">Cargar todos los activos (según área filtrada)</button>
+              <button class="btn btn-accent btn-sm" onclick="descargarFormatoManualExcel()">Descargar Excel</button>
+              <button class="btn btn-primary btn-sm" onclick="descargarFormatoManualPdf()">Descargar PDF</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Lista del día — marcar asistencia</h3></div>
+          <div id="formatoManualTable"></div>
+        </div>
+      </div>
+
       <!-- REPORTES MENSUALES -->
       <div id="asistReportesBlock" style="display:none;">
         <div class="panel">
@@ -894,13 +1011,23 @@ tr:hover td{background:#FAF9F6;}
 
       <div class="tabs-sub">
         <button class="tab-sub-btn active" data-bien-tab="eventos" onclick="switchBienTab('eventos')">1. Cumpleaños y eventos</button>
-        <button class="tab-sub-btn" data-bien-tab="encuestas" onclick="switchBienTab('encuestas')">2. Encuestas de clima</button>
-        <button class="tab-sub-btn" data-bien-tab="capacitaciones" onclick="switchBienTab('capacitaciones')">3. Capacitaciones y reconocimientos</button>
+        <button class="tab-sub-btn" data-bien-tab="trabajadormes" onclick="switchBienTab('trabajadormes')">2. Trabajador del mes</button>
+        <button class="tab-sub-btn" data-bien-tab="encuestas" onclick="switchBienTab('encuestas')">3. Encuestas de clima</button>
+        <button class="tab-sub-btn" data-bien-tab="capacitaciones" onclick="switchBienTab('capacitaciones')">4. Capacitaciones y reconocimientos</button>
       </div>
 
       <!-- EVENTOS -->
       <div id="bienEventosBlock">
         <div id="eventosAviso"></div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Feriados de Perú y aniversario de la empresa</h3>
+            <button class="btn btn-primary btn-sm" onclick="cargarFeriadosPeru()">+ Cargar feriados y aniversario (recordatorio anual)</button>
+          </div>
+          <div style="padding:16px 18px;">
+            <p class="hint" style="margin:0;">Esto agrega, como eventos que se repiten cada año, todos los feriados nacionales del Perú y el aniversario de SERVING (14 de octubre). No se duplican si ya los cargaste antes. Luego aparecerán en el aviso de arriba cuando falten 30 días o menos, junto con los cumpleaños.</p>
+          </div>
+        </div>
         <div class="panel">
           <div class="panel-head"><h3>Registrar evento</h3></div>
           <div style="padding:16px 18px;">
@@ -912,6 +1039,7 @@ tr:hover td{background:#FAF9F6;}
                   <option value="Evento de empresa">Evento de empresa</option>
                   <option value="Aniversario laboral">Aniversario laboral</option>
                   <option value="Actividad de integración">Actividad de integración</option>
+                  <option value="Feriado nacional">Feriado nacional</option>
                   <option value="Otro">Otro</option>
                 </select>
               </div>
@@ -931,6 +1059,49 @@ tr:hover td{background:#FAF9F6;}
           <div class="panel-head"><h3>Eventos registrados</h3></div>
           <div id="eventosTable"></div>
         </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Rotación de personal (altas y bajas)</h3>
+            <select class="search-box" id="rotacionAnioFiltro" style="width:110px;" onchange="renderRotacionPersonal()"></select>
+          </div>
+          <div id="rotacionStats" class="stat-grid" style="padding:16px 18px 0;"></div>
+          <div id="rotacionChart" style="padding:16px 18px;"></div>
+        </div>
+      </div>
+
+      <!-- TRABAJADOR DEL MES -->
+      <div id="bienTrabajadorMesBlock" style="display:none;">
+        <div class="panel">
+          <div class="panel-head"><h3>Trabajador(a) del mes actual</h3></div>
+          <div id="trabajadorMesDestacado" style="padding:16px 18px;"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Elegir trabajador del mes</h3></div>
+          <div style="padding:16px 18px;">
+            <div class="field-row">
+              <div class="field"><label>Colaborador</label><select id="trabajadorMesEmployeeSelect"></select></div>
+              <div class="field"><label>Mes</label><input type="month" id="trabajadorMesPeriodo"></div>
+            </div>
+            <div class="field"><label>Motivo / logro destacado</label><textarea id="trabajadorMesMotivo" style="min-height:60px;font-family:'Inter';" placeholder="Ej. Puntualidad ejemplar, apoyo a sus compañeros, cumplimiento de metas..."></textarea></div>
+            <div class="field-row" style="align-items:flex-end;">
+              <div class="field">
+                <label>Foto (opcional)</label>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <img id="trabajadorMesFotoPreview" src="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;background:#EEECE6;display:none;">
+                  <div id="trabajadorMesFotoPlaceholder" style="width:56px;height:56px;border-radius:50%;background:#EEECE6;display:flex;align-items:center;justify-content:center;color:var(--ink-soft);font-size:10px;text-align:center;">Sin foto</div>
+                  <input type="file" id="trabajadorMesFoto" accept="image/*" style="max-width:170px;" onchange="previewTrabajadorMesFoto(this)">
+                </div>
+                <p class="hint" style="margin:6px 0 0;">Si no subes una foto, se usará la que tenga registrada en Personal (si tiene).</p>
+              </div>
+              <div class="field"></div>
+            </div>
+            <button class="btn btn-accent btn-sm" onclick="saveTrabajadorMes()">Registrar trabajador del mes</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Historial de trabajadores del mes</h3></div>
+          <div id="trabajadorMesTable"></div>
+        </div>
       </div>
 
       <!-- ENCUESTAS -->
@@ -946,7 +1117,6 @@ tr:hover td{background:#FAF9F6;}
                   <option value="General">General (toda la empresa)</option>
                   <option value="Administración">Administración</option>
                   <option value="Producción">Producción</option>
-                  <option value="Contabilidad">Contabilidad</option>
                 </select>
               </div>
             </div>
@@ -1216,7 +1386,6 @@ tr:hover td{background:#FAF9F6;}
               <button class="btn btn-ghost btn-sm" type="button" onclick="marcarTodosTrabajadoresSeguro(false)">Desmarcar todos</button>
               <button class="btn btn-ghost btn-sm" type="button" onclick="marcarPorAreaSeguro('Administración')">Solo Administración</button>
               <button class="btn btn-ghost btn-sm" type="button" onclick="marcarPorAreaSeguro('Producción')">Solo Producción</button>
-              <button class="btn btn-ghost btn-sm" type="button" onclick="marcarPorAreaSeguro('Contabilidad')">Solo Contabilidad</button>
               <button class="btn btn-ghost btn-sm" type="button" onclick="descargarTramaTrabajadores()">Descargar trama de los marcados (Excel)</button>
             </div>
             <div id="seguroTrabajadoresChecklist" style="display:flex;flex-direction:column;gap:4px;max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:7px;padding:8px;"></div>
@@ -1249,6 +1418,33 @@ tr:hover td{background:#FAF9F6;}
       </div>
     </div>
 
+    <!-- PLANILLA Y CUENTAS BANCARIAS -->
+    <div class="view" id="view-planilla">
+      <div class="view-header">
+        <div>
+          <h2>Planilla y Cuentas Bancarias</h2>
+          <p>Régimen de planilla (MYPE / General) y datos bancarios para el abono de sueldo de cada trabajador</p>
+        </div>
+      </div>
+
+      <div class="stat-grid" id="planillaStats"></div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Colaboradores</h3>
+          <div style="display:flex;gap:8px;">
+            <select class="search-box" id="planillaFiltroRegimen" style="width:200px;">
+              <option value="todos">Todos los regímenes</option>
+              <option value="Régimen general">Solo Régimen general</option>
+              <option value="Régimen MYPE">Solo Régimen MYPE</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="descargarPlanillaBancariaExcel()">Descargar Excel (abono de sueldo)</button>
+          </div>
+        </div>
+        <div id="planillaTable"></div>
+      </div>
+    </div>
+
     <!-- BASE DE DATOS -->
     <div class="view" id="view-basedatos">
       <div class="view-header">
@@ -1263,6 +1459,145 @@ tr:hover td{background:#FAF9F6;}
       </div>
       <div class="panel">
         <div id="basedatosTable"></div>
+      </div>
+    </div>
+
+    <!-- COMITÉ DE SEGURIDAD -->
+    <div class="view" id="view-comite">
+      <div class="view-header">
+        <div>
+          <h2>Comité de Seguridad y Salud en el Trabajo</h2>
+          <p>Miembros del comité, reuniones y actas, documentos SST, y registro de accidentes e incidentes</p>
+        </div>
+      </div>
+
+      <div class="tabs-sub">
+        <button class="tab-sub-btn active" data-comite-tab="miembros" onclick="switchComiteTab('miembros')">1. Miembros del comité</button>
+        <button class="tab-sub-btn" data-comite-tab="reuniones" onclick="switchComiteTab('reuniones')">2. Reuniones y actas</button>
+        <button class="tab-sub-btn" data-comite-tab="documentos" onclick="switchComiteTab('documentos')">3. Documentos SST</button>
+        <button class="tab-sub-btn" data-comite-tab="accidentes" onclick="switchComiteTab('accidentes')">4. Accidentes e incidentes</button>
+      </div>
+
+      <!-- MIEMBROS -->
+      <div id="comiteMiembrosBlock">
+        <div class="panel">
+          <div class="panel-head"><h3>Agregar miembro del comité</h3></div>
+          <div style="padding:16px 18px;">
+            <div class="field-row">
+              <div class="field"><label>Colaborador</label><select id="comiteMiembroEmployeeSelect"></select></div>
+              <div class="field"><label>Cargo en el comité</label>
+                <select id="comiteMiembroCargo">
+                  <option value="Presidente">Presidente</option>
+                  <option value="Secretario">Secretario</option>
+                  <option value="Miembro titular">Miembro titular</option>
+                  <option value="Miembro suplente">Miembro suplente</option>
+                </select>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Representa a</label>
+                <select id="comiteMiembroRepresenta">
+                  <option value="Empleador">Empleador</option>
+                  <option value="Trabajadores">Trabajadores</option>
+                </select>
+              </div>
+              <div class="field"><label>Periodo (opcional)</label><input id="comiteMiembroPeriodo" placeholder="Ej. 2025-2027"></div>
+            </div>
+            <button class="btn btn-accent btn-sm" onclick="saveComiteMiembro()">Agregar al comité</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Miembros actuales</h3>
+            <button class="btn btn-primary btn-sm" onclick="descargarComiteMiembrosPdf()">Descargar PDF</button>
+          </div>
+          <div id="comiteMiembrosTable"></div>
+        </div>
+      </div>
+
+      <!-- REUNIONES -->
+      <div id="comiteReunionesBlock" style="display:none;">
+        <div class="panel">
+          <div class="panel-head"><h3>Registrar reunión / acta</h3></div>
+          <div style="padding:16px 18px;">
+            <div class="field-row">
+              <div class="field"><label>N° de acta</label><input id="comiteActaNumero" placeholder="Ej. Acta N° 08-2026"></div>
+              <div class="field"><label>Fecha de la reunión</label><input type="date" id="comiteActaFecha"></div>
+            </div>
+            <div class="field"><label>Asistentes</label><input id="comiteActaAsistentes" placeholder="Nombres separados por coma, o 'Todos los miembros'"></div>
+            <div class="field"><label>Temas tratados</label><textarea id="comiteActaTemas" style="min-height:70px;font-family:'Inter';"></textarea></div>
+            <div class="field"><label>Acuerdos y compromisos</label><textarea id="comiteActaAcuerdos" style="min-height:70px;font-family:'Inter';"></textarea></div>
+            <div class="field"><label>Firma a incluir en el PDF (opcional)</label><select id="comiteActaFirmaSelect"><option value="">Sin firma</option></select></div>
+            <button class="btn btn-accent btn-sm" onclick="saveComiteReunion()">Registrar reunión</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Reuniones registradas</h3></div>
+          <div id="comiteReunionesTable"></div>
+        </div>
+      </div>
+
+      <!-- DOCUMENTOS SST -->
+      <div id="comiteDocumentosBlock" style="display:none;">
+        <div class="panel">
+          <div class="panel-head"><h3>Subir documento SST</h3></div>
+          <div style="padding:16px 18px;">
+            <div class="field-row">
+              <div class="field"><label>Tipo de documento</label>
+                <select id="comiteDocCategoria">
+                  <option value="Reglamento Interno de SST">Reglamento Interno de SST</option>
+                  <option value="IPERC">IPERC</option>
+                  <option value="Mapa de Riesgos">Mapa de Riesgos</option>
+                  <option value="Plan Anual de SST">Plan Anual de SST</option>
+                  <option value="Constitución del comité">Constitución del comité</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+              <div class="field"><label>Vigencia (opcional)</label><input type="date" id="comiteDocVigencia"></div>
+            </div>
+            <div class="field"><label>Archivo</label><input type="file" id="comiteDocArchivo" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"></div>
+            <button class="btn btn-accent btn-sm" onclick="uploadComiteDoc()">Subir documento</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Documentos subidos</h3></div>
+          <div id="comiteDocumentosTable"></div>
+        </div>
+      </div>
+
+      <!-- ACCIDENTES -->
+      <div id="comiteAccidentesBlock" style="display:none;">
+        <div class="stat-grid" id="comiteAccidentesStats"></div>
+        <div class="panel">
+          <div class="panel-head"><h3>Registrar accidente o incidente</h3></div>
+          <div style="padding:16px 18px;">
+            <div class="field-row">
+              <div class="field"><label>Colaborador</label><select id="comiteAccColaborador"></select></div>
+              <div class="field"><label>Fecha</label><input type="date" id="comiteAccFecha"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Tipo</label>
+                <select id="comiteAccTipo">
+                  <option value="Incidente">Incidente (sin lesión)</option>
+                  <option value="Accidente leve">Accidente leve</option>
+                  <option value="Accidente incapacitante">Accidente incapacitante</option>
+                  <option value="Accidente mortal">Accidente mortal</option>
+                </select>
+              </div>
+              <div class="field"><label>Días de descanso médico (si aplica)</label><input type="number" id="comiteAccDias" min="0"></div>
+            </div>
+            <div class="field"><label>Descripción de lo ocurrido</label><textarea id="comiteAccDescripcion" style="min-height:70px;font-family:'Inter';"></textarea></div>
+            <div class="field"><label>Acciones correctivas tomadas</label><textarea id="comiteAccAcciones" style="min-height:60px;font-family:'Inter';"></textarea></div>
+            <button class="btn btn-accent btn-sm" onclick="saveComiteAccidente()">Registrar</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Historial de accidentes e incidentes</h3>
+            <button class="btn btn-primary btn-sm" onclick="descargarComiteAccidentesPdf()">Descargar PDF</button>
+          </div>
+          <div id="comiteAccidentesTable"></div>
+        </div>
       </div>
     </div>
 
@@ -1296,7 +1631,7 @@ tr:hover td{background:#FAF9F6;}
         <div class="field"><label>Nombre completo</label><input id="empNombre"></div>
       </div>
       <div class="field-row">
-        <div class="field"><label>DNI o RUC</label><input id="empDni"></div>
+        <div class="field"><label>DNI o RUC</label><input id="empDni" oninput="verificarDniDuplicado()"><span id="empDniAviso" class="hint" style="color:var(--danger);display:none;"></span></div>
         <div class="field">
           <label>Estado</label>
           <select id="empEstado" onchange="toggleMotivoBaja()"><option value="activo">Activo</option><option value="inactivo">Inactivo</option></select>
@@ -1349,7 +1684,6 @@ tr:hover td{background:#FAF9F6;}
           <select id="empArea">
             <option value="Administración">Administración</option>
             <option value="Producción">Producción</option>
-            <option value="Contabilidad">Contabilidad</option>
           </select>
         </div>
       </div>
@@ -1391,6 +1725,14 @@ tr:hover td{background:#FAF9F6;}
             <option value="Régimen MYPE">Régimen MYPE</option>
           </select>
         </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Banco (abono de sueldo)</label><input id="empBanco" placeholder="Ej. BCP, BBVA, Interbank, Scotiabank"></div>
+        <div class="field"><label>N° de cuenta</label><input id="empNumeroCuenta"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>CCI (código de cuenta interbancario)</label><input id="empCci" placeholder="20 dígitos"></div>
+        <div class="field"></div>
       </div>
       <div class="field-row">
         <div class="field">
@@ -1497,6 +1839,18 @@ tr:hover td{background:#FAF9F6;}
   </div>
 </div>
 
+<!-- MODAL ESPACIO DE ALMACENAMIENTO -->
+<div class="modal-overlay" id="espacioModalOverlay">
+  <div class="modal" style="max-width:560px;">
+    <h3>Espacio de almacenamiento usado</h3>
+    <p class="hint" style="margin:-6px 0 14px;">Cada "cajón" de información (colaboradores, documentos, etc.) tiene un límite de 5MB. Si alguno se acerca al límite, vas a ver un aviso en rojo — en ese caso, avísame y lo organizamos para que no pierdas información.</p>
+    <div id="espacioContenido" style="max-height:60vh;overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="document.getElementById('espacioModalOverlay').classList.remove('active')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL CAMBIAR CONTRASEÑA -->
 <div class="modal-overlay" id="claveModalOverlay">
   <div class="modal" style="max-width:380px;">
@@ -1577,21 +1931,23 @@ tr:hover td{background:#FAF9F6;}
 <!-- MODAL MENU -->
 <div class="modal-overlay" id="menuModalOverlay">
   <div class="modal" style="max-width:420px;">
-    <h3>Registrar comida del día</h3>
+    <h3>Registrar alimentación o agua</h3>
     <div class="field-row">
       <div class="field"><label>Fecha</label><input type="date" id="menuFecha" onchange="updateMenuDia()"></div>
       <div class="field"><label>Día</label><input type="text" id="menuDia" readonly style="background:#F3F1EA;color:var(--ink-soft);"></div>
     </div>
     <div class="field">
       <label>Tipo</label>
-      <select id="menuTipo"><option value="Menú">Menú (almuerzo)</option><option value="Cena">Cena</option></select>
+      <select id="menuTipo" onchange="toggleMenuTipoLabels()"><option value="Menú">Menú (almuerzo)</option><option value="Cena">Cena</option><option value="Agua">Agua</option></select>
     </div>
     <div class="field-row">
-      <div class="field"><label>Cantidad de raciones</label><input type="number" id="menuCantidad" oninput="updateMenuTotal()"></div>
-      <div class="field"><label>Precio por ración (incl. IGV, S/)</label><input type="number" step="0.01" id="menuPrecio" oninput="updateMenuTotal()"></div>
+      <div class="field"><label id="menuCantidadLabel">Cantidad de raciones</label><input type="number" id="menuCantidad" oninput="updateMenuTotal()"></div>
+      <div class="field"><label id="menuPrecioLabel">Precio por ración (incl. IGV, S/)</label><input type="number" step="0.01" id="menuPrecio" oninput="updateMenuTotal()"></div>
     </div>
     <div class="field"><label>Total del día (automático)</label><input type="text" id="menuTotal" readonly style="background:#F3F1EA;color:var(--ink-soft);"></div>
-    <div class="field"><label>Menú (entrada / segundo / bebida)</label><textarea id="menuDetalle" style="min-height:70px;font-family:'Inter';"></textarea></div>
+    <div class="field"><label id="menuDetalleLabel">Menú (entrada / segundo / bebida)</label><textarea id="menuDetalle" style="min-height:70px;font-family:'Inter';"></textarea></div>
+    <div class="field"><label>Proveedor (opcional)</label><input id="menuProveedor" placeholder="Ej. Comedor Doña Rosa, distribuidora de agua..."></div>
+    <div class="field"><label>Estado de pago</label><select id="menuEstadoPago"><option value="pendiente">Pendiente de pago</option><option value="pagado">Pagado</option></select></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeMenuModal()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveMenu()">Guardar</button>
@@ -1723,11 +2079,18 @@ async function saveData(key, value){
 let employees = [];
 let budgetEntries = [];
 let menuEntries = [];
+let ultimoRespaldoFecha = null;
+let trabajadoresMes = [];
+let comiteMiembros = [];
+let comiteReuniones = [];
+let comiteDocumentos = [];
+let comiteAccidentes = [];
 let workerDocs = [];
 let faltas = [];
 let permisos = [];
 let prestamos = [];
 let segurosEmpresa = [];
+let asistenciaManual = [];
 let descansos = [];
 let registrosDiarios = [];
 let eppAsignaciones = [];
@@ -1883,8 +2246,20 @@ const DOC_TYPES = [
 // ---------- Init ----------
 async function init(){
   employees = await loadData('employees', []);
+  let areaCorregida = false;
+  employees.forEach(e=>{
+    const areaNormalizada = normalizarArea(e.area);
+    if(e.area !== areaNormalizada){ e.area = areaNormalizada; areaCorregida = true; }
+  });
+  if(areaCorregida) await saveData('employees', employees);
   budgetEntries = await loadData('budgetEntries', []);
   menuEntries = await loadData('menuEntries', []);
+  ultimoRespaldoFecha = await loadData('ultimoRespaldoFecha', null);
+  trabajadoresMes = await loadData('trabajadoresMes', []);
+  comiteMiembros = await loadData('comiteMiembros', []);
+  comiteReuniones = await loadData('comiteReuniones', []);
+  comiteDocumentos = await loadData('comiteDocumentos', []);
+  comiteAccidentes = await loadData('comiteAccidentes', []);
   templates = await loadData('templates', {});
   window._empresaData = await loadData('empresaData', {});
   firmasDigitales = await loadData('firmasDigitales', []);
@@ -1901,6 +2276,7 @@ async function init(){
   permisos = await loadData('permisos', []);
   prestamos = await loadData('prestamos', []);
   segurosEmpresa = await loadData('segurosEmpresa', []);
+  asistenciaManual = await loadData('asistenciaManual', []);
   descansos = await loadData('descansos', []);
   registrosDiarios = await loadData('registrosDiarios', []);
   eppAsignaciones = await loadData('eppAsignaciones', []);
@@ -1947,6 +2323,74 @@ async function init(){
   renderAll();
 }
 
+function normalizarTexto(s){
+  return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+function ejecutarBusquedaGlobal(qRaw){
+  const cont = document.getElementById('globalSearchResults');
+  if(!cont) return;
+  const q = normalizarTexto(qRaw.trim());
+  if(q.length<2){ cont.style.display='none'; cont.innerHTML=''; return; }
+
+  const empMatches = employees.filter(e=>normalizarTexto(e.nombre).includes(q) || normalizarTexto(e.dni).includes(q)).slice(0,6);
+  const prestamoMatches = prestamos.filter(p=>{
+    const e = employees.find(x=>x.id===p.empId);
+    return normalizarTexto(p.motivo).includes(q) || normalizarTexto(p.tipo).includes(q) || (e && normalizarTexto(e.nombre).includes(q));
+  }).slice(0,4);
+  const docMatches = workerDocs.filter(d=>{
+    const e = employees.find(x=>x.id===d.empId);
+    return normalizarTexto(d.fileName).includes(q) || normalizarTexto(BOLETA_CATEGORIAS[d.categoria]||'').includes(q) || (e && normalizarTexto(e.nombre).includes(q));
+  }).slice(0,4);
+
+  let html = '';
+  if(empMatches.length){
+    html += `<div style="padding:8px 12px 4px;font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;">Colaboradores</div>`;
+    html += empMatches.map(e=>`
+      <div style="padding:8px 12px;cursor:pointer;border-top:1px solid var(--border);" onclick="irAColaboradorDesdeBusqueda('${e.id}')">
+        <div style="font-weight:600;">${e.nombre}</div>
+        <div class="hint" style="margin:0;">DNI: ${e.dni} — ${e.cargo||'—'}</div>
+      </div>`).join('');
+  }
+  if(prestamoMatches.length){
+    html += `<div style="padding:8px 12px 4px;font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;">Préstamos y adelantos</div>`;
+    html += prestamoMatches.map(p=>{
+      const e = employees.find(x=>x.id===p.empId);
+      return `<div style="padding:8px 12px;cursor:pointer;border-top:1px solid var(--border);" onclick="irAModuloDesdeBusqueda('asistencia')">
+        <div style="font-weight:600;">${p.tipo} — S/ ${p.monto.toFixed(2)}</div>
+        <div class="hint" style="margin:0;">${e?e.nombre:'—'} ${p.motivo?'— '+p.motivo:''}</div>
+      </div>`;
+    }).join('');
+  }
+  if(docMatches.length){
+    html += `<div style="padding:8px 12px 4px;font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;">Documentos</div>`;
+    html += docMatches.map(d=>{
+      const e = employees.find(x=>x.id===d.empId);
+      return `<div style="padding:8px 12px;cursor:pointer;border-top:1px solid var(--border);" onclick="irAModuloDesdeBusqueda('boletas')">
+        <div style="font-weight:600;">${BOLETA_CATEGORIAS[d.categoria]||d.categoria}</div>
+        <div class="hint" style="margin:0;">${e?e.nombre:'—'} — ${d.fileName}</div>
+      </div>`;
+    }).join('');
+  }
+  if(!html){ html = `<div style="padding:14px 12px;color:var(--ink-soft);">Sin resultados para "${qRaw}"</div>`; }
+  cont.innerHTML = html;
+  cont.style.display = 'block';
+}
+function irAColaboradorDesdeBusqueda(id){
+  document.getElementById('globalSearchResults').style.display='none';
+  document.getElementById('globalSearchInput').value='';
+  switchView('personal');
+  openEmployeeModal(id);
+}
+function irAModuloDesdeBusqueda(view){
+  document.getElementById('globalSearchResults').style.display='none';
+  document.getElementById('globalSearchInput').value='';
+  switchView(view);
+}
+document.addEventListener('click', (ev)=>{
+  const box = document.getElementById('globalSearchResults');
+  const input = document.getElementById('globalSearchInput');
+  if(box && input && !box.contains(ev.target) && ev.target!==input){ box.style.display='none'; }
+});
 function switchView(name){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -1968,6 +2412,18 @@ function daysUntilBirthday(fechaNacimiento){
   let next = new Date(today.getFullYear(), bd.getMonth(), bd.getDate());
   if(next < today) next = new Date(today.getFullYear()+1, bd.getMonth(), bd.getDate());
   return Math.round((next-today)/86400000);
+}
+function proximoAniversarioLaboral(fechaIngreso){
+  if(!fechaIngreso) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const ing = new Date(fechaIngreso+'T00:00:00');
+  let anioAniversario = today.getFullYear();
+  let next = new Date(anioAniversario, ing.getMonth(), ing.getDate());
+  if(next < today) { anioAniversario++; next = new Date(anioAniversario, ing.getMonth(), ing.getDate()); }
+  const dias = Math.round((next-today)/86400000);
+  const anios = anioAniversario - ing.getFullYear();
+  if(anios<1) return null;
+  return {dias, anios, fecha: next};
 }
 function renderBirthdays(){
   const upcoming = employees
@@ -1991,6 +2447,14 @@ function daysUntil(dateStr){
   const today = new Date(); today.setHours(0,0,0,0);
   const d = new Date(dateStr+'T00:00:00');
   return Math.round((d-today)/86400000);
+}
+function normalizarArea(valorTexto){
+  const limpio = String(valorTexto||'').trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,''); // quita tildes para comparar
+  if(limpio.startsWith('produc')) return 'Producción';
+  if(limpio.startsWith('admin')) return 'Administración';
+  if(limpio.startsWith('contab')) return 'Administración'; // Contabilidad se fusiona con Administración
+  return 'Administración';
 }
 function fmtDate(dateStr){
   if(!dateStr) return '—';
@@ -2020,7 +2484,9 @@ function renderAll(){
   renderEpp();
   renderWordEditorGuardados();
   renderSeguros();
+  renderPlanillaBancaria();
   renderBasedatos();
+  renderComite();
 }
 
 // ---------- Dashboard ----------
@@ -2047,13 +2513,24 @@ function renderDashboard(){
   const licenciaPorVencer = employees.filter(e=>{
     const d = daysUntil(e.licenciaVigencia); return e.tieneLicencia==='si' && d!==null && d<=30 && d>=0;
   });
+  const diasDesdeRespaldo = ultimoRespaldoFecha ? Math.abs(daysUntil(ultimoRespaldoFecha)) : null;
+  const respaldoAtrasado = diasDesdeRespaldo===null || diasDesdeRespaldo>7;
 
   document.getElementById('dashStats').innerHTML = `
     <div class="stat-card"><div class="num">${activos.length}</div><div class="label">Personal activo</div></div>
     <div class="stat-card warn"><div class="num">${contratosPorVencer.length}</div><div class="label">Contratos por vencer (30 días)</div></div>
     <div class="stat-card warn"><div class="num">${contratosVencidos.length}</div><div class="label">Contratos vencidos</div></div>
     <div class="stat-card warn"><div class="num">${saludPorVencer.length}</div><div class="label">Coberturas de salud por vencer</div></div>
+    <div class="stat-card ${respaldoAtrasado?'warn':'ok'}"><div class="num" style="font-size:20px;">${ultimoRespaldoFecha ? fmtDate(ultimoRespaldoFecha) : 'Nunca'}</div><div class="label">Último respaldo descargado</div></div>
   `;
+  const respaldoAvisoEl = document.getElementById('respaldoAvisoDash');
+  if(respaldoAvisoEl){
+    respaldoAvisoEl.innerHTML = respaldoAtrasado ? `
+      <div class="aviso-box warn" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div class="aviso-title">⚠ ${ultimoRespaldoFecha ? `No descargas un respaldo hace ${diasDesdeRespaldo} día(s)` : 'Todavía no has descargado ningún respaldo del sistema'} — hazlo cada semana para no perder información.</div>
+        <button class="btn btn-primary btn-sm" onclick="guardarRespaldo()">Descargar respaldo ahora</button>
+      </div>` : '';
+  }
 
   const tickerItems = [];
   contratosPorVencer.forEach(e=>{
@@ -2179,7 +2656,6 @@ function renderPersonalTable(filter){
   if(filter==='eps') list = list.filter(e=>e.salud==='EPS');
   if(filter==='administracion') list = list.filter(e=>e.area==='Administración');
   if(filter==='produccion') list = list.filter(e=>e.area==='Producción');
-  if(filter==='contabilidad') list = list.filter(e=>e.area==='Contabilidad');
 
   const sk = personalSort.key, dir = personalSort.dir;
   list = [...list].sort((a,b)=>{
@@ -2267,7 +2743,7 @@ const EMP_FIELD_IDS = ['empNombre','empDni','empDomicilio','empCiudad','empCorre
   'empCelular1','empCelular2','empCargo','empSueldoDiario','empHoraEntrada','empHoraSalida','empFechaNacimiento','empPaisNacimiento','empFechaIngreso','empFechaFin',
   'empProyectoObra','empDuracionContrato','empLugarPrestacion','empDiasHorario','empPeriodoPruebaDuracion','empCiudadFirma',
   'empFechaSalud','empVigenciaSctrInicio','empVigenciaSctr','empVigenciaVidaLeyInicio','empVigenciaVidaLey','empFechaEmoInicio','empFechaEmo',
-  'empLicenciaCategoria','empLicenciaNumero','empLicenciaVigencia',
+  'empLicenciaCategoria','empLicenciaNumero','empLicenciaVigencia','empBanco','empNumeroCuenta','empCci',
   'empRefNombre','empRefParentesco','empRefTelefono','empNotas'];
 
 function updateSueldoMensual(){
@@ -2345,6 +2821,9 @@ function openEmployeeModal(id){
     document.getElementById('empLicenciaCategoria').value = e.licenciaCategoria||'';
     document.getElementById('empLicenciaNumero').value = e.licenciaNumero||'';
     document.getElementById('empLicenciaVigencia').value = e.licenciaVigencia||'';
+    document.getElementById('empBanco').value = e.banco||'';
+    document.getElementById('empNumeroCuenta').value = e.numeroCuenta||'';
+    document.getElementById('empCci').value = e.cci||'';
     document.getElementById('empRefNombre').value = e.refNombre||'';
     document.getElementById('empRefParentesco').value = e.refParentesco||'';
     document.getElementById('empRefTelefono').value = e.refTelefono||'';
@@ -2387,11 +2866,28 @@ function openEmployeeModal(id){
 }
 function closeEmployeeModal(){ document.getElementById('employeeModalOverlay').classList.remove('active'); }
 
+function verificarDniDuplicado(){
+  const dni = document.getElementById('empDni').value.trim();
+  const id = document.getElementById('empId').value;
+  const avisoEl = document.getElementById('empDniAviso');
+  if(!avisoEl) return;
+  const duplicado = dni ? employees.find(e=>e.dni.trim()===dni && e.id!==id) : null;
+  if(duplicado){
+    avisoEl.textContent = `⚠ Ya existe un colaborador con este DNI/RUC: ${duplicado.nombre}`;
+    avisoEl.style.display = 'block';
+  } else {
+    avisoEl.style.display = 'none';
+  }
+}
 async function saveEmployee(){
   const nombre = document.getElementById('empNombre').value.trim();
   const dni = document.getElementById('empDni').value.trim();
   if(!nombre || !dni){ showToast('Nombre y DNI/RUC son obligatorios'); return; }
   const id = document.getElementById('empId').value;
+  const duplicado = employees.find(e=>e.dni.trim()===dni && e.id!==id);
+  if(duplicado){
+    if(!confirm(`Ya existe un colaborador registrado con el DNI/RUC ${dni}: ${duplicado.nombre}.\n\n¿Estás seguro de que quieres guardar de todos modos? (Podrías estar creando una ficha duplicada)`)) return;
+  }
   const sueldoDiario = parseFloat(document.getElementById('empSueldoDiario').value) || 0;
   const data = {
     id: id || ('e'+Date.now()),
@@ -2414,6 +2910,13 @@ async function saveEmployee(){
     horaSalida: document.getElementById('empHoraSalida').value,
     estado: document.getElementById('empEstado').value,
     motivoBaja: document.getElementById('empEstado').value==='inactivo' ? document.getElementById('empMotivoBaja').value.trim() : '',
+    fechaBaja: (()=>{
+      const nuevoEstado = document.getElementById('empEstado').value;
+      const anterior = id ? employees.find(x=>x.id===id) : null;
+      if(nuevoEstado==='activo') return '';
+      if(anterior && anterior.estado==='inactivo' && anterior.fechaBaja) return anterior.fechaBaja;
+      return new Date().toISOString().slice(0,10);
+    })(),
     fotoData: empFotoData,
     fechaIngreso: document.getElementById('empFechaIngreso').value,
     tipoContrato: document.getElementById('empTipoContrato').value,
@@ -2440,6 +2943,9 @@ async function saveEmployee(){
     licenciaCategoria: document.getElementById('empLicenciaCategoria').value.trim(),
     licenciaNumero: document.getElementById('empLicenciaNumero').value.trim(),
     licenciaVigencia: document.getElementById('empLicenciaVigencia').value,
+    banco: document.getElementById('empBanco').value.trim(),
+    numeroCuenta: document.getElementById('empNumeroCuenta').value.trim(),
+    cci: document.getElementById('empCci').value.trim(),
     refNombre: document.getElementById('empRefNombre').value.trim(),
     refParentesco: document.getElementById('empRefParentesco').value.trim(),
     refTelefono: document.getElementById('empRefTelefono').value.trim(),
@@ -2630,6 +3136,7 @@ async function darDeBaja(id){
   if(motivo===null) return;
   e.estado = 'inactivo';
   e.motivoBaja = motivo.trim();
+  e.fechaBaja = new Date().toISOString().slice(0,10);
   await saveData('employees', employees);
   renderAll();
   showToast('Colaborador dado de baja');
@@ -2830,7 +3337,7 @@ function uploadPersonalExcel(file){
           celular1: String(row['Celular 1']||'').trim(),
           celular2: String(row['Celular 2']||'').trim(),
           cargo: String(row['Cargo o puesto']||'').trim(),
-          area: String(row['Área']||'Administración').trim() || 'Administración',
+          area: normalizarArea(row['Área']||'Administración'),
           sueldoDiario, sueldoMensual: sueldoDiario*30,
           horaEntrada: normalizeExcelTime(row['Hora entrada']),
           horaSalida: normalizeExcelTime(row['Hora salida']),
@@ -3939,7 +4446,7 @@ function renderEmo(){
 async function subirPdfEmo(empId, file){
   if(!file) return;
   if(!file.name.toLowerCase().endsWith('.pdf')){ showToast('El archivo debe ser PDF'); return; }
-  if(file.size > 4*1024*1024){ showToast('El archivo es muy grande (máx. 4MB)'); return; }
+  if(file.size > 1*1024*1024){ showToast('El archivo es muy grande (máx. 1MB, para no llenar el espacio de almacenamiento)'); return; }
   const e = employees.find(x=>x.id===empId);
   const reader = new FileReader();
   reader.onload = async ()=>{
@@ -4044,6 +4551,18 @@ function updateMenuTotal(){
   const precio = parseFloat(document.getElementById('menuPrecio').value)||0;
   document.getElementById('menuTotal').value = 'S/ ' + (cant*precio).toFixed(2);
 }
+function toggleMenuTipoLabels(){
+  const tipo = document.getElementById('menuTipo').value;
+  if(tipo==='Agua'){
+    document.getElementById('menuCantidadLabel').textContent = 'Cantidad de bidones/botellas';
+    document.getElementById('menuPrecioLabel').textContent = 'Precio por bidón/botella (S/)';
+    document.getElementById('menuDetalleLabel').textContent = 'Detalle (marca, presentación, proveedor)';
+  } else {
+    document.getElementById('menuCantidadLabel').textContent = 'Cantidad de raciones';
+    document.getElementById('menuPrecioLabel').textContent = 'Precio por ración (incl. IGV, S/)';
+    document.getElementById('menuDetalleLabel').textContent = 'Menú (entrada / segundo / bebida)';
+  }
+}
 function openMenuModal(){
   document.getElementById('menuModalOverlay').classList.add('active');
   document.getElementById('menuFecha').value = new Date().toISOString().slice(0,10);
@@ -4051,6 +4570,9 @@ function openMenuModal(){
   document.getElementById('menuCantidad').value='';
   document.getElementById('menuPrecio').value='';
   document.getElementById('menuDetalle').value='';
+  document.getElementById('menuProveedor').value='';
+  document.getElementById('menuEstadoPago').value='pendiente';
+  toggleMenuTipoLabels();
   updateMenuDia();
   updateMenuTotal();
 }
@@ -4062,12 +4584,14 @@ async function saveMenu(){
   const cantidad = parseInt(document.getElementById('menuCantidad').value)||0;
   const precio = parseFloat(document.getElementById('menuPrecio').value)||0;
   const tipo = document.getElementById('menuTipo').value;
+  const estadoPago = document.getElementById('menuEstadoPago').value;
+  const proveedor = document.getElementById('menuProveedor').value.trim();
   menuEntries.push({
     id:'m'+Date.now(), fecha,
     dia: diaSemanaDe(fecha),
     tipo, cantidad, precio,
     total: cantidad*precio,
-    detalle
+    detalle, proveedor, estadoPago
   });
   await saveData('menuEntries', menuEntries);
   closeMenuModal();
@@ -4078,6 +4602,15 @@ async function deleteMenu(id){
   menuEntries = menuEntries.filter(m=>m.id!==id);
   await saveData('menuEntries', menuEntries);
   renderMenus();
+}
+async function toggleEstadoPagoMenu(id, nuevoEstado){
+  const m = menuEntries.find(x=>x.id===id);
+  if(!m) return;
+  m.estadoPago = nuevoEstado;
+  await saveData('menuEntries', menuEntries);
+  renderMenus();
+  renderAlimPagos();
+  showToast(nuevoEstado==='pagado' ? 'Marcado como pagado' : 'Marcado como pendiente de pago');
 }
 async function editarCantidadMenu(id){
   const m = menuEntries.find(x=>x.id===id);
@@ -4093,6 +4626,8 @@ async function editarCantidadMenu(id){
   m.cantidad = nuevaCantidad;
   m.precio = nuevoPrecio;
   m.total = nuevaCantidad*nuevoPrecio;
+  const nuevoProveedor = prompt('Proveedor (opcional):', m.proveedor||'');
+  if(nuevoProveedor!==null) m.proveedor = nuevoProveedor.trim();
   await saveData('menuEntries', menuEntries);
   renderMenus();
   showToast('Registro actualizado');
@@ -4123,6 +4658,7 @@ function populateMenuFilters(){
 
 function renderMenus(){
   populateMenuFilters();
+  renderAlimPagos();
 
   const today = new Date().toISOString().slice(0,10);
   const todayEntries = menuEntries.filter(m=>m.fecha===today);
@@ -4141,6 +4677,7 @@ function renderMenus(){
   const racionesAnio = yearEntriesStats.reduce((s,m)=>s+(m.cantidad||0),0);
   const totalAnioMenu = yearEntriesStats.filter(m=>(m.tipo||'Menú')==='Menú').reduce((s,m)=>s+(m.total||0),0);
   const totalAnioCena = yearEntriesStats.filter(m=>m.tipo==='Cena').reduce((s,m)=>s+(m.total||0),0);
+  const totalAnioAgua = yearEntriesStats.filter(m=>m.tipo==='Agua').reduce((s,m)=>s+(m.total||0),0);
 
   document.getElementById('menuStats').innerHTML = `
     <div class="stat-card"><div class="num">S/ ${totalHoy.toFixed(2)}</div><div class="label">Total de hoy</div></div>
@@ -4150,29 +4687,36 @@ function renderMenus(){
     <div class="stat-card ok"><div class="num">${racionesAnio}</div><div class="label">Raciones pedidas en ${curY}</div></div>
     <div class="stat-card"><div class="num">S/ ${totalAnioMenu.toFixed(2)}</div><div class="label">Acumulado Menú (almuerzo) ${curY}</div></div>
     <div class="stat-card"><div class="num">S/ ${totalAnioCena.toFixed(2)}</div><div class="label">Acumulado Cena ${curY}</div></div>
+    <div class="stat-card"><div class="num">S/ ${totalAnioAgua.toFixed(2)}</div><div class="label">Acumulado Agua ${curY}</div></div>
   `;
 
   let filtered = menuEntries.filter(m=>m.fecha.slice(0,4)===currentMenuAnioFiltro);
   if(currentMenuMesFiltro!=='todos') filtered = filtered.filter(m=>parseInt(m.fecha.slice(5,7))-1===parseInt(currentMenuMesFiltro));
   if(currentMenuTipoFiltro!=='todos') filtered = filtered.filter(m=>(m.tipo||'Menú')===currentMenuTipoFiltro);
   const sorted = [...filtered].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
-  const rows = sorted.map(m=>`
+  const rows = sorted.map(m=>{
+    const estado = m.estadoPago||'pendiente';
+    return `
     <tr>
       <td>${fmtDate(m.fecha)}</td>
       <td>${m.dia||diaSemanaDe(m.fecha)}</td>
-      <td><span class="pill ${m.tipo==='Cena' ? 'pill-muted' : 'pill-ok'}">${m.tipo||'Menú'}</span></td>
+      <td><span class="pill ${m.tipo==='Cena' ? 'pill-muted' : m.tipo==='Agua' ? 'pill-warn' : 'pill-ok'}">${m.tipo||'Menú'}</span></td>
       <td>${m.detalle}</td>
       <td class="mono">${m.cantidad}</td>
       <td class="mono">S/ ${(m.precio||0).toFixed(2)}</td>
       <td class="mono">S/ ${(m.total||0).toFixed(2)}</td>
+      <td><span class="pill ${estado==='pagado' ? 'pill-ok':'pill-warn'}" style="cursor:pointer;" onclick="toggleEstadoPagoMenu('${m.id}', '${estado==='pagado'?'pendiente':'pagado'}')" title="Click para cambiar">${estado==='pagado' ? '✓ Pagado' : 'Pendiente'}</span></td>
       <td class="actions-cell">
         <button class="btn btn-ghost btn-sm" onclick="editarCantidadMenu('${m.id}')">Editar</button>
         <button class="btn btn-danger btn-sm" onclick="deleteMenu('${m.id}')">Eliminar</button>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
   document.getElementById('menuTable').innerHTML = sorted.length ? `
-    <table><thead><tr><th>Fecha</th><th>Día</th><th>Tipo</th><th>Menú</th><th>Raciones</th><th>Precio (IGV incl.)</th><th>Total</th><th></th></tr></thead>
-    <tbody>${rows}</tbody></table>` : `<div class="empty">No hay menús registrados para este periodo.</div>`;
+    <div class="table-scroll">
+    <table><thead><tr><th>Fecha</th><th>Día</th><th>Tipo</th><th>Menú</th><th>Raciones</th><th>Precio (IGV incl.)</th><th>Total</th><th>Estado de pago</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    </div>` : `<div class="empty">No hay menús registrados para este periodo.</div>`;
 
   renderMenuHistorico();
 }
@@ -4186,23 +4730,26 @@ function renderMenuHistorico(){
     const raciones = entriesMes.reduce((s,m)=>s+(m.cantidad||0),0);
     const totalMenu = entriesMes.filter(m=>(m.tipo||'Menú')==='Menú').reduce((s,m)=>s+(m.total||0),0);
     const totalCena = entriesMes.filter(m=>m.tipo==='Cena').reduce((s,m)=>s+(m.total||0),0);
-    const total = totalMenu + totalCena;
+    const totalAgua = entriesMes.filter(m=>m.tipo==='Agua').reduce((s,m)=>s+(m.total||0),0);
+    const total = totalMenu + totalCena + totalAgua;
     return `<tr>
       <td>${mesNombre}</td>
       <td class="mono">${entriesMes.length}</td>
       <td class="mono">${raciones}</td>
       <td class="mono">S/ ${totalMenu.toFixed(2)}</td>
       <td class="mono">S/ ${totalCena.toFixed(2)}</td>
+      <td class="mono">S/ ${totalAgua.toFixed(2)}</td>
       <td class="mono">S/ ${total.toFixed(2)}</td>
     </tr>`;
   }).join('');
   const totalAnioMenu = yearEntries.filter(m=>(m.tipo||'Menú')==='Menú').reduce((s,m)=>s+(m.total||0),0);
   const totalAnioCena = yearEntries.filter(m=>m.tipo==='Cena').reduce((s,m)=>s+(m.total||0),0);
-  const totalAnio = totalAnioMenu + totalAnioCena;
+  const totalAnioAgua = yearEntries.filter(m=>m.tipo==='Agua').reduce((s,m)=>s+(m.total||0),0);
+  const totalAnio = totalAnioMenu + totalAnioCena + totalAnioAgua;
   document.getElementById('menuHistoricoTable').innerHTML = `
-    <table><thead><tr><th>Mes</th><th>Días registrados</th><th>Raciones</th><th>Total Menú S/</th><th>Total Cena S/</th><th>Total S/</th></tr></thead>
+    <table><thead><tr><th>Mes</th><th>Días registrados</th><th>Raciones</th><th>Total Menú S/</th><th>Total Cena S/</th><th>Total Agua S/</th><th>Total S/</th></tr></thead>
     <tbody>${rows}</tbody>
-    <tfoot><tr><td><b>Total del año</b></td><td></td><td></td><td class="mono"><b>S/ ${totalAnioMenu.toFixed(2)}</b></td><td class="mono"><b>S/ ${totalAnioCena.toFixed(2)}</b></td><td class="mono"><b>S/ ${totalAnio.toFixed(2)}</b></td></tr></tfoot></table>`;
+    <tfoot><tr><td><b>Total del año</b></td><td></td><td></td><td class="mono"><b>S/ ${totalAnioMenu.toFixed(2)}</b></td><td class="mono"><b>S/ ${totalAnioCena.toFixed(2)}</b></td><td class="mono"><b>S/ ${totalAnioAgua.toFixed(2)}</b></td><td class="mono"><b>S/ ${totalAnio.toFixed(2)}</b></td></tr></tfoot></table>`;
 }
 
 function descargarReporteMenusPdf(){
@@ -4213,7 +4760,7 @@ function descargarReporteMenusPdf(){
 
   addLogoToPdf(doc, 480, 30, 50);
   doc.setFont('helvetica','bold'); doc.setFontSize(14);
-  doc.text('REPORTE DE MENÚS DIARIOS', marginX, y); y += 20;
+  doc.text('REPORTE DE ALIMENTACIÓN GENERAL', marginX, y); y += 20;
   if(emp.razonSocial){ doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.text(emp.razonSocial, marginX, y); y += 16; }
   y += 8;
 
@@ -4221,11 +4768,11 @@ function descargarReporteMenusPdf(){
   doc.setFont('helvetica','bold'); doc.setFontSize(12);
   doc.text(`Resumen anual ${currentMenuAnioFiltro}`, marginX, y); y += 18;
   const yearEntries = menuEntries.filter(m=>m.fecha.slice(0,4)===currentMenuAnioFiltro);
-  doc.setFontSize(9);
-  doc.text('Mes', marginX, y); doc.text('Días', marginX+110, y); doc.text('Raciones', marginX+155, y); doc.text('Menú S/', marginX+220, y); doc.text('Cena S/', marginX+300, y); doc.text('Total S/', marginX+375, y);
-  y += 5; doc.setDrawColor(200); doc.line(marginX, y, marginX+445, y); y += 13;
+  doc.setFontSize(8.5);
+  doc.text('Mes', marginX, y); doc.text('Días', marginX+95, y); doc.text('Raciones', marginX+135, y); doc.text('Menú S/', marginX+195, y); doc.text('Cena S/', marginX+260, y); doc.text('Agua S/', marginX+325, y); doc.text('Total S/', marginX+390, y);
+  y += 5; doc.setDrawColor(200); doc.line(marginX, y, marginX+460, y); y += 13;
   doc.setFont('helvetica','normal');
-  let racionesAnioTotal = 0, totalAnioMenuTotal = 0, totalAnioCenaTotal = 0;
+  let racionesAnioTotal = 0, totalAnioMenuTotal = 0, totalAnioCenaTotal = 0, totalAnioAguaTotal = 0;
   MESES.forEach((mesNombre, i)=>{
     const mm = String(i+1).padStart(2,'0');
     const entriesMes = yearEntries.filter(m=>m.fecha.slice(5,7)===mm);
@@ -4233,18 +4780,20 @@ function descargarReporteMenusPdf(){
     const raciones = entriesMes.reduce((s,m)=>s+(m.cantidad||0),0);
     const totalMenu = entriesMes.filter(m=>(m.tipo||'Menú')==='Menú').reduce((s,m)=>s+(m.total||0),0);
     const totalCena = entriesMes.filter(m=>m.tipo==='Cena').reduce((s,m)=>s+(m.total||0),0);
-    racionesAnioTotal += raciones; totalAnioMenuTotal += totalMenu; totalAnioCenaTotal += totalCena;
+    const totalAgua = entriesMes.filter(m=>m.tipo==='Agua').reduce((s,m)=>s+(m.total||0),0);
+    racionesAnioTotal += raciones; totalAnioMenuTotal += totalMenu; totalAnioCenaTotal += totalCena; totalAnioAguaTotal += totalAgua;
     doc.text(mesNombre, marginX, y);
-    doc.text(String(entriesMes.length), marginX+110, y);
-    doc.text(String(raciones), marginX+155, y);
-    doc.text('S/ '+totalMenu.toFixed(2), marginX+220, y);
-    doc.text('S/ '+totalCena.toFixed(2), marginX+300, y);
-    doc.text('S/ '+(totalMenu+totalCena).toFixed(2), marginX+375, y);
+    doc.text(String(entriesMes.length), marginX+95, y);
+    doc.text(String(raciones), marginX+135, y);
+    doc.text('S/ '+totalMenu.toFixed(2), marginX+195, y);
+    doc.text('S/ '+totalCena.toFixed(2), marginX+260, y);
+    doc.text('S/ '+totalAgua.toFixed(2), marginX+325, y);
+    doc.text('S/ '+(totalMenu+totalCena+totalAgua).toFixed(2), marginX+390, y);
     y += 14;
   });
-  y += 6; doc.setDrawColor(0); doc.line(marginX, y, marginX+445, y); y += 14;
-  doc.setFont('helvetica','bold');
-  doc.text(`Total del año: ${racionesAnioTotal} raciones — Menú S/ ${totalAnioMenuTotal.toFixed(2)} — Cena S/ ${totalAnioCenaTotal.toFixed(2)} — Total S/ ${(totalAnioMenuTotal+totalAnioCenaTotal).toFixed(2)}`, marginX, y, {maxWidth:500});
+  y += 6; doc.setDrawColor(0); doc.line(marginX, y, marginX+460, y); y += 14;
+  doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.text(`Total del año: ${racionesAnioTotal} raciones — Menú S/ ${totalAnioMenuTotal.toFixed(2)} — Cena S/ ${totalAnioCenaTotal.toFixed(2)} — Agua S/ ${totalAnioAguaTotal.toFixed(2)} — Total S/ ${(totalAnioMenuTotal+totalAnioCenaTotal+totalAnioAguaTotal).toFixed(2)}`, marginX, y, {maxWidth:510});
   y += 30;
 
   // Detalle filtrado (según lo que se está viendo en pantalla)
@@ -4256,8 +4805,8 @@ function descargarReporteMenusPdf(){
   doc.setFontSize(12);
   doc.text('Detalle del periodo filtrado', marginX, y); y += 18;
   doc.setFontSize(9);
-  doc.text('Fecha', marginX, y); doc.text('Tipo', marginX+80, y); doc.text('Raciones', marginX+140, y); doc.text('Precio', marginX+210, y); doc.text('Total', marginX+280, y);
-  y += 5; doc.setDrawColor(200); doc.line(marginX, y, marginX+360, y); y += 13;
+  doc.text('Fecha', marginX, y); doc.text('Tipo', marginX+80, y); doc.text('Raciones', marginX+140, y); doc.text('Precio', marginX+210, y); doc.text('Total', marginX+280, y); doc.text('Estado de pago', marginX+340, y);
+  y += 5; doc.setDrawColor(200); doc.line(marginX, y, marginX+460, y); y += 13;
   doc.setFont('helvetica','normal');
   sorted.forEach(m=>{
     if(y>770){ doc.addPage(); y=50; }
@@ -4266,11 +4815,172 @@ function descargarReporteMenusPdf(){
     doc.text(String(m.cantidad), marginX+140, y);
     doc.text('S/ '+(m.precio||0).toFixed(2), marginX+210, y);
     doc.text('S/ '+(m.total||0).toFixed(2), marginX+280, y);
+    doc.text((m.estadoPago||'pendiente')==='pagado' ? 'Pagado' : 'Pendiente', marginX+340, y);
     y += 14;
   });
 
   doc.save(`reporte_menus_${currentMenuAnioFiltro}.pdf`);
   showToast('Reporte de menús descargado');
+}
+
+function switchAlimTab(tab){
+  document.querySelectorAll('[data-alim-tab]').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`[data-alim-tab="${tab}"]`).classList.add('active');
+  document.getElementById('alimRegistroBlock').style.display = tab==='registro' ? 'block' : 'none';
+  document.getElementById('alimPagosBlock').style.display = tab==='pagos' ? 'block' : 'none';
+  if(tab==='pagos') renderAlimPagos();
+}
+let currentAlimPagoEstadoFiltro = 'todos';
+let currentAlimPagoTipoFiltro = 'todos';
+function obtenerEntriesAlimPagosFiltrados(){
+  let lista = [...menuEntries];
+  if(currentAlimPagoEstadoFiltro!=='todos') lista = lista.filter(m=>(m.estadoPago||'pendiente')===currentAlimPagoEstadoFiltro);
+  if(currentAlimPagoTipoFiltro!=='todos') lista = lista.filter(m=>(m.tipo||'Menú')===currentAlimPagoTipoFiltro);
+  return lista.sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+}
+function renderAlimPagos(){
+  const statsEl = document.getElementById('alimPagosStats');
+  if(!statsEl) return;
+  const pendientePorTipo = tipo => menuEntries.filter(m=>(m.estadoPago||'pendiente')==='pendiente' && (m.tipo||'Menú')===tipo).reduce((s,m)=>s+(m.total||0),0);
+  const pagadoPorTipo = tipo => menuEntries.filter(m=>(m.estadoPago||'pendiente')==='pagado' && (m.tipo||'Menú')===tipo).reduce((s,m)=>s+(m.total||0),0);
+  const pendMenu = pendientePorTipo('Menú'), pendCena = pendientePorTipo('Cena'), pendAgua = pendientePorTipo('Agua');
+  const pagMenu = pagadoPorTipo('Menú'), pagCena = pagadoPorTipo('Cena'), pagAgua = pagadoPorTipo('Agua');
+  const totalPagado = pagMenu+pagCena+pagAgua;
+  const totalPendiente = pendMenu+pendCena+pendAgua;
+  statsEl.innerHTML = `
+    <div class="stat-card"><div class="num">S/ ${(totalPagado+totalPendiente).toFixed(2)}</div><div class="label">Total general</div></div>
+    <div class="stat-card ok"><div class="num">S/ ${totalPagado.toFixed(2)}</div><div class="label">Total pagado</div></div>
+    <div class="stat-card warn"><div class="num">S/ ${totalPendiente.toFixed(2)}</div><div class="label">Total pendiente de pago</div></div>
+    <div class="stat-card ${pendMenu?'warn':''}"><div class="num">S/ ${pendMenu.toFixed(2)}</div><div class="label">Pendiente — Menú (almuerzo)</div></div>
+    <div class="stat-card ${pendCena?'warn':''}"><div class="num">S/ ${pendCena.toFixed(2)}</div><div class="label">Pendiente — Cena</div></div>
+    <div class="stat-card ${pendAgua?'warn':''}"><div class="num">S/ ${pendAgua.toFixed(2)}</div><div class="label">Pendiente — Agua</div></div>
+    <div class="stat-card ok"><div class="num">S/ ${pagMenu.toFixed(2)}</div><div class="label">Pagado — Menú (almuerzo)</div></div>
+    <div class="stat-card ok"><div class="num">S/ ${pagCena.toFixed(2)}</div><div class="label">Pagado — Cena</div></div>
+    <div class="stat-card ok"><div class="num">S/ ${pagAgua.toFixed(2)}</div><div class="label">Pagado — Agua</div></div>
+  `;
+
+  const lista = obtenerEntriesAlimPagosFiltrados();
+  const rows = lista.map(m=>{
+    const estado = m.estadoPago||'pendiente';
+    const dias = daysUntil(m.fecha)!==null ? Math.abs(daysUntil(m.fecha)) : null;
+    const antiguedad = estado==='pendiente' && dias!==null ? `<span class="hint" style="margin:0;">pendiente hace ${dias} día(s)</span>` : '';
+    return `<tr>
+      <td>${fmtDate(m.fecha)}</td>
+      <td><span class="pill ${m.tipo==='Cena' ? 'pill-muted' : m.tipo==='Agua' ? 'pill-warn' : 'pill-ok'}">${m.tipo||'Menú'}</span></td>
+      <td>${m.detalle||'—'}</td>
+      <td>${m.proveedor||'—'}</td>
+      <td class="mono">S/ ${(m.total||0).toFixed(2)}</td>
+      <td>
+        <select onchange="toggleEstadoPagoMenu('${m.id}', this.value)" style="width:160px;">
+          <option value="pendiente" ${estado==='pendiente'?'selected':''}>Pendiente de pago</option>
+          <option value="pagado" ${estado==='pagado'?'selected':''}>Pagado</option>
+        </select>
+        ${antiguedad}
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('alimPagosTable').innerHTML = lista.length ? `
+    <div class="table-scroll">
+    <table><thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Proveedor</th><th>Total</th><th>Estado de pago</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    </div>` : `<div class="empty">No hay registros para este filtro.</div>`;
+
+  renderAlimGastoChart();
+}
+function renderAlimGastoChart(){
+  const cont = document.getElementById('alimGastoChart');
+  if(!cont) return;
+  const anio = currentMenuAnioFiltro;
+  const yearEntries = menuEntries.filter(m=>m.fecha.slice(0,4)===anio);
+  if(!yearEntries.length){ cont.innerHTML = `<div class="empty">No hay datos de ${anio} para graficar.</div>`; return; }
+  const porMes = MESES.map((_,i)=>{
+    const mm = String(i+1).padStart(2,'0');
+    const entriesMes = yearEntries.filter(m=>m.fecha.slice(5,7)===mm);
+    return {
+      menu: entriesMes.filter(m=>(m.tipo||'Menú')==='Menú').reduce((s,m)=>s+(m.total||0),0),
+      cena: entriesMes.filter(m=>m.tipo==='Cena').reduce((s,m)=>s+(m.total||0),0),
+      agua: entriesMes.filter(m=>m.tipo==='Agua').reduce((s,m)=>s+(m.total||0),0),
+    };
+  });
+  const maxVal = Math.max(1, ...porMes.map(m=>m.menu+m.cena+m.agua));
+  const w=760, h=240, padL=44, padB=34, padT=14, padR=10;
+  const chartW=w-padL-padR, chartH=h-padT-padB;
+  const groupW = chartW/12;
+  const barW = Math.max(6, groupW*0.22);
+  const scaleY = v => padT + chartH - (v/maxVal)*chartH;
+  let bars='', gridLines='';
+  [0.25,0.5,0.75,1].forEach(f=>{
+    const y = scaleY(maxVal*f);
+    gridLines += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${w-padR}" y2="${y.toFixed(1)}" stroke="#E4E0D6" stroke-width="1"></line>`;
+    gridLines += `<text x="${padL-6}" y="${(y+3).toFixed(1)}" font-size="9" text-anchor="end" fill="#6b665c">${(maxVal*f).toFixed(0)}</text>`;
+  });
+  porMes.forEach((m,i)=>{
+    const cx = padL + i*groupW + groupW/2;
+    [['menu','#3F6B4A'],['cena','#B8862E'],['agua','#3E6E8E']].forEach(([k,color],j)=>{
+      const val = m[k];
+      const x = cx - barW*1.5 + j*barW;
+      const yTop = scaleY(val);
+      const barH = (padT+chartH)-yTop;
+      if(val>0) bars += `<rect x="${x.toFixed(1)}" y="${yTop.toFixed(1)}" width="${(barW-2).toFixed(1)}" height="${barH.toFixed(1)}" fill="${color}" rx="1.5"></rect>`;
+    });
+    bars += `<text x="${cx.toFixed(1)}" y="${h-padB+14}" font-size="9" text-anchor="middle" fill="#6b665c">${MESES[i].slice(0,3)}</text>`;
+  });
+  cont.innerHTML = `
+    <div style="display:flex;gap:14px;font-size:11px;margin-bottom:6px;">
+      <span><span style="display:inline-block;width:10px;height:10px;background:#3F6B4A;border-radius:2px;margin-right:4px;"></span>Menú</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:#B8862E;border-radius:2px;margin-right:4px;"></span>Cena</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:#3E6E8E;border-radius:2px;margin-right:4px;"></span>Agua</span>
+    </div>
+    <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;max-height:260px;">${gridLines}${bars}</svg>`;
+}
+function descargarControlPagosPdf(){
+  const lista = obtenerEntriesAlimPagosFiltrados();
+  if(!lista.length){ showToast('No hay registros para descargar'); return; }
+  const emp = window._empresaData || {};
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const marginX = 45; let y = 55;
+
+  addLogoToPdf(doc, 480, 30, 50);
+  doc.setFont('helvetica','bold'); doc.setFontSize(14);
+  doc.text('CONTROL DE PAGOS — ALIMENTACIÓN GENERAL', marginX, y); y += 20;
+  if(emp.razonSocial){ doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.text(emp.razonSocial, marginX, y); y += 16; }
+  doc.setFontSize(9); doc.text(`Generado el ${fmtDate(new Date().toISOString().slice(0,10))}`, marginX, y); y += 22;
+
+  const pendPorTipo = tipo => menuEntries.filter(m=>(m.estadoPago||'pendiente')==='pendiente' && (m.tipo||'Menú')===tipo).reduce((s,m)=>s+(m.total||0),0);
+  const pagPorTipo = tipo => menuEntries.filter(m=>(m.estadoPago||'pendiente')==='pagado' && (m.tipo||'Menú')===tipo).reduce((s,m)=>s+(m.total||0),0);
+  doc.setFont('helvetica','bold'); doc.setFontSize(10.5);
+  doc.text('Resumen por tipo (saldo pendiente / pagado)', marginX, y); y += 16;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  ['Menú','Cena','Agua'].forEach(tipo=>{
+    doc.text(`${tipo}:  Pendiente S/ ${pendPorTipo(tipo).toFixed(2)}   —   Pagado S/ ${pagPorTipo(tipo).toFixed(2)}`, marginX, y);
+    y += 14;
+  });
+  y += 10;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.text('Fecha', marginX, y); doc.text('Tipo', marginX+60, y); doc.text('Detalle', marginX+105, y); doc.text('Proveedor', marginX+250, y); doc.text('Total', marginX+380, y); doc.text('Estado', marginX+440, y);
+  y += 5; doc.setDrawColor(200); doc.line(marginX, y, marginX+505, y); y += 14;
+  doc.setFont('helvetica','normal');
+  let totalPagadoPdf = 0, totalPendientePdf = 0;
+  lista.forEach(m=>{
+    if(y>770){ doc.addPage(); y=50; }
+    const estado = m.estadoPago||'pendiente';
+    if(estado==='pagado') totalPagadoPdf += m.total||0; else totalPendientePdf += m.total||0;
+    doc.text(fmtDate(m.fecha), marginX, y);
+    doc.text(m.tipo||'Menú', marginX+60, y);
+    doc.text(String(m.detalle||'—').slice(0,26), marginX+105, y);
+    doc.text(String(m.proveedor||'—').slice(0,20), marginX+250, y);
+    doc.text('S/ '+(m.total||0).toFixed(2), marginX+380, y);
+    doc.text(estado==='pagado'?'Pagado':'Pendiente', marginX+440, y);
+    y += 15;
+  });
+  y += 8; doc.setDrawColor(0); doc.line(marginX, y, marginX+505, y); y += 16;
+  doc.setFont('helvetica','bold');
+  doc.text(`Total pagado (filtro): S/ ${totalPagadoPdf.toFixed(2)}     Total pendiente (filtro): S/ ${totalPendientePdf.toFixed(2)}`, marginX, y);
+
+  doc.save(`control_pagos_alimentacion_${new Date().toISOString().slice(0,10)}.pdf`);
+  showToast('Control de pagos descargado');
 }
 
 document.addEventListener('DOMContentLoaded', ()=>{
@@ -4280,6 +4990,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(mesSel) mesSel.addEventListener('change', ()=>{ currentMenuMesFiltro = mesSel.value; renderMenus(); });
   if(anioSel) anioSel.addEventListener('change', ()=>{ currentMenuAnioFiltro = anioSel.value; renderMenus(); });
   if(tipoSel) tipoSel.addEventListener('change', ()=>{ currentMenuTipoFiltro = tipoSel.value; renderMenus(); });
+  const pagoEstadoSel = document.getElementById('alimPagoEstadoFiltro');
+  const pagoTipoSel = document.getElementById('alimPagoTipoFiltro');
+  if(pagoEstadoSel) pagoEstadoSel.addEventListener('change', ()=>{ currentAlimPagoEstadoFiltro = pagoEstadoSel.value; renderAlimPagos(); });
+  if(pagoTipoSel) pagoTipoSel.addEventListener('change', ()=>{ currentAlimPagoTipoFiltro = pagoTipoSel.value; renderAlimPagos(); });
 });
 
 // ---------- Documentos y Contratos (carga, vencimientos, renovación/cierre, historial) ----------
@@ -4465,7 +5179,7 @@ function uploadBoleta(){
   if(!empId || !fileInput.files.length){ showToast('Selecciona colaborador y archivo'); return; }
   if(categoria==='boleta' && !periodo){ showToast('Indica el periodo de la boleta'); return; }
   const file = fileInput.files[0];
-  if(file.size > 4*1024*1024){ showToast('El archivo es muy grande (máx. 4MB)'); return; }
+  if(file.size > 1*1024*1024){ showToast('El archivo es muy grande (máx. 1MB, para no llenar el espacio de almacenamiento)'); return; }
   const reader = new FileReader();
   reader.onload = async ()=>{
     workerDocs.push({
@@ -4626,6 +5340,86 @@ async function descargarExpedienteCompleto(){
 }
 
 // ---------- Base de datos ----------
+// ---------- Planilla y Cuentas Bancarias ----------
+let currentPlanillaRegimenFiltro = 'todos';
+function renderPlanillaBancaria(){
+  const statsEl = document.getElementById('planillaStats');
+  if(!statsEl) return;
+  const activos = employees.filter(e=>e.estado==='activo');
+  const mype = activos.filter(e=>(e.beneficiosSociales||'Régimen general')==='Régimen MYPE');
+  const general = activos.filter(e=>(e.beneficiosSociales||'Régimen general')==='Régimen general');
+  const sinCuenta = activos.filter(e=>!e.numeroCuenta);
+  statsEl.innerHTML = `
+    <div class="stat-card"><div class="num">${activos.length}</div><div class="label">Colaboradores activos</div></div>
+    <div class="stat-card ok"><div class="num">${mype.length}</div><div class="label">En Régimen MYPE</div></div>
+    <div class="stat-card"><div class="num">${general.length}</div><div class="label">En Régimen general</div></div>
+    <div class="stat-card warn"><div class="num">${sinCuenta.length}</div><div class="label">Sin cuenta bancaria registrada</div></div>
+  `;
+
+  const filtro = document.getElementById('planillaFiltroRegimen').value;
+  let lista = activos;
+  if(filtro!=='todos') lista = lista.filter(e=>(e.beneficiosSociales||'Régimen general')===filtro);
+  lista = [...lista].sort((a,b)=>a.nombre.localeCompare(b.nombre));
+
+  const rows = lista.map(e=>`
+    <tr>
+      <td><b>${e.nombre}</b></td>
+      <td class="mono">${e.dni}</td>
+      <td>${e.cargo||'—'}</td>
+      <td>
+        <select onchange="actualizarCampoPlanilla('${e.id}','beneficiosSociales',this.value)" style="width:150px;">
+          <option value="Régimen general" ${(e.beneficiosSociales||'Régimen general')==='Régimen general'?'selected':''}>Régimen general</option>
+          <option value="Régimen MYPE" ${e.beneficiosSociales==='Régimen MYPE'?'selected':''}>Régimen MYPE</option>
+        </select>
+      </td>
+      <td><input type="text" value="${e.banco||''}" placeholder="Ej. BCP" style="width:120px;" onchange="actualizarCampoPlanilla('${e.id}','banco',this.value)"></td>
+      <td><input type="text" value="${e.numeroCuenta||''}" style="width:150px;" onchange="actualizarCampoPlanilla('${e.id}','numeroCuenta',this.value)"></td>
+      <td><input type="text" value="${e.cci||''}" placeholder="20 dígitos" style="width:170px;" onchange="actualizarCampoPlanilla('${e.id}','cci',this.value)"></td>
+    </tr>`).join('');
+  document.getElementById('planillaTable').innerHTML = lista.length ? `
+    <div class="table-scroll">
+    <table><thead><tr><th>Colaborador</th><th>DNI</th><th>Cargo</th><th>Régimen de planilla</th><th>Banco</th><th>N° de cuenta</th><th>CCI</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    </div>` : `<div class="empty">No hay colaboradores para este filtro.</div>`;
+}
+async function actualizarCampoPlanilla(empId, campo, valor){
+  const e = employees.find(x=>x.id===empId);
+  if(!e) return;
+  e[campo] = valor;
+  await saveData('employees', employees);
+  if(campo==='beneficiosSociales') renderPlanillaBancaria();
+  showToast('Actualizado');
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  const sel = document.getElementById('planillaFiltroRegimen');
+  if(sel) sel.addEventListener('change', renderPlanillaBancaria);
+});
+function descargarPlanillaBancariaExcel(){
+  const activos = employees.filter(e=>e.estado==='activo');
+  const filtro = document.getElementById('planillaFiltroRegimen').value;
+  let lista = activos;
+  if(filtro!=='todos') lista = lista.filter(e=>(e.beneficiosSociales||'Régimen general')===filtro);
+  if(!lista.length){ showToast('No hay colaboradores para exportar'); return; }
+  lista = [...lista].sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const rows = lista.map(e=>({
+    'Colaborador': e.nombre, 'DNI': String(e.dni), 'Cargo': e.cargo||'', 'Régimen': e.beneficiosSociales||'Régimen general',
+    'Banco': e.banco||'', 'N° de cuenta': String(e.numeroCuenta||''), 'CCI': String(e.cci||''), 'Sueldo mensual (S/)': Number((e.sueldoMensual||0).toFixed(2))
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:32},{wch:12},{wch:20},{wch:16},{wch:14},{wch:20},{wch:24},{wch:16}];
+  // Forzar DNI, N° de cuenta y CCI como texto para evitar notación científica
+  rows.forEach((r,i)=>{
+    ['B','F','G'].forEach(col=>{
+      const addr = `${col}${i+2}`;
+      if(ws[addr]){ ws[addr].t = 's'; ws[addr].z = '@'; }
+    });
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Planilla y cuentas');
+  XLSX.writeFile(wb, `planilla_cuentas_bancarias_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast('Excel descargado');
+}
+
 function renderBasedatos(){
   const q = (document.getElementById('basedatosSearch').value||'').toLowerCase();
   const list = employees.filter(e=> e.nombre.toLowerCase().includes(q) || (e.dni||'').includes(q));
@@ -4674,8 +5468,10 @@ function switchAsistTab(tab){
   document.getElementById('asistPermisosBlock').style.display = tab==='permisos' ? 'block':'none';
   document.getElementById('asistDescansosBlock').style.display = tab==='descansos' ? 'block':'none';
   document.getElementById('asistPrestamosBlock').style.display = tab==='prestamos' ? 'block':'none';
+  document.getElementById('asistFormatoManualBlock').style.display = tab==='formatomanual' ? 'block':'none';
   document.getElementById('asistReportesBlock').style.display = tab==='reportes' ? 'block':'none';
   if(tab==='reportes') renderReporteMensual();
+  if(tab==='formatomanual') initFormatoManual();
 }
 
 // ---------- Registro diario (ingreso, salida, horas extras, permisos) ----------
@@ -5389,6 +6185,279 @@ function renderPrestamos(){
     </div>` : `<div class="empty">Aún no registras préstamos ni adelantos.</div>`;
 }
 
+// ---------- Formato de asistencia manual (hoja de firmas diaria) ----------
+let currentFormatoManualArea = 'todas';
+function initFormatoManual(){
+  if(!document.getElementById('formatoManualFecha').value){
+    document.getElementById('formatoManualFecha').value = new Date().toISOString().slice(0,10);
+  }
+  poblarSelectAgregarFormatoManual();
+  cargarFormatoManualFecha();
+}
+function filtrarFormatoManualPorArea(){
+  currentFormatoManualArea = document.getElementById('formatoManualAreaFiltro').value;
+  renderFormatoManualTable();
+}
+function poblarSelectAgregarFormatoManual(){
+  const sel = document.getElementById('formatoManualAgregarSelect');
+  if(!sel) return;
+  const fecha = document.getElementById('formatoManualFecha').value;
+  const yaIncluidos = new Set(asistenciaManual.filter(a=>a.fecha===fecha).map(a=>a.empId));
+  const disponibles = employees.filter(e=>!yaIncluidos.has(e.id));
+  sel.innerHTML = disponibles.length
+    ? disponibles.map(e=>`<option value="${e.id}">${e.nombre} — ${e.dni}${e.estado!=='activo' ? ' (inactivo)' : ''}</option>`).join('')
+    : `<option value="">Todos ya están en la lista</option>`;
+}
+async function cargarActivosFormatoManual(){
+  const fecha = document.getElementById('formatoManualFecha').value;
+  if(!fecha){ showToast('Elige una fecha primero'); return; }
+  const yaIncluidos = new Set(asistenciaManual.filter(a=>a.fecha===fecha).map(a=>a.empId));
+  let activos = employees.filter(e=>e.estado==='activo' && !yaIncluidos.has(e.id));
+  if(currentFormatoManualArea!=='todas') activos = activos.filter(e=>e.area===currentFormatoManualArea);
+  activos.forEach(e=>{
+    asistenciaManual.push({id:'am'+Date.now()+Math.random().toString(36).slice(2,5), fecha, empId:e.id, asistio:null, horaEntrada:'', horaSalida:'', observaciones:''});
+  });
+  await saveData('asistenciaManual', asistenciaManual);
+  renderFormatoManualTable();
+  poblarSelectAgregarFormatoManual();
+  showToast(currentFormatoManualArea==='todas' ? 'Colaboradores activos cargados en la lista' : `Colaboradores activos de ${currentFormatoManualArea} cargados en la lista`);
+}
+function cargarFormatoManualFecha(){
+  poblarSelectAgregarFormatoManual();
+  renderFormatoManualTable();
+}
+async function agregarTrabajadorFormatoManual(){
+  const fecha = document.getElementById('formatoManualFecha').value;
+  const empId = document.getElementById('formatoManualAgregarSelect').value;
+  if(!fecha){ showToast('Elige una fecha primero'); return; }
+  if(!empId){ showToast('Selecciona un trabajador'); return; }
+  asistenciaManual.push({id:'am'+Date.now(), fecha, empId, asistio:null, horaEntrada:'', horaSalida:'', observaciones:''});
+  await saveData('asistenciaManual', asistenciaManual);
+  renderFormatoManualTable();
+  poblarSelectAgregarFormatoManual();
+  showToast('Trabajador agregado a la lista del día');
+}
+async function quitarTrabajadorFormatoManual(id){
+  asistenciaManual = asistenciaManual.filter(a=>a.id!==id);
+  await saveData('asistenciaManual', asistenciaManual);
+  renderFormatoManualTable();
+  poblarSelectAgregarFormatoManual();
+}
+async function actualizarCampoFormatoManual(id, campo, valor){
+  const reg = asistenciaManual.find(a=>a.id===id);
+  if(!reg) return;
+  reg[campo] = valor;
+  await saveData('asistenciaManual', asistenciaManual);
+}
+async function marcarAsistioFormatoManual(id, valorTexto){
+  const reg = asistenciaManual.find(a=>a.id===id);
+  if(!reg) return;
+  reg.asistio = valorTexto==='si' ? true : valorTexto==='no' ? false : null;
+  await saveData('asistenciaManual', asistenciaManual);
+  renderFormatoManualTable();
+}
+function renderFormatoManualTable(){
+  const cont = document.getElementById('formatoManualTable');
+  if(!cont) return;
+  const fecha = document.getElementById('formatoManualFecha').value;
+  const conNombre = obtenerRegistrosFormatoManualFiltrados(fecha);
+  if(!conNombre.length){
+    cont.innerHTML = `<div class="empty">${currentFormatoManualArea==='todas' ? 'Aún no hay trabajadores en la lista de este día. Usa "Cargar todos los activos" o agrégalos uno por uno.' : `No hay trabajadores de ${currentFormatoManualArea} en la lista de este día.`}</div>`;
+    return;
+  }
+  const rows = conNombre.map((r,i)=>`
+    <tr>
+      <td class="mono">${i+1}</td>
+      <td class="mono">${r.emp?r.emp.dni:'—'}</td>
+      <td>${r.emp?r.emp.nombre:'(colaborador eliminado)'}</td>
+      <td>
+        <select onchange="marcarAsistioFormatoManual('${r.id}', this.value)" style="width:120px;">
+          <option value="" ${r.asistio===null?'selected':''}>Sin marcar</option>
+          <option value="si" ${r.asistio===true?'selected':''}>Asistió</option>
+          <option value="no" ${r.asistio===false?'selected':''}>No asistió</option>
+        </select>
+      </td>
+      <td><input type="time" value="${r.horaEntrada||''}" style="width:110px;" onchange="actualizarCampoFormatoManual('${r.id}','horaEntrada',this.value)"></td>
+      <td><input type="time" value="${r.horaSalida||''}" style="width:110px;" onchange="actualizarCampoFormatoManual('${r.id}','horaSalida',this.value)"></td>
+      <td><input type="text" value="${r.observaciones||''}" style="width:160px;" onchange="actualizarCampoFormatoManual('${r.id}','observaciones',this.value)"></td>
+      <td><button class="btn btn-danger btn-sm" onclick="quitarTrabajadorFormatoManual('${r.id}')">Quitar</button></td>
+    </tr>`).join('');
+  cont.innerHTML = `
+    <div class="table-scroll">
+    <table><thead><tr><th>N°</th><th>DNI</th><th>Nombre</th><th>Asistencia</th><th>Hora entrada</th><th>Hora salida</th><th>Observaciones</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    </div>`;
+}
+
+function obtenerRegistrosFormatoManualFiltrados(fecha){
+  const registros = asistenciaManual.filter(a=>a.fecha===fecha);
+  let conNombre = registros.map(r=>({...r, emp: employees.find(e=>e.id===r.empId), empObj: employees.find(e=>e.id===r.empId)}));
+  if(currentFormatoManualArea!=='todas'){
+    conNombre = conNombre.filter(r=>r.emp && r.emp.area===currentFormatoManualArea);
+  }
+  return conNombre.sort((a,b)=>(a.emp?a.emp.nombre:'').localeCompare(b.emp?b.emp.nombre:''));
+}
+
+function descargarFormatoManualExcel(){
+  const fecha = document.getElementById('formatoManualFecha').value;
+  const conNombre = obtenerRegistrosFormatoManualFiltrados(fecha);
+  if(!conNombre.length){ showToast('No hay trabajadores en la lista de este día'); return; }
+  const emp = window._empresaData || {};
+
+  const wsData = [
+    [emp.razonSocial || 'SERVING', '', '', '', '', '', '', ''],
+    [emp.ruc ? `RUC: ${emp.ruc}` : '', '', '', '', '', '', '', ''],
+    ['REGISTRO DE ASISTENCIA DIARIA' + (currentFormatoManualArea!=='todas' ? ` — ÁREA: ${currentFormatoManualArea.toUpperCase()}` : ''), '', '', '', '', '', '', ''],
+    [],
+    [`ASISTENCIA DEL DÍA:`, fmtDate(fecha), '', '', '', '', '', ''],
+    ['HORARIO DE TRABAJO DE LUNES A SÁBADO: 08:00 AM - 17:00 PM', '', '', '', 'REFRIGERIO: 13:00 PM - 14:00 PM', '', '', ''],
+    [],
+    ['N°','DNI','NOMBRE','HORA DE ENTRADA','FIRMA','HORA DE SALIDA','FIRMA','OBSERVACIONES'],
+    ...conNombre.map((r,i)=>[
+      String(i+1).padStart(2,'0'),
+      r.empObj ? String(r.empObj.dni) : '',
+      r.empObj ? r.empObj.nombre : '(colaborador eliminado)',
+      r.horaEntrada || '',
+      '',
+      r.horaSalida || '',
+      '',
+      (r.observaciones||'') + (r.asistio===false ? ' (No asistió)' : r.asistio===true ? ' (Asistió)' : '')
+    ])
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{wch:6},{wch:14},{wch:48},{wch:13},{wch:12},{wch:13},{wch:12},{wch:18}];
+  ws['!rows'] = wsData.map((_,r)=> r>=7 ? {hpt:22} : {hpt:18});
+  ws['!merges'] = [
+    {s:{r:0,c:0}, e:{r:0,c:7}}, {s:{r:1,c:0}, e:{r:1,c:7}}, {s:{r:2,c:0}, e:{r:2,c:7}},
+    {s:{r:5,c:0}, e:{r:5,c:3}}, {s:{r:5,c:4}, e:{r:5,c:7}}
+  ];
+  ws['!pageSetup'] = {orientation:'portrait', fitToWidth:1, fitToHeight:1, scale:90};
+  ws['!margins'] = {left:0.2, right:0.2, top:0.25, bottom:0.25, header:0.1, footer:0.1};
+  const headerRowIdx = 7;
+  const HEADER_FILL = {patternType:'solid', fgColor:{rgb:'D6E0F4'}, bgColor:{rgb:'D6E0F4'}};
+  const THIN_BORDER = {top:{style:'thin',color:{rgb:'000000'}}, bottom:{style:'thin',color:{rgb:'000000'}}, left:{style:'thin',color:{rgb:'000000'}}, right:{style:'thin',color:{rgb:'000000'}}};
+  wsData.forEach((row, r)=>{
+    if(r<headerRowIdx) return;
+    row.forEach((val, c)=>{
+      const addr = XLSX.utils.encode_cell({r, c});
+      if(!ws[addr]) ws[addr] = {t:'s', v:''};
+      // Forzar DNI (columna 1) como TEXTO para que nunca salga en notación científica (ej. 5E+07)
+      if(c===1 && r>headerRowIdx){ ws[addr].t = 's'; ws[addr].z = '@'; }
+      ws[addr].s = {
+        border: THIN_BORDER,
+        alignment: {horizontal: c===2||c===7 ? 'left' : 'center', vertical:'center', wrapText:true},
+        font: r===headerRowIdx ? {bold:true, sz:10} : {sz:10},
+        fill: r===headerRowIdx ? HEADER_FILL : undefined
+      };
+    });
+  });
+  ws['A1'].s = {font:{bold:true, sz:14}, alignment:{horizontal:'center'}};
+  if(ws['A2']) ws['A2'].s = {font:{bold:true, sz:11}, alignment:{horizontal:'center'}};
+  ws['A3'].s = {font:{bold:true, sz:13}, alignment:{horizontal:'center'}};
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Asistencia');
+  XLSX.writeFile(wb, `asistencia_manual_${fecha}${currentFormatoManualArea!=='todas' ? '_'+currentFormatoManualArea : ''}.xlsx`);
+  showToast('Formato descargado en Excel');
+}
+
+function descargarFormatoManualPdf(){
+  const fecha = document.getElementById('formatoManualFecha').value;
+  const conNombre = obtenerRegistrosFormatoManualFiltrados(fecha);
+  if(!conNombre.length){ showToast('No hay trabajadores en la lista de este día'); return; }
+  const emp = window._empresaData || {};
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const pageW = 595, pageH = 842, marginX = 18; let y = 24;
+  const tableW = pageW - marginX*2;
+
+  // Encabezado centrado (nombre, RUC, título) con el logo arriba a la derecha, igual que la plantilla original
+  doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.text(emp.razonSocial || 'SERVING', pageW/2, y, {align:'center'}); y += 15;
+  if(emp.ruc){ doc.setFontSize(10); doc.text(`RUC: ${emp.ruc}`, pageW/2, y, {align:'center'}); y += 15; }
+  doc.setFontSize(11.5);
+  doc.text('REGISTRO DE ASISTENCIA DIARIA' + (currentFormatoManualArea!=='todas' ? ` — ÁREA: ${currentFormatoManualArea.toUpperCase()}` : ''), pageW/2, y, {align:'center'}); y += 6;
+  addLogoToPdf(doc, pageW-58, 8, 46);
+  y += 14;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.text('ASISTENCIA DEL DÍA:', marginX, y);
+  doc.setFont('helvetica','normal');
+  doc.text(fmtDate(fecha), marginX+95, y);
+  doc.setDrawColor(0); doc.line(marginX+93, y+2, marginX+230, y+2);
+  y += 14;
+  doc.setFont('helvetica','bolditalic'); doc.setFontSize(8);
+  doc.text('HORARIO: LUNES A SÁBADO 08:00 AM - 17:00 PM', marginX, y);
+  doc.text('REFRIGERIO: 13:00 PM - 14:00 PM', marginX+280, y);
+  y += 12;
+
+  // Tabla con cuadrícula completa, márgenes mínimos, todo en una sola hoja vertical
+  const cols = [
+    {label:'N°', w:20},
+    {label:'DNI', w:52},
+    {label:'NOMBRE', w:240},
+    {label:'HORA DE\nENTRADA', w:40},
+    {label:'FIRMA', w:40},
+    {label:'HORA DE\nSALIDA', w:40},
+    {label:'FIRMA', w:40},
+    {label:'OBSERVACIONES', w:0},
+  ];
+  cols[cols.length-1].w = tableW - cols.slice(0,-1).reduce((s,c)=>s+c.w,0);
+  let colX = [];
+  let acc = marginX;
+  cols.forEach(c=>{ colX.push(acc); acc += c.w; });
+
+  const headerH = 24;
+  const bottomLimit = pageH - 16;
+  const availableH = bottomLimit - (y + headerH);
+  const rowCount = Math.max(conNombre.length, 1);
+  // Alto de fila dinámico para que TODOS los trabajadores entren en una sola hoja
+  const rowH = Math.max(11, Math.min(22, Math.floor(availableH / rowCount)));
+  const fontSize = rowH < 14 ? 6.5 : rowH < 17 ? 7.5 : 9;
+
+  doc.setFillColor(214,224,244);
+  doc.rect(marginX, y, tableW, headerH, 'F');
+  doc.setDrawColor(0); doc.setLineWidth(0.7);
+  doc.rect(marginX, y, tableW, headerH);
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5);
+  cols.forEach((c,i)=>{
+    doc.line(colX[i], y, colX[i], y+headerH);
+    const lines = c.label.split('\n');
+    lines.forEach((l,li)=>doc.text(l, colX[i]+c.w/2, y+10+li*9, {align:'center'}));
+  });
+  doc.line(marginX+tableW, y, marginX+tableW, y+headerH);
+  y += headerH;
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(fontSize); doc.setLineWidth(0.4);
+  conNombre.forEach((r,i)=>{
+    doc.rect(marginX, y, tableW, rowH);
+    cols.forEach((c,ci)=>doc.line(colX[ci], y, colX[ci], y+rowH));
+    doc.line(marginX+tableW, y, marginX+tableW, y+rowH);
+
+    const vals = [
+      String(i+1).padStart(2,'0'),
+      r.empObj?r.empObj.dni:'—',
+      String(r.empObj?r.empObj.nombre:'—').slice(0,48),
+      r.horaEntrada || '',
+      '',
+      r.horaSalida || '',
+      '',
+      (r.observaciones||'') + (r.asistio===false ? ' (No asistió)' : '')
+    ];
+    const textY = y + rowH/2 + fontSize/3;
+    vals.forEach((v,ci)=>{
+      const align = ci===2 || ci===7 ? 'left' : 'center';
+      const xPos = align==='left' ? colX[ci]+4 : colX[ci]+cols[ci].w/2;
+      doc.text(v, xPos, textY, {align, maxWidth: cols[ci].w-5});
+    });
+    y += rowH;
+  });
+
+  doc.save(`asistencia_manual_${fecha}${currentFormatoManualArea!=='todas' ? '_'+currentFormatoManualArea : ''}.pdf`);
+  showToast('Formato descargado en PDF');
+}
+
 function updateDescansoDias(){
   const ini = document.getElementById('descansoInicio').value;
   const fin = document.getElementById('descansoFin').value;
@@ -5820,11 +6889,46 @@ function switchBienTab(tab){
   document.querySelectorAll('[data-bien-tab]').forEach(b=>b.classList.remove('active'));
   document.querySelector(`[data-bien-tab="${tab}"]`).classList.add('active');
   document.getElementById('bienEventosBlock').style.display = tab==='eventos' ? 'block':'none';
+  document.getElementById('bienTrabajadorMesBlock').style.display = tab==='trabajadormes' ? 'block':'none';
   document.getElementById('bienEncuestasBlock').style.display = tab==='encuestas' ? 'block':'none';
   document.getElementById('bienCapacitacionesBlock').style.display = tab==='capacitaciones' ? 'block':'none';
 }
 
 // -- Eventos (incluye cumpleaños automáticos) --
+const FERIADOS_PERU_BASE = [
+  {nombre:'Año Nuevo', mes:'01', dia:'01'},
+  {nombre:'Día del Trabajo', mes:'05', dia:'01'},
+  {nombre:'San Pedro y San Pablo', mes:'06', dia:'29'},
+  {nombre:'Día de la Independencia del Perú', mes:'07', dia:'28'},
+  {nombre:'Segundo día de Fiestas Patrias', mes:'07', dia:'29'},
+  {nombre:'Santa Rosa de Lima', mes:'08', dia:'30'},
+  {nombre:'Combate de Angamos', mes:'10', dia:'08'},
+  {nombre:'Todos los Santos', mes:'11', dia:'01'},
+  {nombre:'Inmaculada Concepción', mes:'12', dia:'08'},
+  {nombre:'Navidad', mes:'12', dia:'25'},
+];
+async function cargarFeriadosPeru(){
+  const anioBase = new Date().getFullYear();
+  const yaExiste = nombre => eventos.some(e=>normalizarTexto(e.nombre)===normalizarTexto(nombre));
+  let agregados = 0;
+  FERIADOS_PERU_BASE.forEach(f=>{
+    if(!yaExiste(f.nombre)){
+      eventos.push({ id:'ev'+Date.now()+Math.random().toString(36).slice(2,6), nombre: f.nombre, tipo:'Feriado nacional', fecha:`${anioBase}-${f.mes}-${f.dia}`, empId:null, recurrente:true });
+      agregados++;
+    }
+  });
+  if(!yaExiste('Aniversario de SERVING')){
+    eventos.push({ id:'ev'+Date.now()+Math.random().toString(36).slice(2,6), nombre:'Aniversario de SERVING', tipo:'Aniversario laboral', fecha:`2008-10-14`, empId:null, recurrente:true });
+    agregados++;
+  }
+  if(agregados>0){
+    await saveData('eventos', eventos);
+    renderBienestar();
+    showToast(`Se agregaron ${agregados} recordatorio(s) anual(es)`);
+  } else {
+    showToast('Ya tenías todos estos recordatorios cargados');
+  }
+}
 async function saveEvento(){
   const nombre = document.getElementById('eventoNombre').value.trim();
   const fecha = document.getElementById('eventoFecha').value;
@@ -5866,15 +6970,204 @@ function renderEventosAviso(){
     const prox = proximaFechaEvento(ev);
     const d = daysUntil(prox);
     if(d!==null && d>=0 && d<=30){
-      items.push({texto:`${ev.nombre} — ${fmtDate(prox)} (${d===0?'¡Hoy!':'en '+d+' día(s)'})`, dias:d});
+      let etiqueta = `${ev.nombre} — ${fmtDate(prox)} (${d===0?'¡Hoy!':'en '+d+' día(s)'})`;
+      if(ev.recurrente && ev.tipo==='Aniversario laboral' && ev.fecha){
+        const anioOrigen = parseInt(ev.fecha.slice(0,4));
+        const anioProx = parseInt(prox.slice(0,4));
+        if(!isNaN(anioOrigen) && anioProx>anioOrigen){
+          etiqueta = `🎉 ${ev.nombre} — cumple ${anioProx-anioOrigen} año(s) — ${fmtDate(prox)} (${d===0?'¡Hoy!':'en '+d+' día(s)'})`;
+        }
+      }
+      items.push({texto: etiqueta, dias:d});
+    }
+  });
+  employees.filter(e=>e.estado==='activo' && e.fechaIngreso).forEach(e=>{
+    const aniv = proximoAniversarioLaboral(e.fechaIngreso);
+    if(aniv && aniv.dias<=30){
+      items.push({texto:`🎉 <b>${e.nombre}</b> cumple ${aniv.anios} año(s) en la empresa — ${aniv.fecha.toLocaleDateString('es-PE',{day:'2-digit',month:'long'})}`, dias:aniv.dias});
     }
   });
   items.sort((a,b)=>a.dias-b.dias);
   document.getElementById('eventosAviso').innerHTML = items.length ? `
     <div class="aviso-box warn">
-      <div class="aviso-title">Próximos cumpleaños y eventos (30 días)</div>
+      <div class="aviso-title">Próximos cumpleaños, aniversarios y eventos (30 días)</div>
       <div class="aviso-list">${items.map(i=>`<span class="aviso-chip">${i.texto}</span>`).join('')}</div>
     </div>` : '';
+}
+// -- Rotación de personal --
+let currentRotacionAnio = String(new Date().getFullYear());
+function poblarFiltroRotacionAnio(){
+  const sel = document.getElementById('rotacionAnioFiltro');
+  if(!sel) return;
+  const anios = new Set([new Date().getFullYear()]);
+  employees.forEach(e=>{
+    if(e.fechaIngreso) anios.add(parseInt(e.fechaIngreso.slice(0,4)));
+    if(e.fechaBaja) anios.add(parseInt(e.fechaBaja.slice(0,4)));
+  });
+  const lista = [...anios].sort((a,b)=>b-a);
+  sel.innerHTML = lista.map(a=>`<option value="${a}" ${String(a)===currentRotacionAnio?'selected':''}>${a}</option>`).join('');
+}
+function renderRotacionPersonal(){
+  const sel = document.getElementById('rotacionAnioFiltro');
+  if(sel) currentRotacionAnio = sel.value;
+  poblarFiltroRotacionAnio();
+  const anio = currentRotacionAnio;
+  const ingresosAnio = employees.filter(e=>e.fechaIngreso && e.fechaIngreso.slice(0,4)===anio);
+  const bajasAnio = employees.filter(e=>e.fechaBaja && e.fechaBaja.slice(0,4)===anio);
+  const statsEl = document.getElementById('rotacionStats');
+  if(statsEl){
+    const totalActivos = employees.filter(e=>e.estado==='activo').length;
+    const rotacionPct = totalActivos>0 ? ((bajasAnio.length/totalActivos)*100).toFixed(1) : '0.0';
+    statsEl.innerHTML = `
+      <div class="stat-card ok"><div class="num">${ingresosAnio.length}</div><div class="label">Altas en ${anio}</div></div>
+      <div class="stat-card warn"><div class="num">${bajasAnio.length}</div><div class="label">Bajas en ${anio}</div></div>
+      <div class="stat-card"><div class="num">${rotacionPct}%</div><div class="label">Tasa de rotación aprox. (bajas / activos actuales)</div></div>
+    `;
+  }
+
+  const cont = document.getElementById('rotacionChart');
+  if(!cont) return;
+  const porMes = MESES.map((_,i)=>{
+    const mm = String(i+1).padStart(2,'0');
+    return {
+      altas: employees.filter(e=>e.fechaIngreso && e.fechaIngreso.slice(0,4)===anio && e.fechaIngreso.slice(5,7)===mm).length,
+      bajas: employees.filter(e=>e.fechaBaja && e.fechaBaja.slice(0,4)===anio && e.fechaBaja.slice(5,7)===mm).length,
+    };
+  });
+  const maxVal = Math.max(1, ...porMes.map(m=>Math.max(m.altas,m.bajas)));
+  const w=760, h=220, padL=34, padB=34, padT=14, padR=10;
+  const chartW=w-padL-padR, chartH=h-padT-padB;
+  const groupW = chartW/12;
+  const barW = Math.max(8, groupW*0.28);
+  const scaleY = v => padT + chartH - (v/maxVal)*chartH;
+  let bars='', gridLines='';
+  [0.25,0.5,0.75,1].forEach(f=>{
+    const y = scaleY(Math.ceil(maxVal*f));
+    gridLines += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${w-padR}" y2="${y.toFixed(1)}" stroke="#E4E0D6" stroke-width="1"></line>`;
+  });
+  porMes.forEach((m,i)=>{
+    const cx = padL + i*groupW + groupW/2;
+    const xAltas = cx - barW - 2;
+    const xBajas = cx + 2;
+    const yAltas = scaleY(m.altas), hAltas = (padT+chartH)-yAltas;
+    const yBajas = scaleY(m.bajas), hBajas = (padT+chartH)-yBajas;
+    if(m.altas>0) bars += `<rect x="${xAltas.toFixed(1)}" y="${yAltas.toFixed(1)}" width="${barW.toFixed(1)}" height="${hAltas.toFixed(1)}" fill="#3F6B4A" rx="1.5"></rect>`;
+    if(m.bajas>0) bars += `<rect x="${xBajas.toFixed(1)}" y="${yBajas.toFixed(1)}" width="${barW.toFixed(1)}" height="${hBajas.toFixed(1)}" fill="#B54A3F" rx="1.5"></rect>`;
+    bars += `<text x="${cx.toFixed(1)}" y="${h-padB+14}" font-size="9" text-anchor="middle" fill="#6b665c">${MESES[i].slice(0,3)}</text>`;
+  });
+  cont.innerHTML = `
+    <div style="display:flex;gap:14px;font-size:11px;margin-bottom:6px;">
+      <span><span style="display:inline-block;width:10px;height:10px;background:#3F6B4A;border-radius:2px;margin-right:4px;"></span>Altas (ingresos)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:#B54A3F;border-radius:2px;margin-right:4px;"></span>Bajas (salidas)</span>
+    </div>
+    <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;max-height:240px;">${gridLines}${bars}</svg>`;
+}
+
+// -- Trabajador del mes --
+let trabajadorMesFotoData = '';
+function previewTrabajadorMesFoto(input){
+  if(!input.files.length) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    trabajadorMesFotoData = reader.result;
+    document.getElementById('trabajadorMesFotoPreview').src = trabajadorMesFotoData;
+    document.getElementById('trabajadorMesFotoPreview').style.display = 'block';
+    document.getElementById('trabajadorMesFotoPlaceholder').style.display = 'none';
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+function resetTrabajadorMesFoto(){
+  trabajadorMesFotoData = '';
+  document.getElementById('trabajadorMesFoto').value = '';
+  document.getElementById('trabajadorMesFotoPreview').style.display = 'none';
+  document.getElementById('trabajadorMesFotoPlaceholder').style.display = 'flex';
+}
+function poblarSelectTrabajadorMes(){
+  const sel = document.getElementById('trabajadorMesEmployeeSelect');
+  if(!sel) return;
+  const activos = employees.filter(e=>e.estado==='activo');
+  sel.innerHTML = (activos.length?activos:employees).map(e=>`<option value="${e.id}">${e.nombre} — ${e.dni}</option>`).join('') || `<option value="">Sin colaboradores registrados</option>`;
+  if(!document.getElementById('trabajadorMesPeriodo').value){
+    document.getElementById('trabajadorMesPeriodo').value = new Date().toISOString().slice(0,7);
+  }
+}
+async function saveTrabajadorMes(){
+  const empId = document.getElementById('trabajadorMesEmployeeSelect').value;
+  const periodo = document.getElementById('trabajadorMesPeriodo').value;
+  const motivo = document.getElementById('trabajadorMesMotivo').value.trim();
+  if(!empId || !periodo){ showToast('Selecciona colaborador y mes'); return; }
+  trabajadoresMes = trabajadoresMes.filter(t=>t.periodo!==periodo);
+  trabajadoresMes.push({ id:'tm'+Date.now(), empId, periodo, motivo, fotoData: trabajadorMesFotoData || '', fecha: new Date().toISOString().slice(0,10) });
+  await saveData('trabajadoresMes', trabajadoresMes);
+  document.getElementById('trabajadorMesMotivo').value='';
+  resetTrabajadorMesFoto();
+  renderTrabajadorMes();
+  showToast('Trabajador del mes registrado');
+}
+async function deleteTrabajadorMes(id){
+  if(!confirm('¿Eliminar este registro de trabajador del mes?')) return;
+  trabajadoresMes = trabajadoresMes.filter(t=>t.id!==id);
+  await saveData('trabajadoresMes', trabajadoresMes);
+  renderTrabajadorMes();
+}
+function renderTrabajadorMes(){
+  poblarSelectTrabajadorMes();
+  const periodoActual = new Date().toISOString().slice(0,7);
+  const destacado = trabajadoresMes.find(t=>t.periodo===periodoActual);
+  const destEl = document.getElementById('trabajadorMesDestacado');
+  if(destEl){
+    if(destacado){
+      const e = employees.find(x=>x.id===destacado.empId);
+      const [anio,mes] = periodoActual.split('-');
+      const mesTexto = new Date(anio, parseInt(mes)-1, 1).toLocaleDateString('es-PE',{month:'long',year:'numeric'});
+      const fotoUsar = destacado.fotoData || (e && e.fotoData) || '';
+      const fotoHtml = fotoUsar
+        ? `<img src="${fotoUsar}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;">`
+        : `<div style="width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;">🏆</div>`;
+      destEl.innerHTML = `
+        <div style="display:flex;align-items:center;gap:14px;">
+          ${fotoHtml}
+          <div>
+            <div style="font-weight:700;font-size:16px;">${e ? e.nombre : '(colaborador eliminado)'}</div>
+            <div class="hint" style="margin:2px 0;">${mesTexto}</div>
+            ${destacado.motivo ? `<div style="margin-top:4px;">${destacado.motivo}</div>` : ''}
+          </div>
+        </div>`;
+    } else {
+      destEl.innerHTML = `<div class="empty">Aún no eliges al trabajador del mes actual.</div>`;
+    }
+  }
+  renderTrabajadorMesTable();
+}
+function renderTrabajadorMesTable(){
+  const sorted = [...trabajadoresMes].sort((a,b)=>(b.periodo||'').localeCompare(a.periodo||''));
+  const rows = sorted.map(t=>{
+    const e = employees.find(x=>x.id===t.empId);
+    const [anio,mes] = t.periodo.split('-');
+    const mesTexto = new Date(anio, parseInt(mes)-1, 1).toLocaleDateString('es-PE',{month:'long',year:'numeric'});
+    const fotoUsar = t.fotoData || (e && e.fotoData) || '';
+    const fotoCell = fotoUsar
+      ? `<img src="${fotoUsar}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">`
+      : `<div style="width:32px;height:32px;border-radius:50%;background:#EEECE6;"></div>`;
+    return `<tr>
+      <td>${fotoCell}</td>
+      <td style="text-transform:capitalize;">${mesTexto}</td>
+      <td><b>${e ? e.nombre : '(colaborador eliminado)'}</b></td>
+      <td>${t.motivo||'—'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteTrabajadorMes('${t.id}')">Eliminar</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('trabajadorMesTable').innerHTML = sorted.length ? `
+    <table><thead><tr><th></th><th>Mes</th><th>Colaborador</th><th>Motivo</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>` : `<div class="empty">Aún no registras trabajadores del mes.</div>`;
+}
+
+async function corregirAnioAniversarioEmpresa(){
+  const ev = eventos.find(e=>e.nombre==='Aniversario de SERVING');
+  if(ev && ev.fecha && ev.fecha.slice(0,4)!=='2008'){
+    ev.fecha = '2008-'+ev.fecha.slice(5);
+    await saveData('eventos', eventos);
+  }
 }
 function renderEventosTable(){
   const sorted = [...eventos].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
@@ -6009,8 +7302,11 @@ function renderReconocimientos(){
 }
 
 function renderBienestar(){
+  corregirAnioAniversarioEmpresa();
   renderEventosAviso();
   renderEventosTable();
+  renderRotacionPersonal();
+  renderTrabajadorMes();
   renderEncuestas();
   renderCapacitaciones();
   renderReconocimientos();
@@ -6360,12 +7656,19 @@ function renderEppStock(){
   if(stockBajo.length && currentEppVencFiltro==='todos'){
     avisoHtml += `<div class="aviso-box warn"><div class="aviso-title">Aviso: stock bajo de EPP/limpieza</div><div class="aviso-list">${stockBajo.map(it=>`<span class="aviso-chip">${it.nombre} — quedan ${it.stock} ${it.unidad||''}</span>`).join('')}</div></div>`;
   }
+  // Personal activo que nunca recibió ningún EPP — se le debe desde cero
+  if(currentEppVencFiltro==='todos'){
+    const activosSinEpp = employees.filter(e=>e.estado==='activo' && !eppAsignaciones.some(a=>a.empId===e.id));
+    if(activosSinEpp.length){
+      avisoHtml += `<div class="aviso-box danger"><div class="aviso-title">⚠ Personal que se debe EPP (aún no recibió ningún equipo)</div><div class="aviso-list">${activosSinEpp.map(e=>`<span class="aviso-chip">${e.nombre} — ${e.cargo||'sin cargo'} — se le debe la entrega completa de EPP</span>`).join('')}</div></div>`;
+    }
+  }
   const vencidos = eppPorVencer.filter(a=>daysUntil(a.fechaVencimiento)<0);
   const porVencer = eppPorVencer.filter(a=>daysUntil(a.fechaVencimiento)>=0);
   if(vencidos.length){
-    avisoHtml += `<div class="aviso-box danger"><div class="aviso-title">⚠ EPP vencido / desgastado</div><div class="aviso-list">${vencidos.map(a=>{
+    avisoHtml += `<div class="aviso-box danger"><div class="aviso-title">⚠ EPP vencido / desgastado (se le debe la reposición)</div><div class="aviso-list">${vencidos.map(a=>{
       const e=employees.find(x=>x.id===a.empId); const it=inventoryItems.find(x=>x.id===a.itemId);
-      return `<span class="aviso-chip">${e?e.nombre:'—'} — ${it?it.nombre:'—'} venció ${fmtDate(a.fechaVencimiento)}</span>`;
+      return `<span class="aviso-chip">${e?e.nombre:'—'} — se le debe: ${it?it.nombre:'—'} (venció ${fmtDate(a.fechaVencimiento)})</span>`;
     }).join('')}</div></div>`;
   }
   if(porVencer.length){
@@ -6528,7 +7831,7 @@ function subirFormatoEppFirmado(){
   if(!empId || !semana || !fileInput.files.length){ showToast('Completa trabajador, semana y el archivo firmado'); return; }
   const e = employees.find(x=>x.id===empId);
   const file = fileInput.files[0];
-  if(file.size > 4*1024*1024){ showToast('El archivo es muy grande (máx. 4MB)'); return; }
+  if(file.size > 1*1024*1024){ showToast('El archivo es muy grande (máx. 1MB, para no llenar el espacio de almacenamiento)'); return; }
   const reader = new FileReader();
   reader.onload = async ()=>{
     workerDocs.push({
@@ -6591,7 +7894,42 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // ---------- Respaldo (guardar / restaurar todo el sistema) ----------
 const BACKUP_KEYS = ['employees','budgetEntries','menuEntries','workerDocs','templates','faltas','permisos','descansos','prestamos',
   'registrosDiarios','inventoryItems','inventoryMovements','eventos','encuestas','capacitaciones','reconocimientos',
-  'eppAsignaciones','empresaData','wordDocsGuardados','segurosEmpresa','contratoOficialTemplates','firmasDigitales'];
+  'eppAsignaciones','empresaData','wordDocsGuardados','segurosEmpresa','contratoOficialTemplates','firmasDigitales','asistenciaManual',
+  'trabajadoresMes','comiteMiembros','comiteReuniones','comiteDocumentos','comiteAccidentes'];
+
+async function mostrarEspacioAlmacenamiento(){
+  document.getElementById('espacioModalOverlay').classList.add('active');
+  const cont = document.getElementById('espacioContenido');
+  cont.innerHTML = '<p class="hint">Calculando...</p>';
+  const filas = [];
+  for(const key of BACKUP_KEYS){
+    const data = await loadData(key, []);
+    const bytes = new Blob([JSON.stringify(data)]).size;
+    filas.push({key, bytes});
+  }
+  filas.sort((a,b)=>b.bytes-a.bytes);
+  const LIMITE = 5*1024*1024;
+  const rows = filas.map(f=>{
+    const pct = Math.min(100, (f.bytes/LIMITE*100));
+    const kb = (f.bytes/1024).toFixed(1);
+    const color = pct>80 ? 'var(--danger)' : pct>50 ? '#C08A2E' : 'var(--primary)';
+    return `<div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px;">
+        <span><b>${f.key}</b>${f.key==='workerDocs' ? ' <span style="color:var(--ink-soft);">(documentos de todos los trabajadores)</span>' : ''}</span>
+        <span class="mono">${kb} KB / 5,120 KB (${pct.toFixed(1)}%)</span>
+      </div>
+      <div style="background:#F3F1EA;border-radius:6px;height:8px;overflow:hidden;">
+        <div style="width:${pct}%;background:${color};height:100%;"></div>
+      </div>
+    </div>`;
+  }).join('');
+  const totalBytes = filas.reduce((s,f)=>s+f.bytes,0);
+  const hayAlerta = filas.some(f=>f.bytes/LIMITE > 0.7);
+  cont.innerHTML = (hayAlerta ? `<div class="aviso-box danger" style="margin-bottom:14px;"><div class="aviso-title">⚠ Alguno de estos cajones ya está por llenarse (más del 70%) — avísame para organizarlo antes de que falle un guardado</div></div>` : '')
+    + rows
+    + `<p class="hint" style="margin-top:10px;">Total usado en todo el sistema: ${(totalBytes/1024).toFixed(1)} KB. Importante: cada cajón tiene su propio límite de 5,120 KB (5MB) — no se suman entre sí, así que lo que importa es que ninguno individual llegue al 100%.</p>`;
+}
+
 
 async function guardarRespaldo(){
   const backup = {_meta:{sistema:'SERVING RRHH', fecha: new Date().toISOString()}};
@@ -6602,6 +7940,8 @@ async function guardarRespaldo(){
   a.href = url; a.download = `respaldo-serving-rrhh-${new Date().toISOString().slice(0,10)}.json`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  await saveData('ultimoRespaldoFecha', new Date().toISOString().slice(0,10));
+  renderDashboard();
   showToast('Respaldo descargado');
 }
 
@@ -6615,6 +7955,7 @@ function restaurarRespaldo(file){
       for(const key of BACKUP_KEYS){
         if(data[key] !== undefined){ await saveData(key, data[key]); }
       }
+      await saveData('ultimoRespaldoFecha', new Date().toISOString().slice(0,10));
       showToast('Respaldo restaurado. Recargando...');
       setTimeout(()=>location.reload(), 1200);
     }catch(err){
@@ -6819,7 +8160,7 @@ async function saveSeguro(){
     showToast(trabajadoresIncluidos.length ? `Póliza registrada y vigencia actualizada en ${trabajadoresIncluidos.length} trabajador(es)` : 'Póliza registrada');
   };
   if(fileInput.files.length){
-    if(fileInput.files[0].size > 4*1024*1024){ showToast('El archivo es muy grande (máx. 4MB)'); return; }
+    if(fileInput.files[0].size > 1*1024*1024){ showToast('El archivo es muy grande (máx. 1MB, para no llenar el espacio de almacenamiento)'); return; }
     const reader = new FileReader();
     reader.onload = ()=>registrar(reader.result, fileInput.files[0].name);
     reader.readAsDataURL(fileInput.files[0]);
@@ -6842,7 +8183,7 @@ function downloadSeguroFile(id){
 }
 function adjuntarArchivoSeguro(id, file){
   if(!file) return;
-  if(file.size > 4*1024*1024){ showToast('El archivo es muy grande (máx. 4MB)'); return; }
+  if(file.size > 1*1024*1024){ showToast('El archivo es muy grande (máx. 1MB, para no llenar el espacio de almacenamiento)'); return; }
   const s = segurosEmpresa.find(x=>x.id===id);
   if(!s) return;
   const reader = new FileReader();
@@ -7065,6 +8406,331 @@ async function actualizarContrasena(){
   document.getElementById('claveActualInput').value = '';
   document.getElementById('claveNuevaInput').value = '';
   document.getElementById('claveNuevaInput2').value = '';
+}
+
+// ---------- Comité de Seguridad y Salud en el Trabajo ----------
+function switchComiteTab(tab){
+  document.querySelectorAll('[data-comite-tab]').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`[data-comite-tab="${tab}"]`).classList.add('active');
+  document.getElementById('comiteMiembrosBlock').style.display = tab==='miembros' ? 'block':'none';
+  document.getElementById('comiteReunionesBlock').style.display = tab==='reuniones' ? 'block':'none';
+  document.getElementById('comiteDocumentosBlock').style.display = tab==='documentos' ? 'block':'none';
+  document.getElementById('comiteAccidentesBlock').style.display = tab==='accidentes' ? 'block':'none';
+}
+function poblarSelectsComite(){
+  const opts = employees.filter(e=>e.estado==='activo').map(e=>`<option value="${e.id}">${e.nombre} — ${e.dni}</option>`).join('');
+  const empty = `<option value="">Sin colaboradores registrados</option>`;
+  const s1 = document.getElementById('comiteMiembroEmployeeSelect');
+  const s2 = document.getElementById('comiteAccColaborador');
+  if(s1) s1.innerHTML = opts || empty;
+  if(s2) s2.innerHTML = opts || empty;
+  const firmaSel = document.getElementById('comiteActaFirmaSelect');
+  if(firmaSel){
+    firmaSel.innerHTML = `<option value="">Sin firma</option>` + firmasDigitales.map(f=>`<option value="${f.id}">${f.nombre}</option>`).join('');
+  }
+}
+
+// -- Miembros --
+async function saveComiteMiembro(){
+  const empId = document.getElementById('comiteMiembroEmployeeSelect').value;
+  if(!empId){ showToast('Selecciona un colaborador'); return; }
+  const e = employees.find(x=>x.id===empId);
+  comiteMiembros.push({
+    id:'cm'+Date.now(), empId,
+    cargo: document.getElementById('comiteMiembroCargo').value,
+    representa: document.getElementById('comiteMiembroRepresenta').value,
+    periodo: document.getElementById('comiteMiembroPeriodo').value.trim(),
+  });
+  await saveData('comiteMiembros', comiteMiembros);
+  document.getElementById('comiteMiembroPeriodo').value='';
+  renderComiteMiembros();
+  showToast(`${e?e.nombre:'Colaborador'} agregado al comité`);
+}
+async function deleteComiteMiembro(id){
+  if(!confirm('¿Quitar a este miembro del comité?')) return;
+  comiteMiembros = comiteMiembros.filter(m=>m.id!==id);
+  await saveData('comiteMiembros', comiteMiembros);
+  renderComiteMiembros();
+}
+function renderComiteMiembros(){
+  const sorted = [...comiteMiembros];
+  const rows = sorted.map(m=>{
+    const e = employees.find(x=>x.id===m.empId);
+    return `<tr>
+      <td><b>${e?e.nombre:'(colaborador eliminado)'}</b></td>
+      <td>${e?e.dni:'—'}</td>
+      <td><span class="pill pill-ok">${m.cargo}</span></td>
+      <td>${m.representa}</td>
+      <td>${m.periodo||'—'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteComiteMiembro('${m.id}')">Quitar</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('comiteMiembrosTable').innerHTML = sorted.length ? `
+    <table><thead><tr><th>Nombre</th><th>DNI</th><th>Cargo</th><th>Representa</th><th>Periodo</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>` : `<div class="empty">Aún no registras miembros del comité.</div>`;
+}
+function descargarComiteMiembrosPdf(){
+  if(!comiteMiembros.length){ showToast('No hay miembros registrados'); return; }
+  const emp = window._empresaData || {};
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const marginX = 45; let y = 55;
+  addLogoToPdf(doc, 480, 30, 50);
+  doc.setFont('helvetica','bold'); doc.setFontSize(14);
+  doc.text('COMITÉ DE SEGURIDAD Y SALUD EN EL TRABAJO', marginX, y); y += 18;
+  doc.setFontSize(11); doc.text('Miembros vigentes', marginX, y); y += 18;
+  if(emp.razonSocial){ doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.text(emp.razonSocial, marginX, y); y += 20; }
+  doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.text('Nombre', marginX, y); doc.text('DNI', marginX+200, y); doc.text('Cargo', marginX+270, y); doc.text('Representa', marginX+380, y); doc.text('Periodo', marginX+460, y);
+  y += 5; doc.setDrawColor(200); doc.line(marginX, y, marginX+505, y); y += 14;
+  doc.setFont('helvetica','normal');
+  comiteMiembros.forEach(m=>{
+    if(y>770){ doc.addPage(); y=50; }
+    const e = employees.find(x=>x.id===m.empId);
+    doc.text(String(e?e.nombre:'—').slice(0,32), marginX, y);
+    doc.text(e?e.dni:'—', marginX+200, y);
+    doc.text(m.cargo, marginX+270, y);
+    doc.text(m.representa, marginX+380, y);
+    doc.text(m.periodo||'—', marginX+460, y);
+    y += 15;
+  });
+  doc.save(`comite_seguridad_miembros_${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+// -- Reuniones y actas --
+async function saveComiteReunion(){
+  const numero = document.getElementById('comiteActaNumero').value.trim();
+  const fecha = document.getElementById('comiteActaFecha').value;
+  if(!numero || !fecha){ showToast('Completa el N° de acta y la fecha'); return; }
+  comiteReuniones.push({
+    id:'cr'+Date.now(), numero, fecha,
+    asistentes: document.getElementById('comiteActaAsistentes').value.trim(),
+    temas: document.getElementById('comiteActaTemas').value.trim(),
+    acuerdos: document.getElementById('comiteActaAcuerdos').value.trim(),
+    firmaId: document.getElementById('comiteActaFirmaSelect').value
+  });
+  await saveData('comiteReuniones', comiteReuniones);
+  document.getElementById('comiteActaNumero').value=''; document.getElementById('comiteActaFecha').value='';
+  document.getElementById('comiteActaAsistentes').value=''; document.getElementById('comiteActaTemas').value='';
+  document.getElementById('comiteActaAcuerdos').value='';
+  renderComiteReuniones();
+  showToast('Reunión registrada');
+}
+async function deleteComiteReunion(id){
+  if(!confirm('¿Eliminar esta reunión/acta?')) return;
+  comiteReuniones = comiteReuniones.filter(r=>r.id!==id);
+  await saveData('comiteReuniones', comiteReuniones);
+  renderComiteReuniones();
+}
+function renderComiteReuniones(){
+  const sorted = [...comiteReuniones].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const rows = sorted.map(r=>`
+    <tr>
+      <td><b>${r.numero}</b></td>
+      <td>${fmtDate(r.fecha)}</td>
+      <td>${r.asistentes||'—'}</td>
+      <td>${(r.temas||'').slice(0,60)}${r.temas&&r.temas.length>60?'...':''}</td>
+      <td class="actions-cell">
+        <button class="btn btn-primary btn-sm" onclick="descargarActaReunionPdf('${r.id}')">Descargar acta PDF</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteComiteReunion('${r.id}')">Eliminar</button>
+      </td>
+    </tr>`).join('');
+  document.getElementById('comiteReunionesTable').innerHTML = sorted.length ? `
+    <div class="table-scroll">
+    <table><thead><tr><th>N° Acta</th><th>Fecha</th><th>Asistentes</th><th>Temas</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    </div>` : `<div class="empty">Aún no registras reuniones del comité.</div>`;
+}
+function descargarActaReunionPdf(id){
+  const r = comiteReuniones.find(x=>x.id===id);
+  if(!r) return;
+  const emp = window._empresaData || {};
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const marginX = 45; let y = 55;
+  addLogoToPdf(doc, 480, 30, 50);
+  doc.setFont('helvetica','bold'); doc.setFontSize(14);
+  doc.text('ACTA DE REUNIÓN — COMITÉ DE SEGURIDAD Y SALUD EN EL TRABAJO', marginX, y, {maxWidth:420}); y += 30;
+  if(emp.razonSocial){ doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.text(`${emp.razonSocial}${emp.ruc?' — RUC '+emp.ruc:''}`, marginX, y); y += 18; }
+  doc.setFontSize(11); doc.setFont('helvetica','bold');
+  doc.text(`${r.numero}`, marginX, y); y += 16;
+  doc.setFont('helvetica','normal');
+  doc.text(`Fecha: ${fmtDate(r.fecha)}`, marginX, y); y += 20;
+
+  doc.setFont('helvetica','bold'); doc.text('Asistentes:', marginX, y); y += 14;
+  doc.setFont('helvetica','normal');
+  const asistentesLines = doc.splitTextToSize(r.asistentes||'—', 505);
+  doc.text(asistentesLines, marginX, y); y += asistentesLines.length*14 + 12;
+
+  doc.setFont('helvetica','bold'); doc.text('Temas tratados:', marginX, y); y += 14;
+  doc.setFont('helvetica','normal');
+  const temasLines = doc.splitTextToSize(r.temas||'—', 505);
+  doc.text(temasLines, marginX, y); y += temasLines.length*14 + 12;
+
+  doc.setFont('helvetica','bold'); doc.text('Acuerdos y compromisos:', marginX, y); y += 14;
+  doc.setFont('helvetica','normal');
+  const acuerdosLines = doc.splitTextToSize(r.acuerdos||'—', 505);
+  doc.text(acuerdosLines, marginX, y); y += acuerdosLines.length*14 + 40;
+
+  if(y > 650){ doc.addPage(); y = 80; }
+  addFirmaToPdf(doc, marginX+55, y-52, 95, 48, r.firmaId);
+  doc.setDrawColor(0); doc.line(marginX, y, marginX+230, y);
+  y += 14;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  const firmaSel = firmasDigitales.find(f=>f.id===r.firmaId);
+  doc.text(firmaSel ? firmaSel.nombre.toUpperCase() : 'PRESIDENTE DEL COMITÉ', marginX, y);
+
+  doc.save(`acta_comite_${r.numero.replace(/\s+/g,'_')}.pdf`);
+}
+
+// -- Documentos SST --
+async function uploadComiteDoc(){
+  const fileInput = document.getElementById('comiteDocArchivo');
+  if(!fileInput.files.length){ showToast('Selecciona un archivo'); return; }
+  const file = fileInput.files[0];
+  if(file.size > 4*1024*1024){ showToast('El archivo es muy grande (máx. 4MB)'); return; }
+  const reader = new FileReader();
+  reader.onload = async ()=>{
+    comiteDocumentos.push({
+      id:'cd'+Date.now(),
+      categoria: document.getElementById('comiteDocCategoria').value,
+      vigencia: document.getElementById('comiteDocVigencia').value,
+      fileName: file.name,
+      fileData: reader.result,
+      fecha: new Date().toISOString().slice(0,10)
+    });
+    await saveData('comiteDocumentos', comiteDocumentos);
+    fileInput.value=''; document.getElementById('comiteDocVigencia').value='';
+    renderComiteDocumentos();
+    showToast('Documento subido');
+  };
+  reader.readAsDataURL(file);
+}
+async function deleteComiteDoc(id){
+  comiteDocumentos = comiteDocumentos.filter(d=>d.id!==id);
+  await saveData('comiteDocumentos', comiteDocumentos);
+  renderComiteDocumentos();
+}
+function downloadComiteDoc(id){
+  const d = comiteDocumentos.find(x=>x.id===id);
+  if(!d) return;
+  const a = document.createElement('a');
+  a.href = d.fileData; a.download = d.fileName;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+function renderComiteDocumentos(){
+  const sorted = [...comiteDocumentos].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const rows = sorted.map(d=>{
+    const vigenciaPill = d.vigencia ? (()=>{
+      const dias = daysUntil(d.vigencia);
+      if(dias<0) return `<span class="pill pill-danger">Vencido</span>`;
+      if(dias<=30) return `<span class="pill pill-warn">Vence en ${dias}d</span>`;
+      return `<span class="pill pill-ok">Vigente</span>`;
+    })() : `<span class="pill pill-muted">Sin vigencia</span>`;
+    return `<tr>
+      <td><span class="pill pill-muted">${d.categoria}</span></td>
+      <td>${d.fileName}</td>
+      <td>${d.vigencia ? fmtDate(d.vigencia) : '—'}</td>
+      <td>${vigenciaPill}</td>
+      <td>${fmtDate(d.fecha)}</td>
+      <td class="actions-cell">
+        <button class="btn btn-ghost btn-sm" onclick="downloadComiteDoc('${d.id}')">Descargar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteComiteDoc('${d.id}')">Eliminar</button>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('comiteDocumentosTable').innerHTML = sorted.length ? `
+    <table><thead><tr><th>Tipo</th><th>Archivo</th><th>Vigencia</th><th>Estado</th><th>Subido</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>` : `<div class="empty">Aún no subes documentos SST.</div>`;
+}
+
+// -- Accidentes e incidentes --
+async function saveComiteAccidente(){
+  const empId = document.getElementById('comiteAccColaborador').value;
+  const fecha = document.getElementById('comiteAccFecha').value;
+  const descripcion = document.getElementById('comiteAccDescripcion').value.trim();
+  if(!empId || !fecha || !descripcion){ showToast('Completa colaborador, fecha y descripción'); return; }
+  comiteAccidentes.push({
+    id:'ca'+Date.now(), empId, fecha,
+    tipo: document.getElementById('comiteAccTipo').value,
+    diasDescanso: parseInt(document.getElementById('comiteAccDias').value)||0,
+    descripcion,
+    acciones: document.getElementById('comiteAccAcciones').value.trim()
+  });
+  await saveData('comiteAccidentes', comiteAccidentes);
+  document.getElementById('comiteAccFecha').value=''; document.getElementById('comiteAccDias').value='';
+  document.getElementById('comiteAccDescripcion').value=''; document.getElementById('comiteAccAcciones').value='';
+  renderComiteAccidentes();
+  showToast('Registrado');
+}
+async function deleteComiteAccidente(id){
+  if(!confirm('¿Eliminar este registro?')) return;
+  comiteAccidentes = comiteAccidentes.filter(a=>a.id!==id);
+  await saveData('comiteAccidentes', comiteAccidentes);
+  renderComiteAccidentes();
+}
+function renderComiteAccidentes(){
+  const anioActual = String(new Date().getFullYear());
+  const delAnio = comiteAccidentes.filter(a=>a.fecha.slice(0,4)===anioActual);
+  const diasPerdidos = delAnio.reduce((s,a)=>s+(a.diasDescanso||0),0);
+  document.getElementById('comiteAccidentesStats').innerHTML = `
+    <div class="stat-card"><div class="num">${delAnio.length}</div><div class="label">Registrados en ${anioActual}</div></div>
+    <div class="stat-card ${delAnio.some(a=>a.tipo.includes('Accidente'))?'warn':''}"><div class="num">${delAnio.filter(a=>a.tipo.includes('Accidente')).length}</div><div class="label">Accidentes en ${anioActual}</div></div>
+    <div class="stat-card warn"><div class="num">${diasPerdidos}</div><div class="label">Días de descanso médico acumulados</div></div>
+  `;
+  const sorted = [...comiteAccidentes].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const rows = sorted.map(a=>{
+    const e = employees.find(x=>x.id===a.empId);
+    const tipoColor = a.tipo==='Incidente' ? 'pill-muted' : a.tipo==='Accidente mortal' ? 'pill-danger' : 'pill-warn';
+    return `<tr>
+      <td>${fmtDate(a.fecha)}</td>
+      <td>${e?e.nombre:'—'}</td>
+      <td><span class="pill ${tipoColor}">${a.tipo}</span></td>
+      <td class="mono">${a.diasDescanso||0}</td>
+      <td>${(a.descripcion||'').slice(0,60)}${a.descripcion&&a.descripcion.length>60?'...':''}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteComiteAccidente('${a.id}')">Eliminar</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('comiteAccidentesTable').innerHTML = sorted.length ? `
+    <div class="table-scroll">
+    <table><thead><tr><th>Fecha</th><th>Colaborador</th><th>Tipo</th><th>Días descanso</th><th>Descripción</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    </div>` : `<div class="empty">No hay accidentes ni incidentes registrados (¡bien!).</div>`;
+}
+function descargarComiteAccidentesPdf(){
+  if(!comiteAccidentes.length){ showToast('No hay registros para descargar'); return; }
+  const emp = window._empresaData || {};
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const marginX = 45; let y = 55;
+  addLogoToPdf(doc, 480, 30, 50);
+  doc.setFont('helvetica','bold'); doc.setFontSize(14);
+  doc.text('REGISTRO DE ACCIDENTES E INCIDENTES', marginX, y); y += 20;
+  if(emp.razonSocial){ doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.text(emp.razonSocial, marginX, y); y += 18; }
+  doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.text('Fecha', marginX, y); doc.text('Colaborador', marginX+55, y); doc.text('Tipo', marginX+190, y); doc.text('Días', marginX+280, y); doc.text('Descripción', marginX+320, y);
+  y += 5; doc.setDrawColor(200); doc.line(marginX, y, marginX+505, y); y += 14;
+  doc.setFont('helvetica','normal');
+  [...comiteAccidentes].sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')).forEach(a=>{
+    if(y>760){ doc.addPage(); y=50; }
+    const e = employees.find(x=>x.id===a.empId);
+    doc.text(fmtDate(a.fecha), marginX, y);
+    doc.text(String(e?e.nombre:'—').slice(0,22), marginX+55, y);
+    doc.text(a.tipo, marginX+190, y);
+    doc.text(String(a.diasDescanso||0), marginX+280, y);
+    const descLines = doc.splitTextToSize(a.descripcion||'—', 185);
+    doc.text(descLines, marginX+320, y);
+    y += Math.max(15, descLines.length*11);
+  });
+  doc.save(`accidentes_incidentes_${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+function renderComite(){
+  poblarSelectsComite();
+  renderComiteMiembros();
+  renderComiteReuniones();
+  renderComiteDocumentos();
+  renderComiteAccidentes();
 }
 
 (async function bootstrap(){
