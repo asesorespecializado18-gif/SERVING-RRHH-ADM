@@ -2034,32 +2034,97 @@ tr:hover td{background:#FAF9F6;}
 // ---------- Compatibilidad de almacenamiento ----------
 // Dentro de Claude.ai existe window.storage (persistente en la nube de Claude).
 // Fuera de Claude.ai (por ejemplo, alojado en GitHub Pages) no existe, así que
-// aquí se define un respaldo que usa localStorage del propio navegador,
-// para que la app funcione igual en ambos lugares sin perder datos.
+// aquí se define un respaldo que usa IndexedDB del propio navegador (mucha más
+// capacidad que localStorage), para que la app funcione igual en ambos lugares
+// sin perder datos. Si ya había información guardada en localStorage de una
+// versión anterior, se migra automáticamente a IndexedDB la primera vez.
 if(!window.storage){
-  window.storage = {
-    async get(key){
-      const v = localStorage.getItem('crmrrhh_'+key);
-      return v!==null ? {key, value:v} : null;
-    },
-    async set(key, value){
-      localStorage.setItem('crmrrhh_'+key, value);
-      return {key, value};
-    },
-    async delete(key){
-      localStorage.removeItem('crmrrhh_'+key);
-      return {key, deleted:true};
-    },
-    async list(prefix){
-      const keys = [];
+  const CRM_DB_NAME = 'crmrrhh_db', CRM_STORE = 'kv', CRM_DB_VERSION = 1;
+  function crmOpenDb(){
+    return new Promise((resolve, reject)=>{
+      const req = indexedDB.open(CRM_DB_NAME, CRM_DB_VERSION);
+      req.onupgradeneeded = ()=>{
+        const db = req.result;
+        if(!db.objectStoreNames.contains(CRM_STORE)) db.createObjectStore(CRM_STORE, {keyPath:'key'});
+      };
+      req.onsuccess = ()=> resolve(req.result);
+      req.onerror = ()=> reject(req.error);
+    });
+  }
+  const crmDbPromise = crmOpenDb();
+  async function crmMigrarDesdeLocalStorage(){
+    try{
+      const db = await crmDbPromise;
+      const yaTieneDatos = await new Promise((resolve, reject)=>{
+        const tx = db.transaction(CRM_STORE, 'readonly');
+        const req = tx.objectStore(CRM_STORE).count();
+        req.onsuccess = ()=> resolve(req.result > 0);
+        req.onerror = ()=> reject(req.error);
+      });
+      if(yaTieneDatos) return;
+      const claves = [];
       for(let i=0;i<localStorage.length;i++){
         const k = localStorage.key(i);
-        if(k && k.startsWith('crmrrhh_')){
-          const bare = k.slice(8);
-          if(!prefix || bare.startsWith(prefix)) keys.push(bare);
-        }
+        if(k && k.startsWith('crmrrhh_')) claves.push(k);
       }
-      return {keys, prefix};
+      if(!claves.length) return;
+      await new Promise((resolve, reject)=>{
+        const tx = db.transaction(CRM_STORE, 'readwrite');
+        const store = tx.objectStore(CRM_STORE);
+        claves.forEach(k=>{
+          store.put({key: k.slice(8), value: localStorage.getItem(k)});
+        });
+        tx.oncomplete = resolve;
+        tx.onerror = ()=> reject(tx.error);
+      });
+      console.log(`Migrados ${claves.length} registro(s) de localStorage a IndexedDB.`);
+    }catch(e){ console.error('No se pudo migrar desde localStorage a IndexedDB', e); }
+  }
+  const crmMigracionPromise = crmMigrarDesdeLocalStorage();
+  window.storage = {
+    async get(key){
+      await crmMigracionPromise;
+      const db = await crmDbPromise;
+      return new Promise((resolve, reject)=>{
+        const tx = db.transaction(CRM_STORE, 'readonly');
+        const req = tx.objectStore(CRM_STORE).get(key);
+        req.onsuccess = ()=> resolve(req.result ? {key, value: req.result.value} : null);
+        req.onerror = ()=> reject(req.error);
+      });
+    },
+    async set(key, value){
+      await crmMigracionPromise;
+      const db = await crmDbPromise;
+      return new Promise((resolve, reject)=>{
+        const tx = db.transaction(CRM_STORE, 'readwrite');
+        tx.objectStore(CRM_STORE).put({key, value});
+        tx.oncomplete = ()=> resolve({key, value});
+        tx.onerror = ()=> reject(tx.error);
+      });
+    },
+    async delete(key){
+      await crmMigracionPromise;
+      const db = await crmDbPromise;
+      return new Promise((resolve, reject)=>{
+        const tx = db.transaction(CRM_STORE, 'readwrite');
+        tx.objectStore(CRM_STORE).delete(key);
+        tx.oncomplete = ()=> resolve({key, deleted:true});
+        tx.onerror = ()=> reject(tx.error);
+      });
+    },
+    async list(prefix){
+      await crmMigracionPromise;
+      const db = await crmDbPromise;
+      return new Promise((resolve, reject)=>{
+        const tx = db.transaction(CRM_STORE, 'readonly');
+        const req = tx.objectStore(CRM_STORE).getAllKeys();
+        req.onsuccess = ()=>{
+          let keys = req.result;
+          if(prefix) keys = keys.filter(k=>k.startsWith(prefix));
+          resolve({keys, prefix});
+        };
+        req.onerror = ()=> reject(req.error);
+      });
     }
   };
 }
@@ -2501,8 +2566,10 @@ function renderDashboard(){
   const saludPorVencer = employees.filter(e=>{
     const d = daysUntil(e.fechaSalud); return d!==null && d<=30 && d>=0;
   });
-  const sctrPorVencer = employees.filter(e=>{
-    const d = daysUntil(e.vigenciaSctr); return d!==null && d<=30 && d>=0;
+  const polizasSctrPorVencer = segurosEmpresa.filter(s=>{
+    if(!['SCTR Salud','SCTR Pensión'].includes(s.tipo)) return false;
+    const d = daysUntil(s.fin);
+    return d!==null && d<=30 && d>=0;
   });
   const vidaLeyPorVencer = employees.filter(e=>{
     const d = daysUntil(e.vigenciaVidaLey); return d!==null && d<=30 && d>=0;
@@ -2521,6 +2588,7 @@ function renderDashboard(){
     <div class="stat-card warn"><div class="num">${contratosPorVencer.length}</div><div class="label">Contratos por vencer (30 días)</div></div>
     <div class="stat-card warn"><div class="num">${contratosVencidos.length}</div><div class="label">Contratos vencidos</div></div>
     <div class="stat-card warn"><div class="num">${saludPorVencer.length}</div><div class="label">Coberturas de salud por vencer</div></div>
+    <div class="stat-card ${polizasSctrPorVencer.length?'warn':''}"><div class="num">${polizasSctrPorVencer.length}</div><div class="label">Pólizas SCTR de la empresa por vencer</div></div>
     <div class="stat-card ${respaldoAtrasado?'warn':'ok'}"><div class="num" style="font-size:20px;">${ultimoRespaldoFecha ? fmtDate(ultimoRespaldoFecha) : 'Nunca'}</div><div class="label">Último respaldo descargado</div></div>
   `;
   const respaldoAvisoEl = document.getElementById('respaldoAvisoDash');
@@ -2541,9 +2609,14 @@ function renderDashboard(){
     const d = daysUntil(e.fechaSalud);
     tickerItems.push(`<div class="ticker-item">Cobertura de salud de <b>${e.nombre}</b> vence en ${d} día(s) — ${fmtDate(e.fechaSalud)}</div>`);
   });
-  sctrPorVencer.forEach(e=>{
-    const d = daysUntil(e.vigenciaSctr);
-    tickerItems.push(`<div class="ticker-item">SCTR de <b>${e.nombre}</b> vence en ${d} día(s) — ${fmtDate(e.vigenciaSctr)}</div>`);
+  polizasSctrPorVencer.forEach(s=>{
+    const d = daysUntil(s.fin);
+    const areasIncluidas = [...new Set(s.trabajadoresIncluidos.map(id=>{
+      const e = employees.find(x=>x.id===id);
+      return e ? e.area : null;
+    }).filter(Boolean))];
+    const areaLabel = areasIncluidas.length===1 ? areasIncluidas[0] : (areasIncluidas.length>1 ? 'Producción y Administración' : 'General');
+    tickerItems.push(`<div class="ticker-item">📋 SCTR de la empresa (${areaLabel}) — ${s.aseguradora ? s.aseguradora+' — ' : ''}vence en ${d} día(s) — ${fmtDate(s.fin)}</div>`);
   });
   vidaLeyPorVencer.forEach(e=>{
     const d = daysUntil(e.vigenciaVidaLey);
@@ -7927,7 +8000,7 @@ async function mostrarEspacioAlmacenamiento(){
   const hayAlerta = filas.some(f=>f.bytes/LIMITE > 0.7);
   cont.innerHTML = (hayAlerta ? `<div class="aviso-box danger" style="margin-bottom:14px;"><div class="aviso-title">⚠ Alguno de estos cajones ya está por llenarse (más del 70%) — avísame para organizarlo antes de que falle un guardado</div></div>` : '')
     + rows
-    + `<p class="hint" style="margin-top:10px;">Total usado en todo el sistema: ${(totalBytes/1024).toFixed(1)} KB. Importante: cada cajón tiene su propio límite de 5,120 KB (5MB) — no se suman entre sí, así que lo que importa es que ninguno individual llegue al 100%.</p>`;
+    + `<p class="hint" style="margin-top:10px;">Total usado en todo el sistema: ${(totalBytes/1024).toFixed(1)} KB. La barra de cada cajón usa 5,120 KB (5MB) como referencia visual — ese es el límite real cuando trabajas conmigo aquí en el chat, pero cuando usas el sistema publicado en GitHub Pages, la información se guarda en IndexedDB del navegador, con una capacidad mucho mayor (cientos de MB), así que ahí esa barra es solo orientativa.</p>`;
 }
 
 
@@ -8588,7 +8661,7 @@ async function uploadComiteDoc(){
   const fileInput = document.getElementById('comiteDocArchivo');
   if(!fileInput.files.length){ showToast('Selecciona un archivo'); return; }
   const file = fileInput.files[0];
-  if(file.size > 4*1024*1024){ showToast('El archivo es muy grande (máx. 4MB)'); return; }
+  if(file.size > 1*1024*1024){ showToast('El archivo es muy grande (máx. 1MB, para no llenar el espacio de almacenamiento)'); return; }
   const reader = new FileReader();
   reader.onload = async ()=>{
     comiteDocumentos.push({
