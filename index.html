@@ -200,13 +200,14 @@ tr:hover td{background:#FAF9F6;}
       <h1>RRHH</h1>
     </div>
     <div class="nav-item active" data-view="dashboard"><span class="nav-icon">&#9673;</span> Inicio</div>
-    <div class="nav-section-label">Personal y Documentos</div>
+    <div class="nav-section-label">Personal</div>
     <div class="nav-item" data-view="personal"><span class="nav-icon">&#9782;</span> Personal</div>
-    <div class="nav-item" data-view="documentos"><span class="nav-icon">&#9998;</span> Documentos</div>
+    <div class="nav-section-label">Cumplimiento</div>
+    <div class="nav-item" data-view="legajosunafil"><span class="nav-icon">&#9878;</span> Legajo SUNAFIL</div>
     <div class="nav-item" data-view="emo"><span class="nav-icon">&#127973;</span> EMO</div>
+    <div class="nav-section-label">Documentos</div>
     <div class="nav-item" data-view="contratos"><span class="nav-icon">&#128196;</span> Contratos</div>
     <div class="nav-item" data-view="boletaspago"><span class="nav-icon">&#128179;</span> Boletas de pago</div>
-    <div class="nav-item" data-view="constancias"><span class="nav-icon">&#128450;</span> Constancias</div>
     <div class="nav-item" data-view="papelera"><span class="nav-icon">&#128465;</span> Papelera</div>
     <div class="nav-section-label">Operaciones</div>
     <div class="nav-item" data-view="menus"><span class="nav-icon">&#9749;</span> Alimentación general</div>
@@ -214,6 +215,7 @@ tr:hover td{background:#FAF9F6;}
     <div class="nav-item" data-view="inventario"><span class="nav-icon">&#128230;</span> Inventario</div>
     <div class="nav-item" data-view="bienestar"><span class="nav-icon">&#127807;</span> Bienestar</div>
     <div class="nav-item" data-view="epp"><span class="nav-icon">&#129508;</span> EPP</div>
+    <div class="nav-item" data-view="constancias"><span class="nav-icon">&#128450;</span> Constancias de EPPs</div>
     <div class="nav-item" data-view="seguros"><span class="nav-icon">&#128737;</span> Seguros</div>
     <div class="nav-item" data-view="planilla"><span class="nav-icon">&#127974;</span> Planilla y Cuentas Bancarias</div>
     <div class="sidebar-footer">Datos guardados en tu navegador, de forma privada.</div>
@@ -309,137 +311,72 @@ tr:hover td{background:#FAF9F6;}
       </div>
     </div>
 
-    <!-- DOCUMENTOS -->
-    <div class="view" id="view-documentos">
+    <!-- LEGAJO SUNAFIL -->
+    <div class="view" id="view-legajosunafil">
       <div class="view-header">
         <div>
-          <h2>Documentos</h2>
-          <p>Genera y descarga contratos, constancias, memorandos y adendas — con el formato oficial de la empresa</p>
+          <h2>Legajo SUNAFIL</h2>
+          <p>Checklist de cumplimiento por trabajador, alertas de plazos y proceso de cese paso a paso — todo enlazado a la ficha de Personal</p>
         </div>
       </div>
 
       <div class="tabs-sub">
-        <button class="tab-sub-btn active" data-gendoc-tab="generar" onclick="switchGenDocTab('generar')">Generar documento</button>
-        <button class="tab-sub-btn" data-gendoc-tab="plantillas" onclick="switchGenDocTab('plantillas')">Plantillas y contrato oficial (Word)</button>
+        <button class="tab-sub-btn active" data-legajo-tab="checklist" onclick="switchLegajoTab('checklist')">Checklist y alertas</button>
+        <button class="tab-sub-btn" data-legajo-tab="cese" onclick="switchLegajoTab('cese')">Cese paso a paso</button>
+        <button class="tab-sub-btn" data-legajo-tab="documentos" onclick="switchLegajoTab('documentos')">Documentos obligatorios</button>
       </div>
 
-      <!-- GENERAR DOCUMENTO -->
-      <div id="genDocGenerarBlock">
-        <div class="field" style="max-width:340px;margin-bottom:18px;">
-          <label>Colaborador</label>
-          <select id="docEmployeeSelect" onchange="renderDocPreview()"></select>
-        </div>
-
-        <div class="doc-grid">
-          <div class="doc-types" id="docTypeList"></div>
-          <div class="doc-preview">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
-              <h3 style="font-size:15px;" id="docPreviewTitle">Contrato de trabajo</h3>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button class="btn btn-ghost btn-sm" onclick="document.execCommand('bold')"><b>N</b></button>
-                <button class="btn btn-ghost btn-sm" onclick="document.execCommand('italic')"><i>K</i></button>
-                <button class="btn btn-ghost btn-sm" onclick="document.execCommand('underline')"><u>S</u></button>
-                <button class="btn btn-ghost btn-sm" onclick="document.execCommand('insertUnorderedList')">Lista</button>
-                <button class="btn btn-ghost btn-sm" onclick="resetTemplate()">Restaurar plantilla</button>
-                <button class="btn btn-ghost btn-sm" onclick="printDoc()">Imprimir</button>
-                <button class="btn btn-primary btn-sm" onclick="descargarDocGenerarPdf()">Descargar en PDF</button>
-                <button class="btn btn-accent btn-sm" onclick="descargarDocGenerarWord()">Descargar en Word</button>
-              </div>
-            </div>
-            <div class="field" style="margin-bottom:10px;"><label>Firma a incluir (opcional)</label><select id="docFirmaSelect"><option value="">Sin firma</option></select></div>
-            <div id="docTextarea" contenteditable="true" style="min-height:420px;max-height:65vh;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:20px;background:#fff;font-family:'Times New Roman',serif;font-size:14px;line-height:1.6;color:#1a1a1a;" oninput="markTemplateDirty()"></div>
-            <p class="hint">Puedes editar el texto libremente (negrita, cursiva, listas) antes de descargar o imprimir. Los datos del colaborador ya están reemplazados en la vista previa.</p>
-          </div>
+      <!-- CHECKLIST Y ALERTAS -->
+      <div id="legajoChecklistBlock">
+        <div class="stat-grid" id="legajoStats"></div>
+        <div id="legajoUrgente"></div>
+        <div class="panel">
+          <div class="panel-head"><h3>Checklist de cumplimiento por colaborador</h3></div>
+          <div id="legajoTable"></div>
         </div>
       </div>
 
-      <!-- PLANTILLAS Y CONTRATO OFICIAL -->
-      <div id="genDocPlantillasBlock" style="display:none;">
+      <!-- CESE PASO A PASO -->
+      <div id="legajoCeseBlock" style="display:none;">
         <div class="panel">
-          <div class="panel-head"><h3>Datos del empleador (se usan en todos los contratos)</h3></div>
+          <div class="panel-head"><h3>Iniciar o continuar un proceso de cese</h3></div>
           <div style="padding:16px 18px;">
             <div class="field-row">
-              <div class="field"><label>Razón social</label><input id="empresaRazonSocial" placeholder="Ej. SERVING S.A.C."></div>
-              <div class="field"><label>RUC</label><input id="empresaRuc"></div>
+              <div class="field"><label>Colaborador</label><select id="ceseEmployeeSelect"></select></div>
+              <div class="field" style="display:flex;align-items:flex-end;"><button class="btn btn-accent btn-sm" onclick="iniciarCese()">Iniciar / abrir proceso de cese</button></div>
             </div>
-            <div class="field-row">
-              <div class="field"><label>Representante legal — nombre</label><input id="empresaRepNombre"></div>
-              <div class="field"><label>Representante legal — DNI</label><input id="empresaRepDni"></div>
-            </div>
-            <div class="field-row">
-              <div class="field"><label>Cargo del representante</label><input id="empresaRepCargo" placeholder="Ej. Gerente General"></div>
-              <div class="field"><label>Domicilio fiscal</label><input id="empresaDomicilioFiscal"></div>
-            </div>
-            <div class="field-row" style="align-items:flex-end;">
-              <div class="field">
-                <label>Logo de la empresa (opcional)</label>
-                <div style="display:flex;align-items:center;gap:10px;">
-                  <img id="empresaLogoPreview" src="" style="width:56px;height:56px;object-fit:contain;background:#F3F1EA;border-radius:6px;display:none;">
-                  <div id="empresaLogoPlaceholder" style="width:56px;height:56px;background:#F3F1EA;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--ink-soft);font-size:10px;text-align:center;">Sin logo</div>
-                  <input type="file" id="empresaLogoFile" accept="image/*" style="max-width:180px;" onchange="previewEmpresaLogo(this)">
-                </div>
-              </div>
-              <div class="field"></div>
-            </div>
-            <button class="btn btn-accent btn-sm" onclick="guardarDatosEmpresa()">Guardar datos del empleador</button>
           </div>
         </div>
-
+        <div id="ceseWizard"></div>
         <div class="panel">
-          <div class="panel-head"><h3>Firmas digitales</h3></div>
-          <div style="padding:16px 18px;">
-            <p class="hint" style="margin:0 0 12px;">Sube todas las firmas que uses (Gerente General, Jefe Logístico, Jefe de Recursos Humanos, Residente de Proyecto, etc.). Luego, en cada documento, tú eliges cuál usar.</p>
-            <div class="field-row">
-              <div class="field"><label>Nombre / cargo de la firma</label><input id="firmaNuevoNombre" placeholder="Ej. Jefe Logístico, Residente de Proyecto"></div>
-              <div class="field"><label>Imagen de la firma</label><input type="file" id="firmaNuevoArchivo" accept="image/*"></div>
-            </div>
-            <button class="btn btn-accent btn-sm" onclick="agregarFirmaDigital()">Agregar firma</button>
-            <div id="listaFirmasDigitales" style="margin-top:16px;"></div>
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-head"><h3>Plantillas oficiales en Word (mantienen tu logo y formato exacto)</h3></div>
-          <div style="padding:16px 18px;">
-            <p class="hint" style="margin:0 0 12px;">
-              Sube aquí tus archivos <b>.docx reales</b> tal como los usa la empresa — con logo, membrete y formato — y el sistema solo
-              reemplaza los datos, sin tocar el diseño. Puedes guardar varias plantillas (contrato, constancia de entrega de contrato,
-              constancia de boletas, etc.) y generar cualquiera de ellas ya llena, en segundos.
-              En tu Word, escribe estos campos donde corresponda: <code>{nombre}</code>, <code>{dni}</code>, <code>{domicilio}</code>,
-              <code>{ciudad}</code>, <code>{cargo}</code>, <code>{sueldo}</code>, <code>{fecha_ingreso}</code>, <code>{fecha_fin}</code>, <code>{fecha_emision}</code>,
-              <code>{tipo_contrato}</code>, <code>{proyecto}</code>, <code>{duracion}</code>, <code>{lugar_prestacion}</code>, <code>{horario}</code>, <code>{beneficios}</code>, <code>{periodo_prueba}</code>, <code>{ciudad_firma}</code>,
-              <code>{razon_social}</code>, <code>{ruc}</code>, <code>{domicilio_fiscal}</code>, <code>{representante_nombre}</code>, <code>{representante_dni}</code>, <code>{representante_cargo}</code>,
-              <code>{periodo_boleta}</code> — o cualquier otro campo que necesites, escribiéndolo entre llaves.
-            </p>
-            <div class="field-row">
-              <div class="field"><label>Nombre de esta plantilla</label><input id="contratoOficialNombre" placeholder="Ej. Contrato de trabajo, Constancia de boletas"></div>
-              <div class="field"><label>Archivo (.docx)</label><input type="file" id="contratoOficialFile" accept=".docx"></div>
-            </div>
-            <button class="btn btn-accent btn-sm" onclick="uploadContratoOficial()">Guardar plantilla</button>
-            <p class="hint" id="contratoOficialStatus" style="margin-top:10px;"></p>
-
-            <div class="field-row" style="margin-top:16px;">
-              <div class="field"><label>Colaborador</label><select id="contratoOficialEmployeeSelect"></select></div>
-              <div class="field"><label>Fecha de emisión (día que se firma/entrega)</label><input type="date" id="contratoOficialFechaEmision" onchange="actualizarPeriodoBoletaDesdeFecha()"></div>
-            </div>
-            <div class="field-row">
-              <div class="field">
-                <label>Mes del período (para boletas)</label>
-                <select id="contratoOficialMesPeriodo">
-                  <option value="Enero">Enero</option><option value="Febrero">Febrero</option><option value="Marzo">Marzo</option>
-                  <option value="Abril">Abril</option><option value="Mayo">Mayo</option><option value="Junio">Junio</option>
-                  <option value="Julio">Julio</option><option value="Agosto">Agosto</option><option value="Septiembre">Septiembre</option>
-                  <option value="Octubre">Octubre</option><option value="Noviembre">Noviembre</option><option value="Diciembre">Diciembre</option>
-                </select>
-              </div>
-              <div class="field"><label>Año del período</label><input type="number" id="contratoOficialAnioPeriodo" placeholder="Ej. 2026"></div>
-            </div>
-            <div id="contratoOficialListaPlantillas" style="margin-top:14px;"></div>
-          </div>
+          <div class="panel-head"><h3>Procesos de cese registrados</h3></div>
+          <div id="ceseListado"></div>
         </div>
       </div>
 
-      <!-- EDITOR DE WORD EN LINEA -->
+      <!-- DOCUMENTOS OBLIGATORIOS -->
+      <div id="legajoDocumentosBlock" style="display:none;">
+        <div class="panel">
+          <div class="panel-head"><h3>Carpeta de documentos obligatorios de la empresa</h3></div>
+          <div style="padding:16px 18px;">
+            <p class="hint" style="margin:0 0 10px;">Guarda aquí los documentos generales de la empresa que exige SUNAFIL (no van por colaborador). Sugerencias rápidas — haz clic para agregar el nombre y luego sube el archivo:</p>
+            <div id="sunafilDocsSugeridos" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;"></div>
+            <div class="field-row">
+              <div class="field"><label>Nombre del documento</label><input type="text" id="sunafilDocNombre" placeholder="Ej. Reglamento Interno de Trabajo (RIT)"></div>
+              <div class="field"><label>Vigencia (opcional)</label><input type="date" id="sunafilDocVigencia"></div>
+            </div>
+            <div class="upload-row">
+              <input type="file" id="sunafilDocFile" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+              <button class="btn btn-accent btn-sm" onclick="subirDocumentoSunafil()">Subir</button>
+            </div>
+            <p class="hint">Formatos aceptados: PDF, Word, JPG, PNG — máx. 1MB.</p>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Documentos guardados</h3></div>
+          <div id="sunafilDocsTable"></div>
+        </div>
+      </div>
     </div>
 
     <!-- EMO -->
@@ -488,32 +425,61 @@ tr:hover td{background:#FAF9F6;}
       </div>
 
       <div class="stat-grid" id="boletasPagoStats"></div>
+      <div id="boletasPagoAviso"></div>
 
       <div class="panel">
-        <div class="panel-head"><h3>Subir boleta de pago</h3></div>
+        <div class="panel-head">
+          <h3>Calendario anual por colaborador</h3>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select class="search-box" id="calendarioBoletasAnio" style="width:110px;"></select>
+            <button class="btn btn-ghost btn-sm" onclick="toggleCalendarioBoletas()" id="btnToggleCalendarioBoletas">Mostrar calendario</button>
+          </div>
+        </div>
+        <div id="calendarioBoletasBlock" style="display:none;">
+          <div id="calendarioBoletasTable"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Subir boleta y constancia de entrega</h3></div>
         <div style="padding:16px 18px;">
           <div class="field-row">
             <div class="field">
               <label>Colaborador</label>
-              <select id="boletaPagoEmployeeSelect"></select>
+              <select id="boletaPagoEmployeeSelect" onchange="actualizarEstadoBoletaConstancia()"></select>
             </div>
             <div class="field-row" style="grid-template-columns:1fr 1fr;gap:8px;">
               <div class="field">
                 <label>Mes</label>
-                <select id="boletaPagoMes">
+                <select id="boletaPagoMes" onchange="actualizarEstadoBoletaConstancia()">
                   <option>Enero</option><option>Febrero</option><option>Marzo</option><option>Abril</option>
                   <option>Mayo</option><option>Junio</option><option>Julio</option><option>Agosto</option>
                   <option>Septiembre</option><option>Octubre</option><option>Noviembre</option><option>Diciembre</option>
                 </select>
               </div>
-              <div class="field"><label>Año</label><input type="number" id="boletaPagoAnio" style="width:100%;"></div>
+              <div class="field"><label>Año</label><input type="number" id="boletaPagoAnio" style="width:100%;" onchange="actualizarEstadoBoletaConstancia()"></div>
             </div>
           </div>
-          <div class="upload-row">
-            <input type="file" id="boletaPagoFile" accept=".pdf,.jpg,.jpeg,.png">
-            <button class="btn btn-accent btn-sm" onclick="uploadBoletaPago()">Subir</button>
+
+          <div id="boletaPagoEstadoChecks" style="display:flex;gap:16px;margin:4px 0 16px;flex-wrap:wrap;"></div>
+
+          <div class="field-row">
+            <div class="field">
+              <label>Boleta de pago</label>
+              <div class="upload-row">
+                <input type="file" id="boletaPagoFile" accept=".pdf,.jpg,.jpeg,.png">
+                <button class="btn btn-accent btn-sm" onclick="uploadBoletaPago()">Subir boleta</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Constancia de entrega de la boleta</label>
+              <div class="upload-row">
+                <input type="file" id="constanciaPagoFile" accept=".pdf,.jpg,.jpeg,.png">
+                <button class="btn btn-primary btn-sm" onclick="uploadConstanciaPagoDesdeFormulario()">Subir constancia</button>
+              </div>
+            </div>
           </div>
-          <p class="hint">Formatos aceptados: PDF, JPG, PNG — máx. 1MB. Puedes subir la boleta de cada trabajador mes a mes; todas quedan guardadas en su historial.</p>
+          <p class="hint">Formatos aceptados: PDF, JPG, PNG — máx. 1MB. Ambos documentos quedan guardados por colaborador y periodo (mes/año); los dos checks de arriba te confirman cuáles ya subiste.</p>
         </div>
       </div>
 
@@ -536,15 +502,17 @@ tr:hover td{background:#FAF9F6;}
     <div class="view" id="view-constancias">
       <div class="view-header">
         <div>
-          <h2>Constancias</h2>
-          <p>Registra la entrega de Constancia de Contrato, Constancia de Boletas y Constancia de entrega de EPP, con su fecha, por colaborador</p>
+          <h2>Constancias de EPPs</h2>
+          <p>Registra y consulta la entrega de Equipos de Protección Personal (EPP) a cada colaborador, mes a mes</p>
         </div>
       </div>
 
       <div class="stat-grid" id="constanciasStats"></div>
 
+      <p class="hint" style="margin:0 0 12px;">📌 Las constancias de entrega de contrato, adenda de contrato y boletas se suben desde sus propias bitácoras (Contratos y Boletas de pago). Esta pantalla solo maneja constancias de EPP.</p>
+
       <div class="panel">
-        <div class="panel-head"><h3>Registrar constancia entregada</h3></div>
+        <div class="panel-head"><h3>Registrar constancia de EPP (mensual)</h3></div>
         <div style="padding:16px 18px;">
           <div class="field-row">
             <div class="field">
@@ -553,14 +521,26 @@ tr:hover td{background:#FAF9F6;}
             </div>
             <div class="field">
               <label>Tipo de constancia</label>
-              <select id="constanciaTipo">
-                <option value="constancia_entrega_contrato">Constancia de Contrato</option>
-                <option value="constancia_entrega_boletas">Constancia de Boletas</option>
+              <select id="constanciaTipo" onchange="toggleConstanciaEppMensual()">
+                <option value="constancia_epp">Constancia de entrega de EPP (registro manual mensual)</option>
               </select>
-              <p class="hint" style="margin-top:6px;">La Constancia de entrega de EPP se genera sola cuando asignas EPP a un colaborador (con firma y detalle) — aquí solo verás las que ya se generaron, filtrando por tipo abajo.</p>
             </div>
           </div>
-          <div class="field" style="max-width:220px;"><label>Fecha de entrega</label><input type="date" id="constanciaFecha"></div>
+          <div class="field-row" id="constanciaFechaField">
+            <div class="field" style="max-width:220px;"><label>Fecha de entrega</label><input type="date" id="constanciaFecha"></div>
+            <div class="field"></div>
+          </div>
+          <div class="field-row" id="constanciaEppMesField" style="display:none;">
+            <div class="field">
+              <label>Mes</label>
+              <select id="constanciaEppMes">
+                <option>Enero</option><option>Febrero</option><option>Marzo</option><option>Abril</option>
+                <option>Mayo</option><option>Junio</option><option>Julio</option><option>Agosto</option>
+                <option>Septiembre</option><option>Octubre</option><option>Noviembre</option><option>Diciembre</option>
+              </select>
+            </div>
+            <div class="field"><label>Año</label><input type="number" id="constanciaEppAnio" style="width:100%;"></div>
+          </div>
           <div class="upload-row">
             <input type="file" id="constanciaFile" accept=".pdf,.jpg,.jpeg,.png">
             <button class="btn btn-accent btn-sm" onclick="registrarConstancia()">Registrar</button>
@@ -575,12 +555,6 @@ tr:hover td{background:#FAF9F6;}
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <select class="search-box" id="constanciaFiltroColaborador" style="width:220px;">
               <option value="todos">Todos los colaboradores</option>
-            </select>
-            <select class="search-box" id="constanciaFiltroTipo" style="width:220px;">
-              <option value="todos">Todos los tipos</option>
-              <option value="constancia_entrega_contrato">Constancia de Contrato</option>
-              <option value="constancia_entrega_boletas">Constancia de Boletas</option>
-              <option value="constancia_epp">Constancia de entrega de EPP</option>
             </select>
           </div>
         </div>
@@ -956,6 +930,8 @@ tr:hover td{background:#FAF9F6;}
         <div id="invItemsTable"></div>
       </div>
 
+      <div class="panel" id="rotacionTallaPanel" style="display:none;"></div>
+
       <div class="panel">
         <div class="panel-head"><h3>Registro rápido</h3></div>
         <div style="padding:16px 18px;">
@@ -964,6 +940,7 @@ tr:hover td{background:#FAF9F6;}
             <div class="field"><label>Cantidad</label><input type="number" id="movCantidad" min="0"></div>
           </div>
           <div class="field"><label>Entregado a / recibido de (nombre)</label><input id="movEntregadoA" placeholder="Ej. Juan Pérez"></div>
+          <p class="hint" style="margin:4px 0 0;">Los artículos que manejan tallas no aparecen aquí — ajústalos desde "Editar tallas" en la tabla de arriba.</p>
           <div style="display:flex;gap:8px;margin-top:4px;">
             <button class="btn btn-primary" style="flex:1;" onclick="saveMovement('entrada')">+ Entrada (agregar stock)</button>
             <button class="btn btn-danger" style="flex:1;" onclick="saveMovement('salida')">− Salida (quitar stock)</button>
@@ -1150,9 +1127,10 @@ tr:hover td{background:#FAF9F6;}
           <div class="panel-head"><h3>Entregar EPP a un colaborador</h3></div>
           <div style="padding:16px 18px;">
             <div class="field-row">
-              <div class="field"><label>Colaborador</label><select id="eppEmployeeSelect"></select></div>
+              <div class="field"><label>Colaborador</label><select id="eppEmployeeSelect" onchange="mostrarTallasEpp()"></select></div>
               <div class="field"><label>Fecha de entrega</label><input type="date" id="eppFecha" onchange="updateEppVencimientoPreview()"></div>
             </div>
+            <p class="hint" id="eppTallasRef" style="margin:-6px 0 12px;"></p>
             <div class="field-row">
               <div class="field"><label>Vida útil por defecto (días) — puedes ajustarla por cada artículo abajo</label><input type="number" id="eppVidaUtil" value="90" oninput="updateEppVencimientoPreview()"></div>
               <div class="field"><label>Vencimiento / desgaste (automático)</label><input type="text" id="eppVencimientoPreview" readonly style="background:#F3F1EA;color:var(--ink-soft);"></div>
@@ -1455,6 +1433,19 @@ tr:hover td{background:#FAF9F6;}
         <div class="field"><label>Sueldo mensual (automático)</label><input type="text" id="empSueldoMensual" readonly style="background:#F3F1EA;color:var(--ink-soft);"></div>
       </div>
       <p class="hint" id="empSueldoWarn" style="color:var(--danger);margin:-10px 0 12px;"></p>
+
+      <h3 style="font-size:14px;margin:18px 0 10px;color:var(--ink-soft);">Tallas para EPP</h3>
+      <div class="field-row">
+        <div class="field"><label>Talla de pantalón</label><input id="empTallaPantalon" placeholder="Ej. 32"></div>
+        <div class="field"><label>Talla de camisa / casaca</label><input id="empTallaCamisa" placeholder="Ej. M"></div>
+        <div class="field"><label>Talla de calzado</label><input id="empTallaCalzado" placeholder="Ej. 42"></div>
+      </div>
+
+      <h3 style="font-size:14px;margin:18px 0 10px;color:var(--ink-soft);">Documentos del colaborador</h3>
+      <div id="fichaDocsBlock">
+        <p class="hint">Guarda el colaborador primero para poder subir sus documentos.</p>
+      </div>
+
       <div class="field-row">
         <div class="field"><label>Horario — hora de entrada</label><input type="time" id="empHoraEntrada"></div>
         <div class="field"><label>Horario — hora de salida</label><input type="time" id="empHoraSalida"></div>
@@ -1462,6 +1453,13 @@ tr:hover td{background:#FAF9F6;}
       <div class="field-row">
         <div class="field"><label>Fecha de ingreso</label><input type="date" id="empFechaIngreso"></div>
         <div class="field"><label>Fecha fin de contrato</label><input type="date" id="empFechaFin"></div>
+      </div>
+      <div class="field-row">
+        <div class="field" style="display:flex;align-items:center;gap:8px;padding-top:22px;">
+          <input type="checkbox" id="empTRegistroAlta" style="width:auto;">
+          <label for="empTRegistroAlta" style="margin:0;">Alta ya registrada en T-Registro (SUNAT)</label>
+        </div>
+        <div class="field"></div>
       </div>
 
       <h3 style="font-size:14px;margin:18px 0 10px;color:var(--ink-soft);">Datos del contrato (obra determinada / servicio específico)</h3>
@@ -1712,9 +1710,26 @@ tr:hover td{background:#FAF9F6;}
         <div id="itemUnidadOtroField" style="display:none;margin-top:8px;"><input id="itemUnidadOtro" placeholder="Especifica la unidad"></div>
       </div>
     </div>
-    <div class="field-row">
+    <label style="display:flex;align-items:center;gap:8px;margin:2px 0 10px;font-weight:500;">
+      <input type="checkbox" id="itemManejaTallas" style="width:auto;" onchange="toggleManejaTallas()">
+      Este artículo maneja tallas (ej. calzado, ropa)
+    </label>
+    <div class="field-row" id="itemStockNormalField">
       <div class="field"><label>Stock actual</label><input type="number" id="itemStock" value="0"></div>
       <div class="field"><label>Stock mínimo (avisa si baja de esto)</label><input type="number" id="itemStockMinimo" value="0"></div>
+    </div>
+    <div id="itemStockTallasField" style="display:none;">
+      <div class="field-row">
+        <div class="field"><label>Stock mínimo total (avisa si baja de esto)</label><input type="number" id="itemStockMinimoTallas" value="0"></div>
+        <div class="field"><label>Stock total (automático)</label><input type="text" id="itemStockTotalTallas" readonly style="background:#F3F1EA;color:var(--ink-soft);"></div>
+      </div>
+      <label style="font-size:12.5px;font-weight:600;color:var(--ink-soft);">Cantidad por talla</label>
+      <div id="itemTallasContainer" style="margin:8px 0;"></div>
+      <div class="upload-row" style="margin-bottom:12px;">
+        <input id="itemNuevaTalla" placeholder="Talla (ej. 40, M)" style="max-width:140px;">
+        <input type="number" id="itemNuevaTallaCantidad" placeholder="Cantidad" value="0" style="max-width:120px;">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="agregarTallaItem()">+ Agregar talla</button>
+      </div>
     </div>
     <details>
       <summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--ink-soft);">Ubicación y notas (opcional)</summary>
@@ -1800,6 +1815,8 @@ async function saveData(key, value){
 let employees = [];
 let menuEntries = [];
 let workerDocs = [];
+let procesosCese = [];
+let documentosSunafil = [];
 let ultimoRespaldoFecha = null;
 let faltas = [];
 let permisos = [];
@@ -1818,152 +1835,6 @@ let eventos = [];
 let encuestas = [];
 let capacitaciones = [];
 let reconocimientos = [];
-let templates = {};
-let currentDocType = 'contrato';
-let templateDirty = false;
-
-const DEFAULT_TEMPLATES = {
-  contrato: `CONTRATO DE TRABAJO SUJETO A MODALIDAD
-POR {{tipoContratoMayus}}
-
-Conste por el presente documento el Contrato de Trabajo sujeto a modalidad que celebran de una parte:
-
-{{razonSocial}}, con RUC N° {{ruc}}, con domicilio fiscal en {{domicilioFiscal}}, debidamente representada por su {{representanteCargo}}, {{representanteNombre}}, identificado(a) con DNI N° {{representanteDni}}, a quien en adelante se le denominará EL EMPLEADOR; y de otra parte:
-
-{{nombre}}, identificado(a) con DNI N° {{dni}}, con domicilio en {{domicilio}}, a quien en adelante se le denominará EL TRABAJADOR; en los términos y condiciones siguientes:
-
-PRIMERO: OBJETO DEL CONTRATO
-EL EMPLEADOR requiere de manera temporal los servicios de EL TRABAJADOR para la ejecución de la obra/servicio específico: {{proyecto}}, motivo por el cual se celebra el presente contrato bajo la modalidad de {{tipoContrato}}, al amparo de la legislación laboral vigente.
-
-SEGUNDO: CARGO Y FUNCIONES
-EL TRABAJADOR se desempeñará en el cargo de {{cargo}}, comprometiéndose a realizar las labores propias de dicho puesto con diligencia, dedicación y responsabilidad.
-
-TERCERO: PLAZO DEL CONTRATO
-El presente contrato tendrá una duración de {{duracion}}, iniciando el {{fechaIngreso}} y culminando el {{fechaFin}}, fecha en la que el contrato quedará automáticamente resuelto sin necesidad de aviso previo, salvo renovación expresa entre las partes.
-
-CUARTO: PERIODO DE PRUEBA
-{{periodoPrueba}}
-
-QUINTO: LUGAR DE PRESTACIÓN DE SERVICIOS
-EL TRABAJADOR prestará sus servicios en: {{lugarPrestacion}}, sin perjuicio de la facultad de EL EMPLEADOR de disponer su desplazamiento a otras sedes o proyectos según las necesidades del servicio.
-
-SEXTO: JORNADA Y HORARIO DE TRABAJO
-La jornada laboral será: {{horario}}.
-
-SÉPTIMO: REMUNERACIÓN
-EL EMPLEADOR pagará a EL TRABAJADOR una remuneración mensual de {{sueldo}}, más los beneficios sociales que correspondan según el {{beneficios}}.
-
-OCTAVO: RÉGIMEN DE SALUD Y PENSIÓN
-EL TRABAJADOR estará afiliado a {{salud}} y a {{pension}}.
-
-NOVENO: OBLIGACIONES GENERALES
-Ambas partes se someten a las disposiciones de la legislación laboral vigente, así como al Reglamento Interno de Trabajo de EL EMPLEADOR.
-
-En señal de conformidad, ambas partes suscriben el presente contrato en {{ciudadFirma}}, a los {{fecha}}.
-
-
-_______________________                    _______________________
-EL EMPLEADOR                                EL TRABAJADOR
-{{representanteNombre}}                     {{nombre}}
-DNI: {{representanteDni}}                   DNI: {{dni}}
-{{representanteCargo}}`,
-
-  constanciaContrato: `CONSTANCIA DE ENTREGA DE CONTRATO
-
-Por medio del presente, se deja constancia de que con fecha {{fecha}}, se hizo entrega a {{nombre}}, identificado(a) con DNI N° {{dni}}, de un ejemplar de su contrato de trabajo correspondiente al cargo de {{cargo}}, con vigencia del {{fechaIngreso}} al {{fechaFin}}.
-
-El trabajador declara haber recibido el documento antes mencionado, conociendo y aceptando su contenido.
-
-
-_______________________
-Firma del trabajador
-{{nombre}} — DNI: {{dni}}`,
-
-  constanciaEpp: `CONSTANCIA DE ENTREGA DE EQUIPOS DE PROTECCIÓN PERSONAL (EPP)
-
-Con fecha {{fecha}}, se hace entrega a {{nombre}}, identificado(a) con DNI N° {{dni}}, cargo {{cargo}}, de los siguientes equipos de protección personal:
-
-{{itemsEpp}}
-
-El trabajador se compromete a utilizar correctamente los EPP entregados, mantenerlos en buen estado, devolverlos si la empresa lo requiere, y solicitar su reposición en caso de deterioro o vencimiento.
-
-
-_______________________                    _______________________
-Responsable de entrega                      Firma del trabajador
-                                             {{nombre}} — DNI: {{dni}}`,
-
-  constanciaBoletas: `CONSTANCIA DE ENTREGA DE BOLETAS DE PAGO
-
-Por medio del presente, se deja constancia de que con fecha {{fecha}}, se hizo entrega a {{nombre}}, identificado(a) con DNI N° {{dni}}, cargo {{cargo}}, de su(s) boleta(s) de pago correspondiente(s) al periodo: ______________________.
-
-El trabajador declara haber recibido el documento antes mencionado, conforme con los conceptos y montos allí detallados.
-
-
-_______________________
-Firma del trabajador
-{{nombre}} — DNI: {{dni}}
-
-
-Firma del representante de la empresa / Gerente General
-Nombre: __________________________
-Cargo: ___________________________
-DNI: _____________________________`,
-
-  memorando: `MEMORANDO N° ____-2026-SERVING/RRHH
-
-PARA:      {{nombre}} — {{cargo}}
-DE:        Recursos Humanos
-FECHA:     {{fecha}}
-ASUNTO:    Llamada de atención por inasistencia / tardanza
-
-Por medio del presente documento, se comunica a usted que ha incurrido en la siguiente falta:
-
-  Fecha de la falta: ______________
-  Tipo de falta: ______________________________________
-  Descripción: _____________________________________________________
-  ___________________________________________________________________
-
-Se le exhorta a corregir esta conducta, recordándole que la reincidencia podrá derivar en las medidas disciplinarias establecidas en el Reglamento Interno de Trabajo.
-
-
-_______________________                    _______________________
-Recursos Humanos                            Trabajador (recibido)
-                                             {{nombre}} — DNI: {{dni}}`,
-
-  adenda: `ADENDA DE AUMENTO DE SUELDO
-
-EMPRESA: {{razonSocial}}
-RUC: {{ruc}}
-
-En la ciudad de {{ciudadFirma}}, a {{fecha}}, se suscribe la presente ADENDA AL CONTRATO DE TRABAJO entre la empresa {{razonSocial}}, identificada con RUC Nº {{ruc}}, representada por su {{representanteCargo}}, Sr./Sra. {{representanteNombre}}, identificado(a) con DNI Nº {{representanteDni}}, y el trabajador, {{nombre}}, identificado(a) con DNI Nº {{dni}}, en los términos siguientes:
-
-1. Objeto de la Adenda. La presente adenda tiene por finalidad modificar la cláusula correspondiente a la remuneración del contrato de trabajo suscrito entre las partes.
-
-2. Nueva Remuneración y Condiciones. A partir del día ____/____/______, el trabajador percibirá una remuneración de S/ __________ (________________________________) diarios, lo que corresponde a una remuneración mensual de S/ __________ (________________________________), calculada sobre 30 días calendario, conforme a la legislación laboral vigente en el Perú.
-
-Este aumento queda sujeto a un período de prueba de _______ (___) meses, durante el cual se evaluará la puntualidad, responsabilidad y desempeño del trabajador.
-
-En caso de superar satisfactoriamente dicho período de prueba, la remuneración establecida se mantendrá de manera permanente. En caso contrario, la empresa podrá dejar sin efecto el aumento y restablecer la remuneración anterior, conforme a lo previsto en la normativa laboral vigente.
-
-3. Ratificación de Cláusulas. Todas las demás cláusulas del contrato de trabajo original permanecen vigentes y sin modificación alguna.
-
-En señal de conformidad, se firma la presente adenda en dos ejemplares de igual tenor y valor, quedando un ejemplar en poder de cada parte.
-
-
-_______________________                    _______________________
-EL EMPLEADOR                                EL TRABAJADOR
-{{representanteNombre}}                     {{nombre}}
-DNI: {{representanteDni}}                   DNI: {{dni}}`
-};
-
-const DOC_TYPES = [
-  {key:'contrato', label:'Contrato de trabajo'},
-  {key:'constanciaContrato', label:'Constancia entrega contrato'},
-  {key:'constanciaBoletas', label:'Constancia entrega boletas'},
-  {key:'constanciaEpp', label:'Constancia entrega EPP'},
-  {key:'memorando', label:'Memorando por faltas'},
-  {key:'adenda', label:'Adenda'}
-];
 
 // ---------- Init ----------
 async function init(){
@@ -1975,14 +1846,12 @@ async function init(){
   });
   if(areaCorregida) await saveData('employees', employees);
   menuEntries = await loadData('menuEntries', []);
-  templates = await loadData('templates', {});
   window._empresaData = await loadData('empresaData', {});
   firmasDigitales = await loadData('firmasDigitales', []);
   if(!firmasDigitales.some(f=>f.nombre==='Recursos Humanos')){
     firmasDigitales.push({id:'firma_rrhh_default', nombre:'Recursos Humanos', imagenData: DEFAULT_FIRMA_RRHH_BASE64});
     await saveData('firmasDigitales', firmasDigitales);
   }
-  DOC_TYPES.forEach(d=>{ if(!templates[d.key]) templates[d.key] = DEFAULT_TEMPLATES[d.key]; });
   ultimoRespaldoFecha = await loadData('ultimoRespaldoFecha', null);
 
   // Migración: versiones anteriores guardaban boletas en 'boletas'; ahora se unifican en 'workerDocs'
@@ -1993,6 +1862,8 @@ async function init(){
     await saveData('workerDocs', workerDocs);
   }
   await purgarPapeleraVencida();
+  procesosCese = await loadData('procesosCese', []);
+  documentosSunafil = await loadData('documentosSunafil', []);
   faltas = await loadData('faltas', []);
   permisos = await loadData('permisos', []);
   prestamos = await loadData('prestamos', []);
@@ -2032,7 +1903,6 @@ async function init(){
   document.getElementById('boletaPagoFiltroColaborador').addEventListener('change', renderBoletasPago);
   document.getElementById('boletaPagoFiltroPeriodo').addEventListener('change', renderBoletasPago);
   document.getElementById('constanciaFiltroColaborador').addEventListener('change', renderConstancias);
-  document.getElementById('constanciaFiltroTipo').addEventListener('change', renderConstancias);
   document.getElementById('papeleraFiltroTipo').addEventListener('change', renderPapelera);
   document.getElementById('globalSearchInput').addEventListener('input', renderGlobalSearchResults);
   document.getElementById('globalSearchInput').addEventListener('focus', renderGlobalSearchResults);
@@ -2046,7 +1916,6 @@ async function init(){
   document.getElementById('reporteMesSelect').addEventListener('change', ()=>{ currentReporteMes = document.getElementById('reporteMesSelect').value; renderReporteMensual(); });
   document.getElementById('reporteAnioSelect').addEventListener('change', ()=>{ currentReporteAnio = document.getElementById('reporteAnioSelect').value; renderReporteMensual(); });
 
-  renderDocTypeList();
   renderAll();
 }
 
@@ -2114,8 +1983,6 @@ function renderAll(){
   renderPersonalTable('todos');
   populateEmployeeSelects();
   renderDatosEmpresa();
-  renderDocPreview();
-  renderContratoOficialStatus();
   renderEmo();
   renderContratos();
   renderBoletasPago();
@@ -2133,6 +2000,8 @@ function renderAll(){
   renderEpp();
   renderSeguros();
   renderPlanillaBancaria();
+  renderLegajoSunafil();
+  renderDocumentosSunafil();
 }
 
 // ---------- Dashboard ----------
@@ -2164,15 +2033,31 @@ function renderDashboard(){
   const eppItems = inventoryItems.filter(it=>it.categoria==='EPP (Protección Personal)');
   const eppStockBajo = eppItems.filter(it=>it.stock<=it.stockMinimo);
   const activosSinEpp = activos.filter(e=>!eppAsignaciones.some(a=>a.empId===e.id));
+  const tallasEppAgotadasDash = [];
+  inventoryItems.filter(it=>it.manejaTallas && it.stockPorTalla).forEach(it=>{
+    Object.entries(it.stockPorTalla).forEach(([talla, cant])=>{
+      if((parseFloat(cant)||0)<=0) tallasEppAgotadasDash.push({nombre: it.nombre, talla});
+    });
+  });
+  const sinTRegistro = activos.filter(e=>!e.tRegistroAlta);
+  const hoyDash = new Date();
+  const periodoBoletaActual = `${MESES_INV[hoyDash.getMonth()]} ${hoyDash.getFullYear()}`;
+  const docsBoletaMes = docsActivos().filter(d=>d.categoria==='boleta' && d.periodo===periodoBoletaActual);
+  const sinBoletaEsteMesDash = activos.filter(e=>!docsBoletaMes.some(d=>d.empId===e.id));
+  const sunafilDocsPorVencer = documentosSunafil.filter(d=>{ const dd=daysUntil(d.vigencia); return dd!==null && dd>=0 && dd<=30; });
+  const sunafilDocsVencidos = documentosSunafil.filter(d=>{ const dd=daysUntil(d.vigencia); return dd!==null && dd<0; });
   const totalAvisos = contratosPorVencer.length + contratosVencidos.length + saludPorVencer.length + sctrPorVencer.length
     + vidaLeyPorVencer.length + emoPorVencer.length + licenciaPorVencer.length + segurosPorVencer.length
-    + segurosVencidos.length + eppStockBajo.length + activosSinEpp.length;
+    + segurosVencidos.length + eppStockBajo.length + activosSinEpp.length + sinTRegistro.length
+    + sinBoletaEsteMesDash.length + sunafilDocsPorVencer.length + sunafilDocsVencidos.length + tallasEppAgotadasDash.length;
 
   document.getElementById('dashStats').innerHTML = `
     <div class="stat-card"><div class="num">${activos.length}</div><div class="label">Personal activo</div></div>
     <div class="stat-card warn"><div class="num">${totalAvisos}</div><div class="label">Avisos activos en total</div></div>
     <div class="stat-card warn"><div class="num">${contratosPorVencer.length}</div><div class="label">Contratos por vencer (30 días)</div></div>
     <div class="stat-card warn"><div class="num">${contratosVencidos.length}</div><div class="label">Contratos vencidos</div></div>
+    <div class="stat-card ${sinTRegistro.length?'warn':''}"><div class="num">${sinTRegistro.length}</div><div class="label">Sin Alta en T-Registro</div></div>
+    <div class="stat-card ${sinBoletaEsteMesDash.length?'warn':''}"><div class="num">${sinBoletaEsteMesDash.length}</div><div class="label">Sin boleta de ${periodoBoletaActual}</div></div>
   `;
 
   const tickerItems = [];
@@ -2216,6 +2101,22 @@ function renderDashboard(){
   if(activosSinEpp.length){
     tickerItems.push(`<div class="ticker-item">${activosSinEpp.length} colaborador(es) activo(s) aún no recibieron ningún EPP</div>`);
   }
+  if(sinTRegistro.length){
+    tickerItems.push(`<div class="ticker-item">⚖ ${sinTRegistro.length} colaborador(es) con Alta en T-Registro pendiente</div>`);
+  }
+  tallasEppAgotadasDash.forEach(t=>{
+    tickerItems.push(`<div class="ticker-item">👟 ${t.nombre} — talla ${t.talla} agotada</div>`);
+  });
+  if(sinBoletaEsteMesDash.length){
+    tickerItems.push(`<div class="ticker-item">💳 ${sinBoletaEsteMesDash.length} colaborador(es) sin boleta subida de ${periodoBoletaActual}</div>`);
+  }
+  sunafilDocsVencidos.forEach(d=>{
+    tickerItems.push(`<div class="ticker-item">⚠ Documento obligatorio "${d.nombre}" venció el ${fmtDate(d.vigencia)}</div>`);
+  });
+  sunafilDocsPorVencer.forEach(d=>{
+    const dd = daysUntil(d.vigencia);
+    tickerItems.push(`<div class="ticker-item">Documento obligatorio "${d.nombre}" vence en ${dd} día(s) — ${fmtDate(d.vigencia)}</div>`);
+  });
   document.getElementById('tickerTrack').innerHTML = tickerItems.length
     ? tickerItems.join('')
     : `<div class="ticker-empty">No hay vencimientos próximos en los siguientes 30 días.</div>`;
@@ -2411,7 +2312,7 @@ function previewEmpFoto(input){
 }
 
 const EMP_FIELD_IDS = ['empNombre','empDni','empDomicilio','empCiudad','empCorreo1','empCorreo2',
-  'empCelular1','empCelular2','empCargo','empSueldoDiario','empHoraEntrada','empHoraSalida','empFechaNacimiento','empPaisNacimiento','empFechaIngreso','empFechaFin',
+  'empCelular1','empCelular2','empCargo','empTallaPantalon','empTallaCamisa','empTallaCalzado','empSueldoDiario','empHoraEntrada','empHoraSalida','empFechaNacimiento','empPaisNacimiento','empFechaIngreso','empFechaFin',
   'empProyectoObra','empDuracionContrato','empLugarPrestacion','empDiasHorario','empPeriodoPruebaDuracion','empCiudadFirma',
   'empFechaSalud','empVigenciaSctrInicio','empVigenciaSctr','empVigenciaVidaLeyInicio','empVigenciaVidaLey','empFechaEmoInicio','empFechaEmo',
   'empLicenciaCategoria','empLicenciaNumero','empLicenciaVigencia','empBanco','empNumeroCuenta','empCci',
@@ -2448,6 +2349,7 @@ function openEmployeeModal(id){
   document.getElementById('empFoto').value = '';
   if(id){
     const e = employees.find(x=>x.id===id);
+    renderFichaDocsBlock(id);
     document.getElementById('employeeModalTitle').textContent = 'Editar colaborador';
     document.getElementById('empNombre').value = e.nombre;
     document.getElementById('empDni').value = e.dni;
@@ -2461,6 +2363,9 @@ function openEmployeeModal(id){
     document.getElementById('empCelular1').value = e.celular1||'';
     document.getElementById('empCelular2').value = e.celular2||'';
     document.getElementById('empCargo').value = e.cargo||'';
+    document.getElementById('empTallaPantalon').value = e.tallaPantalon||'';
+    document.getElementById('empTallaCamisa').value = e.tallaCamisa||'';
+    document.getElementById('empTallaCalzado').value = e.tallaCalzado||'';
     document.getElementById('empArea').value = e.area||'Administración';
     document.getElementById('empSueldoDiario').value = e.sueldoDiario||'';
     document.getElementById('empHoraEntrada').value = e.horaEntrada||'';
@@ -2468,6 +2373,7 @@ function openEmployeeModal(id){
     document.getElementById('empEstado').value = e.estado;
     document.getElementById('empMotivoBaja').value = e.motivoBaja||'';
     document.getElementById('empFechaIngreso').value = e.fechaIngreso||'';
+    document.getElementById('empTRegistroAlta').checked = !!e.tRegistroAlta;
     document.getElementById('empFechaFin').value = e.fechaFin||'';
     document.getElementById('empTipoContrato').value = e.tipoContrato||'Obra determinada';
     document.getElementById('empProyectoObra').value = e.proyectoObra||'';
@@ -2510,8 +2416,10 @@ function openEmployeeModal(id){
     }
     document.getElementById('empDeleteBtn').style.display = 'inline-flex';
   } else {
+    document.getElementById('fichaDocsBlock').innerHTML = `<p class="hint">Guarda el colaborador primero para poder subir sus documentos.</p>`;
     document.getElementById('employeeModalTitle').textContent = 'Nuevo colaborador';
     EMP_FIELD_IDS.forEach(id2=>document.getElementById(id2).value='');
+    document.getElementById('empTRegistroAlta').checked = false;
     document.getElementById('empEstado').value='activo';
     document.getElementById('empMotivoBaja').value='';
     document.getElementById('empArea').value='Administración';
@@ -2557,6 +2465,9 @@ async function saveEmployee(){
     celular1: document.getElementById('empCelular1').value.trim(),
     celular2: document.getElementById('empCelular2').value.trim(),
     cargo: document.getElementById('empCargo').value.trim(),
+    tallaPantalon: document.getElementById('empTallaPantalon').value.trim(),
+    tallaCamisa: document.getElementById('empTallaCamisa').value.trim(),
+    tallaCalzado: document.getElementById('empTallaCalzado').value.trim(),
     area: document.getElementById('empArea').value,
     sueldoDiario,
     sueldoMensual: sueldoDiario*30,
@@ -2566,6 +2477,7 @@ async function saveEmployee(){
     motivoBaja: document.getElementById('empEstado').value==='inactivo' ? document.getElementById('empMotivoBaja').value.trim() : '',
     fotoData: empFotoData,
     fechaIngreso: document.getElementById('empFechaIngreso').value,
+    tRegistroAlta: document.getElementById('empTRegistroAlta').checked,
     tipoContrato: document.getElementById('empTipoContrato').value,
     proyectoObra: document.getElementById('empProyectoObra').value.trim(),
     duracionContrato: document.getElementById('empDuracionContrato').value.trim(),
@@ -2612,6 +2524,13 @@ const DEFAULT_FIRMA_RRHH_BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgA
 function getLogoData(){
   return empresaLogoData || (window._empresaData && window._empresaData.logoData) || DEFAULT_LOGO_BASE64;
 }
+function aplicarLogoSidebar(){
+  const logoEl = document.getElementById('sidebarLogo');
+  if(!logoEl) return;
+  const logo = getLogoData();
+  if(logo){ logoEl.src = logo; logoEl.style.display = 'block'; }
+  else { logoEl.style.display = 'none'; }
+}
 function addLogoToPdf(doc, x, y, size){
   const logo = getLogoData();
   if(!logo) return 0;
@@ -2622,6 +2541,7 @@ function addLogoToPdf(doc, x, y, size){
   }catch(err){ console.error('No se pudo insertar el logo en el PDF', err); return 0; }
 }
 let firmasDigitales = [];
+let empresaLogoData = '';
 function getFirmaById(firmaId){
   if(!firmaId) return '';
   const f = firmasDigitales.find(x=>x.id===firmaId);
@@ -2636,41 +2556,14 @@ function addFirmaToPdf(doc, x, y, width, height, firmaId){
     return height;
   }catch(err){ console.error('No se pudo insertar la firma en el PDF', err); return 0; }
 }
-async function agregarFirmaDigital(){
-  const nombreInput = document.getElementById('firmaNuevoNombre');
-  const fileInput = document.getElementById('firmaNuevoArchivo');
-  const nombre = nombreInput.value.trim();
-  if(!nombre){ showToast('Ponle un nombre o cargo a la firma (ej. Jefe Logístico)'); return; }
-  if(!fileInput.files.length){ showToast('Selecciona la imagen de la firma'); return; }
-  const file = fileInput.files[0];
-  if(file.size > 1.5*1024*1024){ showToast('La imagen es muy grande (máx. 1.5MB)'); return; }
-  const reader = new FileReader();
-  reader.onload = async ()=>{
-    firmasDigitales.push({id:'firma'+Date.now(), nombre, imagenData: reader.result});
-    await saveData('firmasDigitales', firmasDigitales);
-    nombreInput.value=''; fileInput.value='';
-    renderListaFirmasDigitales();
-    refrescarSelectsFirma();
-    showToast('Firma agregada');
-  };
-  reader.readAsDataURL(file);
-}
-async function eliminarFirmaDigital(id){
-  if(!confirm('¿Eliminar esta firma?')) return;
-  firmasDigitales = firmasDigitales.filter(f=>f.id!==id);
-  await saveData('firmasDigitales', firmasDigitales);
-  renderListaFirmasDigitales();
+function renderDatosEmpresa(){
+  // El panel de "Datos del empleador" (edición manual) ya no existe en la interfaz;
+  // esta función se conserva porque el resto del sistema (logo del sidebar, firmas
+  // digitales en Contratos/EPP/Seguros, etc.) depende de que estos datos se carguen.
+  const emp = window._empresaData || {};
+  empresaLogoData = emp.logoData || '';
   refrescarSelectsFirma();
-}
-function renderListaFirmasDigitales(){
-  const cont = document.getElementById('listaFirmasDigitales');
-  if(!cont) return;
-  cont.innerHTML = firmasDigitales.length ? firmasDigitales.map(f=>`
-    <div style="display:flex;align-items:center;gap:12px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;margin-bottom:6px;">
-      <img src="${f.imagenData}" style="width:60px;height:36px;object-fit:contain;background:#F3F1EA;border-radius:4px;">
-      <div style="flex:1;font-weight:600;">${f.nombre}</div>
-      <button class="btn btn-danger btn-sm" onclick="eliminarFirmaDigital('${f.id}')">Eliminar</button>
-    </div>`).join('') : `<div class="empty">Aún no has agregado ninguna firma.</div>`;
+  aplicarLogoSidebar();
 }
 function poblarSelectFirmas(selectId){
   const sel = document.getElementById(selectId);
@@ -3073,7 +2966,6 @@ function uploadPersonalExcel(file){
 function populateEmployeeSelects(){
   const opts = employees.map(e=>`<option value="${e.id}">${e.nombre} — ${e.dni}</option>`).join('');
   const empty = `<option value="">Sin colaboradores registrados</option>`;
-  document.getElementById('docEmployeeSelect').innerHTML = employees.length ? opts : empty;
   document.getElementById('faltaEmployeeSelect').innerHTML = employees.length ? opts : empty;
   document.getElementById('permisoEmployeeSelect').innerHTML = employees.length ? opts : empty;
   document.getElementById('descansoEmployeeSelect').innerHTML = employees.length ? opts : empty;
@@ -3082,654 +2974,7 @@ function populateEmployeeSelects(){
   document.getElementById('eventoEmployeeSelect').innerHTML = `<option value="">— No aplica —</option>` + opts;
   document.getElementById('reconEmployeeSelect').innerHTML = employees.length ? opts : empty;
   document.getElementById('eppEmployeeSelect').innerHTML = employees.length ? opts : empty;
-}
-
-// ---------- Documentos ----------
-function switchGenDocTab(tab){
-  document.querySelectorAll('[data-gendoc-tab]').forEach(b=>b.classList.remove('active'));
-  document.querySelector(`[data-gendoc-tab="${tab}"]`).classList.add('active');
-  document.getElementById('genDocGenerarBlock').style.display = tab==='generar' ? 'block':'none';
-  document.getElementById('genDocPlantillasBlock').style.display = tab==='plantillas' ? 'block':'none';
-}
-
-function renderDocTypeList(){
-  document.getElementById('docTypeList').innerHTML = DOC_TYPES.map(d=>
-    `<button class="doc-type-btn ${d.key===currentDocType?'active':''}" onclick="selectDocType('${d.key}')">${d.label}</button>`
-  ).join('');
-}
-function selectDocType(key){
-  if(templateDirty && !confirm('Tienes cambios sin guardar en la plantilla actual. ¿Cambiar de todos modos?')) return;
-  currentDocType = key; templateDirty = false;
-  renderDocTypeList();
-  renderDocPreview();
-}
-function fillTemplate(tpl, e, itemsEppTexto){
-  const today = new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'long',year:'numeric'});
-  const emp = window._empresaData || {};
-  const itemsDefault = '  - Ítem: ______________________  Cantidad: ______\n  - Ítem: ______________________  Cantidad: ______';
-  let periodoPruebaTexto = '________';
-  if(e){
-    periodoPruebaTexto = e.periodoPruebaTiene==='si'
-      ? `Las partes acuerdan un periodo de prueba de ${e.periodoPruebaDuracion||'________'}, durante el cual EL EMPLEADOR podrá resolver el contrato sin expresión de causa.`
-      : 'No aplica periodo de prueba para el presente contrato.';
-  }
-  return tpl
-    .replaceAll('{{nombre}}', e ? e.nombre : '________________')
-    .replaceAll('{{dni}}', e ? e.dni : '________')
-    .replaceAll('{{domicilio}}', e ? (e.domicilio||'________') : '________')
-    .replaceAll('{{cargo}}', e ? (e.cargo||'________') : '________')
-    .replaceAll('{{fechaIngreso}}', e ? fmtDate(e.fechaIngreso) : '____/____/______')
-    .replaceAll('{{fechaFin}}', e ? fmtDate(e.fechaFin) : '____/____/______')
-    .replaceAll('{{salud}}', e ? e.salud : '________')
-    .replaceAll('{{pension}}', e ? (e.pension + (e.afpNombre? ' - '+e.afpNombre:'')) : '________')
-    .replaceAll('{{sueldo}}', e ? ('S/ '+(e.sueldoMensual||0).toFixed(2)) : '________')
-    .replaceAll('{{tipoContrato}}', e ? (e.tipoContrato||'Obra determinada') : '________')
-    .replaceAll('{{tipoContratoMayus}}', e ? (e.tipoContrato||'Obra determinada').toUpperCase() : '________')
-    .replaceAll('{{proyecto}}', e ? (e.proyectoObra||'________') : '________')
-    .replaceAll('{{duracion}}', e ? (e.duracionContrato||'________') : '________')
-    .replaceAll('{{lugarPrestacion}}', e ? (e.lugarPrestacion||'________') : '________')
-    .replaceAll('{{horario}}', e ? (e.diasHorario||'________') : '________')
-    .replaceAll('{{beneficios}}', e ? (e.beneficiosSociales||'Régimen general') : '________')
-    .replaceAll('{{periodoPrueba}}', periodoPruebaTexto)
-    .replaceAll('{{ciudadFirma}}', e ? (e.ciudadFirma||'________') : '________')
-    .replaceAll('{{itemsEpp}}', itemsEppTexto || itemsDefault)
-    .replaceAll('{{razonSocial}}', emp.razonSocial||'________')
-    .replaceAll('{{ruc}}', emp.ruc||'________')
-    .replaceAll('{{domicilioFiscal}}', emp.domicilioFiscal||'________')
-    .replaceAll('{{representanteNombre}}', emp.representanteNombre||'________')
-    .replaceAll('{{representanteDni}}', emp.representanteDni||'________')
-    .replaceAll('{{representanteCargo}}', emp.representanteCargo||'________')
-    .replaceAll('{{fecha}}', today);
-}
-function renderDocPreview(){
-  const docType = DOC_TYPES.find(d=>d.key===currentDocType);
-  document.getElementById('docPreviewTitle').textContent = docType.label;
-  const empId = document.getElementById('docEmployeeSelect').value;
-  const e = employees.find(x=>x.id===empId);
-  const tpl = templates[currentDocType] || DEFAULT_TEMPLATES[currentDocType];
-  const texto = fillTemplate(tpl, e);
-  document.getElementById('docTextarea').innerHTML = texto.split('\n').map(linea=>`<p>${linea.trim() ? linea.replace(/</g,'&lt;') : '&nbsp;'}</p>`).join('');
-  poblarSelectFirmas('docFirmaSelect');
-  templateDirty = false;
-}
-function markTemplateDirty(){ templateDirty = true; }
-async function resetTemplate(){
-  if(!confirm('Esto restaura la plantilla original para este documento (se pierden tus ediciones guardadas). ¿Continuar?')) return;
-  templates[currentDocType] = DEFAULT_TEMPLATES[currentDocType];
-  await saveData('templates', templates);
-  renderDocPreview();
-  showToast('Plantilla restaurada');
-}
-function downloadDoc(){
-  const empId = document.getElementById('docEmployeeSelect').value;
-  const e = employees.find(x=>x.id===empId);
-  const text = document.getElementById('docTextarea').innerText;
-  const blob = new Blob([text], {type:'text/plain;charset=utf-8'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const nameTag = e ? e.nombre.replace(/\s+/g,'_') : 'documento';
-  a.href = url; a.download = `${currentDocType}_${nameTag}.txt`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-function printDoc(){
-  const contentHtml = document.getElementById('docTextarea').innerHTML;
-  const logoHtml = getLogoData() ? `<img src="${getLogoData()}" style="width:60px;height:60px;object-fit:contain;margin-bottom:16px;">` : '';
-  const w = window.open('', '_blank');
-  w.document.write(`<div style="padding:40px;font-family:'Times New Roman',serif;font-size:14px;line-height:1.6;">${logoHtml}${contentHtml}</div>`);
-  w.document.close();
-  w.focus();
-  setTimeout(()=>w.print(), 300);
-}
-
-function descargarDocGenerarPdf(){
-  const contentHtml = document.getElementById('docTextarea').innerHTML;
-  const nombreDoc = document.getElementById('docPreviewTitle').textContent || 'documento';
-  const empId = document.getElementById('docEmployeeSelect').value;
-  const e = employees.find(x=>x.id===empId);
-  const firmaId = document.getElementById('docFirmaSelect').value;
-  const nameTag = e ? e.nombre.replace(/\s+/g,'_') : 'documento';
-  const blob = generarPdfBlobDesdeHtml(contentHtml, firmaId);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `${nombreDoc.replace(/\s+/g,'_')}_${nameTag}.pdf`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast('Documento descargado en PDF');
-}
-function descargarDocGenerarWord(){
-  const contentHtml = document.getElementById('docTextarea').innerHTML;
-  const nombreDoc = document.getElementById('docPreviewTitle').textContent || 'documento';
-  const empId = document.getElementById('docEmployeeSelect').value;
-  const e = employees.find(x=>x.id===empId);
-  const firmaId = document.getElementById('docFirmaSelect').value;
-  const nameTag = e ? e.nombre.replace(/\s+/g,'_') : 'documento';
-  const blob = generarDocxBlobDesdeHtml(contentHtml, firmaId);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `${nombreDoc.replace(/\s+/g,'_')}_${nameTag}.docx`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast('Documento descargado en Word');
-}
-
-// ---------- Plantillas (modelos formales de la empresa) ----------
-// ---------- Datos del empleador ----------
-let empresaLogoData = '';
-function renderDatosEmpresa(){
-  const emp = window._empresaData || {};
-  document.getElementById('empresaRazonSocial').value = emp.razonSocial||'';
-  document.getElementById('empresaRuc').value = emp.ruc||'';
-  document.getElementById('empresaRepNombre').value = emp.representanteNombre||'';
-  document.getElementById('empresaRepDni').value = emp.representanteDni||'';
-  document.getElementById('empresaRepCargo').value = emp.representanteCargo||'';
-  document.getElementById('empresaDomicilioFiscal').value = emp.domicilioFiscal||'';
-  empresaLogoData = emp.logoData || '';
-  if(empresaLogoData){
-    document.getElementById('empresaLogoPreview').src = empresaLogoData;
-    document.getElementById('empresaLogoPreview').style.display = 'block';
-    document.getElementById('empresaLogoPlaceholder').style.display = 'none';
-  } else {
-    document.getElementById('empresaLogoPreview').style.display = 'none';
-    document.getElementById('empresaLogoPlaceholder').style.display = 'flex';
-  }
-  renderListaFirmasDigitales();
-  refrescarSelectsFirma();
-  aplicarLogoSidebar();
-}
-function previewEmpresaLogo(input){
-  if(!input.files.length) return;
-  const file = input.files[0];
-  if(file.size > 1.5*1024*1024){ showToast('El logo es muy grande (máx. 1.5MB)'); input.value=''; return; }
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    empresaLogoData = reader.result;
-    document.getElementById('empresaLogoPreview').src = empresaLogoData;
-    document.getElementById('empresaLogoPreview').style.display = 'block';
-    document.getElementById('empresaLogoPlaceholder').style.display = 'none';
-  };
-  reader.readAsDataURL(file);
-}
-function aplicarLogoSidebar(){
-  const logoEl = document.getElementById('sidebarLogo');
-  const logo = getLogoData();
-  if(logo){ logoEl.src = logo; logoEl.style.display = 'block'; }
-  else { logoEl.style.display = 'none'; }
-}
-async function guardarDatosEmpresa(){
-  const data = {
-    razonSocial: document.getElementById('empresaRazonSocial').value.trim(),
-    ruc: document.getElementById('empresaRuc').value.trim(),
-    representanteNombre: document.getElementById('empresaRepNombre').value.trim(),
-    representanteDni: document.getElementById('empresaRepDni').value.trim(),
-    representanteCargo: document.getElementById('empresaRepCargo').value.trim(),
-    domicilioFiscal: document.getElementById('empresaDomicilioFiscal').value.trim(),
-    logoData: empresaLogoData
-  };
-  await saveData('empresaData', data);
-  window._empresaData = data;
-  aplicarLogoSidebar();
-  renderDocPreview();
-  showToast('Datos del empleador guardados');
-}
-
-
-// ---------- Contrato oficial en Word (mantiene el formato exacto de la empresa) ----------
-function arrayBufferToBase64(buffer){
-  let binary = '';
-  const bytes = new Uint8Array(buffer);
-  for(let i=0;i<bytes.byteLength;i++){ binary += String.fromCharCode(bytes[i]); }
-  return btoa(binary);
-}
-function base64ToArrayBuffer(base64){
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for(let i=0;i<binary.length;i++){ bytes[i] = binary.charCodeAt(i); }
-  return bytes.buffer;
-}
-
-// Generador propio de .docx a partir de HTML editado (no depende de librerías externas de terceros)
-function xmlEscape(s){
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-function htmlNodeToDocxParagraphs(rootEl){
-  const paragraphs = [];
-  function runsFromInline(node, fmt){
-    let runs = [];
-    node.childNodes.forEach(child=>{
-      if(child.nodeType===3){
-        const text = child.textContent;
-        if(text) runs.push({text, ...fmt});
-      } else if(child.nodeType===1){
-        const tag = child.tagName.toLowerCase();
-        const newFmt = {...fmt};
-        if(tag==='b'||tag==='strong') newFmt.bold = true;
-        if(tag==='i'||tag==='em') newFmt.italic = true;
-        if(tag==='u') newFmt.underline = true;
-        runs = runs.concat(runsFromInline(child, newFmt));
-      }
-    });
-    return runs;
-  }
-  function walk(node){
-    node.childNodes.forEach(child=>{
-      if(child.nodeType!==1) return;
-      const tag = child.tagName.toLowerCase();
-      if(tag==='p' || tag==='div'){
-        paragraphs.push({runs: runsFromInline(child, {})});
-      } else if(tag==='h1'||tag==='h2'||tag==='h3'){
-        paragraphs.push({runs: runsFromInline(child, {bold:true}), heading:true});
-      } else if(tag==='ul'||tag==='ol'){
-        child.querySelectorAll(':scope > li').forEach(li=>{
-          paragraphs.push({runs: runsFromInline(li, {}), bullet:true});
-        });
-      } else if(tag==='br'){
-        paragraphs.push({runs:[]});
-      } else {
-        walk(child);
-      }
-    });
-  }
-  walk(rootEl);
-  if(!paragraphs.length) paragraphs.push({runs:[{text:''}]});
-  return paragraphs;
-}
-function paragraphsToDocxXml(paragraphs, insertAt, insertXml){
-  const parts = paragraphs.map(p=>{
-    const runsXml = (p.runs.length ? p.runs : [{text:''}]).map(r=>{
-      const rpr = [];
-      if(r.bold) rpr.push('<w:b/>');
-      if(r.italic) rpr.push('<w:i/>');
-      if(r.underline) rpr.push('<w:u w:val="single"/>');
-      const rprXml = rpr.length ? `<w:rPr>${rpr.join('')}</w:rPr>` : '';
-      return `<w:r>${rprXml}<w:t xml:space="preserve">${xmlEscape(r.text)}</w:t></w:r>`;
-    }).join('');
-    const pPr = p.bullet ? '<w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr>' : '';
-    return `<w:p>${pPr}${runsXml}</w:p>`;
-  });
-  if(insertAt!=null && insertAt>=0 && insertXml){ parts.splice(insertAt, 0, insertXml); }
-  const body = parts.join('');
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-<w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1417" w:right="1417" w:bottom="1417" w:left="1417"/></w:sectPr></w:body>
-</w:document>`;
-}
-const FIRMA_KEYWORDS = ['gerente general', 'el empleador', 'firma de la empresa', 'firma del empleador', 'firma empresa'];
-function encontrarParrafoFirma(paragraphs){
-  for(let i=0;i<paragraphs.length;i++){
-    const texto = paragraphs[i].runs.map(r=>r.text).join('').toLowerCase();
-    if(FIRMA_KEYWORDS.some(k=>texto.includes(k))) return i;
-  }
-  return -1;
-}
-// Generador de ZIP propio (formato ZIP sin compresión), para no depender de librerías externas frágiles
-const CRC32_TABLE = (()=>{
-  const table = [];
-  for(let n=0; n<256; n++){
-    let c = n;
-    for(let k=0; k<8; k++){ c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); }
-    table[n] = c;
-  }
-  return table;
-})();
-function crc32(bytes){
-  let crc = 0xFFFFFFFF;
-  for(let i=0;i<bytes.length;i++){ crc = CRC32_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8); }
-  return (crc ^ 0xFFFFFFFF) >>> 0;
-}
-function dosDateTime(){
-  const d = new Date();
-  const dosTime = ((d.getHours()&0x1F)<<11) | ((d.getMinutes()&0x3F)<<5) | ((d.getSeconds()/2)&0x1F);
-  const dosDate = (((d.getFullYear()-1980)&0x7F)<<9) | (((d.getMonth()+1)&0xF)<<5) | (d.getDate()&0x1F);
-  return {dosTime, dosDate};
-}
-function createSimpleZip(files){
-  // files: [{name: string, content: string|Uint8Array}]
-  const encoder = new TextEncoder();
-  const {dosTime, dosDate} = dosDateTime();
-  const localParts = [];
-  const centralParts = [];
-  let offset = 0;
-  files.forEach(f=>{
-    const nameBytes = encoder.encode(f.name);
-    const contentBytes = typeof f.content==='string' ? encoder.encode(f.content) : f.content;
-    const crc = crc32(contentBytes);
-    const size = contentBytes.length;
-
-    const local = new Uint8Array(30 + nameBytes.length);
-    const lv = new DataView(local.buffer);
-    lv.setUint32(0, 0x04034b50, true);
-    lv.setUint16(4, 20, true);
-    lv.setUint16(6, 0, true);
-    lv.setUint16(8, 0, true);
-    lv.setUint16(10, dosTime, true);
-    lv.setUint16(12, dosDate, true);
-    lv.setUint32(14, crc, true);
-    lv.setUint32(18, size, true);
-    lv.setUint32(22, size, true);
-    lv.setUint16(26, nameBytes.length, true);
-    lv.setUint16(28, 0, true);
-    local.set(nameBytes, 30);
-    localParts.push(local, contentBytes);
-
-    const central = new Uint8Array(46 + nameBytes.length);
-    const cv = new DataView(central.buffer);
-    cv.setUint32(0, 0x02014b50, true);
-    cv.setUint16(4, 20, true);
-    cv.setUint16(6, 20, true);
-    cv.setUint16(8, 0, true);
-    cv.setUint16(10, 0, true);
-    cv.setUint16(12, dosTime, true);
-    cv.setUint16(14, dosDate, true);
-    cv.setUint32(16, crc, true);
-    cv.setUint32(20, size, true);
-    cv.setUint32(24, size, true);
-    cv.setUint16(28, nameBytes.length, true);
-    cv.setUint16(30, 0, true);
-    cv.setUint16(32, 0, true);
-    cv.setUint16(34, 0, true);
-    cv.setUint16(36, 0, true);
-    cv.setUint32(38, 0, true);
-    cv.setUint32(42, offset, true);
-    central.set(nameBytes, 46);
-    centralParts.push(central);
-
-    offset += local.length + contentBytes.length;
-  });
-
-  const centralStart = offset;
-  let centralSize = 0;
-  centralParts.forEach(c=>centralSize+=c.length);
-
-  const end = new Uint8Array(22);
-  const ev = new DataView(end.buffer);
-  ev.setUint32(0, 0x06054b50, true);
-  ev.setUint16(4, 0, true);
-  ev.setUint16(6, 0, true);
-  ev.setUint16(8, files.length, true);
-  ev.setUint16(10, files.length, true);
-  ev.setUint32(12, centralSize, true);
-  ev.setUint32(16, centralStart, true);
-  ev.setUint16(20, 0, true);
-
-  return new Blob([...localParts, ...centralParts, end], {type:'application/zip'});
-}
-
-function generarDocxBlobDesdeHtml(html, firmaId){
-  const temp = document.createElement('div');
-  temp.innerHTML = html;
-  const paragraphs = htmlNodeToDocxParagraphs(temp);
-  let documentXml;
-  const files = [];
-  let usesLogo = false;
-  let logoBytes = null, logoFormat = 'png', logoW = 1143000, logoH = 900430;
-
-  const logo = getLogoData();
-  if(logo){
-    try{
-      const b64 = logo.split(',')[1];
-      logoBytes = new Uint8Array(base64ToArrayBuffer(b64));
-      logoFormat = logo.includes('image/png') ? 'png' : 'jpeg';
-      usesLogo = true;
-    }catch(err){ console.error('No se pudo incluir el logo en el Word', err); }
-  }
-
-  let usesFirma = false;
-  let firmaBytes = null, firmaFormat = 'png', firmaW = 1000125, firmaH = 500063;
-  const firma = getFirmaById(firmaId);
-  const indiceFirma = encontrarParrafoFirma(paragraphs);
-  if(firma && indiceFirma>=0){
-    try{
-      const b64f = firma.split(',')[1];
-      firmaBytes = new Uint8Array(base64ToArrayBuffer(b64f));
-      firmaFormat = firma.includes('image/png') ? 'png' : 'jpeg';
-      usesFirma = true;
-    }catch(err){ console.error('No se pudo incluir la firma en el Word', err); }
-  }
-
-  const logoDrawing = usesLogo ? `<w:p><w:r><w:drawing>
-<wp:inline distT="0" distB="0" distL="0" distR="0">
-<wp:extent cx="${logoW}" cy="${logoH}"/>
-<wp:docPr id="1" name="Logo"/>
-<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
-<pic:pic><pic:nvPicPr><pic:cNvPr id="1" name="Logo"/><pic:cNvPicPr/></pic:nvPicPr>
-<pic:blipFill><a:blip r:embed="rIdLogo"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>
-<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${logoW}" cy="${logoH}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>
-</pic:pic></a:graphicData></a:graphic>
-</wp:inline></w:drawing></w:r></w:p>` : '';
-
-  const firmaDrawing = usesFirma ? `<w:p><w:r><w:drawing>
-<wp:inline distT="0" distB="0" distL="0" distR="0">
-<wp:extent cx="${firmaW}" cy="${firmaH}"/>
-<wp:docPr id="2" name="Firma"/>
-<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
-<pic:pic><pic:nvPicPr><pic:cNvPr id="2" name="Firma"/><pic:cNvPicPr/></pic:nvPicPr>
-<pic:blipFill><a:blip r:embed="rIdFirma"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>
-<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${firmaW}" cy="${firmaH}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>
-</pic:pic></a:graphicData></a:graphic>
-</wp:inline></w:drawing></w:r></w:p>` : '';
-
-  const bodyFullXml = paragraphsToDocxXml(paragraphs, usesFirma ? indiceFirma : null, usesFirma ? firmaDrawing : null);
-  const bodyXml = bodyFullXml.replace(/^<\?xml[^>]*\?>\s*<w:document[^>]*>\s*<w:body>/, '').replace(/<\/w:body>\s*<\/w:document>\s*$/, '');
-
-  documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-<w:body>${logoDrawing}${bodyXml}</w:body>
-</w:document>`;
-
-  const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-<Default Extension="xml" ContentType="application/xml"/>
-<Default Extension="png" ContentType="image/png"/>
-<Default Extension="jpeg" ContentType="image/jpeg"/>
-<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-</Types>`;
-  const relsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
-</Relationships>`;
-  const relEntries = [];
-  if(usesLogo) relEntries.push(`<Relationship Id="rIdLogo" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/logo.${logoFormat}"/>`);
-  if(usesFirma) relEntries.push(`<Relationship Id="rIdFirma" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/firma.${firmaFormat}"/>`);
-  const docRelsXml = relEntries.length ? `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-${relEntries.join('\n')}
-</Relationships>` : `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>`;
-
-  files.push(
-    {name:'[Content_Types].xml', content: contentTypesXml},
-    {name:'_rels/.rels', content: relsXml},
-    {name:'word/document.xml', content: documentXml},
-    {name:'word/_rels/document.xml.rels', content: docRelsXml}
-  );
-  if(usesLogo) files.push({name:`word/media/logo.${logoFormat}`, content: logoBytes});
-  if(usesFirma) files.push({name:`word/media/firma.${firmaFormat}`, content: firmaBytes});
-
-  return createSimpleZip(files);
-}
-
-// Generador propio de PDF a partir de HTML editado, usando solo jsPDF (sin dependencias externas frágiles)
-function generarPdfBlobDesdeHtml(html, firmaId){
-  const temp = document.createElement('div');
-  temp.innerHTML = html;
-  const paragraphs = htmlNodeToDocxParagraphs(temp);
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({unit:'pt', format:'a4'});
-  const marginX = 45, maxWidth = 505, pageBottom = 780;
-  let y = 55;
-  const indiceFirma = encontrarParrafoFirma(paragraphs);
-  const logoAlto = addLogoToPdf(doc, 480, 30, 50);
-  if(logoAlto) y = Math.max(y, 30+logoAlto+15);
-  doc.setFontSize(11);
-  paragraphs.forEach((p, idx)=>{
-    if(idx===indiceFirma){
-      if(y > pageBottom-55){ doc.addPage(); y = 55; }
-      addFirmaToPdf(doc, marginX, y, 95, 48, firmaId);
-      y += 55;
-    }
-    const text = p.runs.map(r=>r.text).join('');
-    if(!text.trim()){ y += 12; return; }
-    doc.setFont('helvetica', p.runs.some(r=>r.bold) ? 'bold' : 'normal');
-    const prefix = p.bullet ? '•  ' : '';
-    const lines = doc.splitTextToSize(prefix+text, maxWidth);
-    lines.forEach(line=>{
-      if(y > pageBottom){ doc.addPage(); y = 55; }
-      doc.text(line, marginX, y);
-      y += 15;
-    });
-    y += 6;
-  });
-  return doc.output('blob');
-}
-
-async function uploadContratoOficial(){
-  const fileInput = document.getElementById('contratoOficialFile');
-  const nombreInput = document.getElementById('contratoOficialNombre');
-  const nombre = nombreInput.value.trim();
-  if(!nombre){ showToast('Ponle un nombre a la plantilla (ej. "Contrato de trabajo")'); return; }
-  if(!fileInput.files.length){ showToast('Selecciona tu archivo .docx'); return; }
-  const file = fileInput.files[0];
-  if(!file.name.toLowerCase().endsWith('.docx')){ showToast('El archivo debe ser .docx (Word)'); return; }
-  try{
-    const arrayBuffer = await file.arrayBuffer();
-    const base64 = arrayBufferToBase64(arrayBuffer);
-    const plantillas = await loadData('contratoOficialTemplates', []);
-    plantillas.push({id:'tpl'+Date.now(), nombre, fileName:file.name, base64, fecha:new Date().toISOString().slice(0,10)});
-    await saveData('contratoOficialTemplates', plantillas);
-    fileInput.value=''; nombreInput.value='';
-    renderContratoOficialStatus();
-    showToast('Plantilla guardada');
-  }catch(err){
-    console.error(err);
-    showToast('No se pudo leer el archivo .docx');
-  }
-}
-const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-function actualizarPeriodoBoletaDesdeFecha(){
-  const fecha = document.getElementById('contratoOficialFechaEmision').value;
-  if(!fecha) return;
-  const f = new Date(fecha+'T00:00:00');
-  document.getElementById('contratoOficialMesPeriodo').value = MESES_ES[f.getMonth()];
-  document.getElementById('contratoOficialAnioPeriodo').value = f.getFullYear();
-}
-async function renderContratoOficialStatus(){
-  const plantillas = await loadData('contratoOficialTemplates', []);
-  const sel = document.getElementById('contratoOficialEmployeeSelect');
-  if(sel) sel.innerHTML = employees.length
-    ? employees.map(e=>`<option value="${e.id}">${e.nombre} — ${e.dni}</option>`).join('')
-    : `<option value="">Sin colaboradores registrados</option>`;
-  document.getElementById('contratoOficialStatus').textContent = plantillas.length
-    ? `Tienes ${plantillas.length} plantilla(s) guardada(s).` : 'Aún no has subido ninguna plantilla oficial en Word.';
-
-  const cont = document.getElementById('contratoOficialListaPlantillas');
-  if(!cont) return;
-  cont.innerHTML = plantillas.length ? `
-    <div class="table-scroll">
-    <table><thead><tr><th>Plantilla</th><th>Archivo</th><th>Subida</th><th></th></tr></thead>
-    <tbody>${plantillas.map(t=>`
-      <tr>
-        <td><b>${t.nombre}</b></td>
-        <td>${t.fileName}</td>
-        <td>${fmtDate(t.fecha)}</td>
-        <td class="actions-cell">
-          <button class="btn btn-primary btn-sm" onclick="generarContratoOficial('${t.id}')">Generar</button>
-          <button class="btn btn-danger btn-sm" onclick="eliminarContratoOficial('${t.id}')">Eliminar</button>
-        </td>
-      </tr>`).join('')}</tbody></table>
-    </div>` : `<div class="empty">Aún no guardas ninguna plantilla.</div>`;
-}
-async function eliminarContratoOficial(id){
-  if(!confirm('¿Eliminar esta plantilla?')) return;
-  let plantillas = await loadData('contratoOficialTemplates', []);
-  plantillas = plantillas.filter(t=>t.id!==id);
-  await saveData('contratoOficialTemplates', plantillas);
-  renderContratoOficialStatus();
-}
-
-async function generarContratoOficial(templateId){
-  const plantillas = await loadData('contratoOficialTemplates', []);
-  const tpl = plantillas.find(t=>t.id===templateId);
-  if(!tpl){ showToast('No se encontró la plantilla'); return; }
-  const empId = document.getElementById('contratoOficialEmployeeSelect').value;
-  const e = employees.find(x=>x.id===empId);
-  if(!e){ showToast('Selecciona un colaborador'); return; }
-  if(typeof window.PizZip==='undefined' || typeof window.docxtemplater==='undefined'){
-    showToast('No se pudo cargar el componente para generar el Word. Revisa tu conexión a internet e intenta de nuevo.');
-    return;
-  }
-  try{
-    const fechaEmision = document.getElementById('contratoOficialFechaEmision').value || new Date().toISOString().slice(0,10);
-    const emp = window._empresaData || {};
-    const mesSel = document.getElementById('contratoOficialMesPeriodo').value;
-    const anioSel = document.getElementById('contratoOficialAnioPeriodo').value;
-    const periodoBoleta = anioSel ? `${mesSel} ${anioSel}` : (()=>{ const f=new Date(fechaEmision+'T00:00:00'); return f.toLocaleDateString('es-PE',{month:'long',year:'numeric'}); })();
-    const zip = new PizZip(base64ToArrayBuffer(tpl.base64));
-    const doc = new window.docxtemplater(zip, {paragraphLoop:true, linebreaks:true, nullGetter:()=>''});
-    doc.render({
-      nombre: e.nombre || '',
-      dni: e.dni || '',
-      domicilio: e.domicilio || '',
-      ciudad: e.ciudad || '',
-      cargo: e.cargo || '',
-      sueldo: 'S/ ' + (e.sueldoMensual||0).toFixed(2),
-      fecha_ingreso: fmtDate(e.fechaIngreso),
-      fecha_fin: fmtDate(e.fechaFin),
-      fecha_emision: fmtDate(fechaEmision),
-      periodo_boleta: periodoBoleta,
-      tipo_contrato: e.tipoContrato || '',
-      proyecto: e.proyectoObra || '',
-      duracion: e.duracionContrato || '',
-      lugar_prestacion: e.lugarPrestacion || '',
-      horario: e.diasHorario || '',
-      beneficios: e.beneficiosSociales || '',
-      periodo_prueba: e.periodoPruebaTiene==='si' ? (e.periodoPruebaDuracion || 'Sí') : 'No aplica',
-      ciudad_firma: e.ciudadFirma || '',
-      razon_social: emp.razonSocial || '',
-      ruc: emp.ruc || '',
-      domicilio_fiscal: emp.domicilioFiscal || '',
-      representante_nombre: emp.representanteNombre || '',
-      representante_dni: emp.representanteDni || '',
-      representante_cargo: emp.representanteCargo || ''
-    });
-    const out = doc.getZip().generate({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-    const url = URL.createObjectURL(out);
-    const a = document.createElement('a');
-    a.href = url; a.download = `${tpl.nombre.replace(/\s+/g,'_')}_${e.nombre.replace(/\s+/g,'_')}.docx`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    // Detectar la categoría según el nombre de la plantilla, para que aparezca ordenado en el historial
-    const nombreLower = tpl.nombre.toLowerCase();
-    let categoriaDetectada = 'anexo';
-    if(nombreLower.includes('boleta')) categoriaDetectada = 'constancia_entrega_boletas';
-    else if(nombreLower.includes('constancia') && nombreLower.includes('contrato')) categoriaDetectada = 'constancia_entrega_contrato';
-    else if(nombreLower.includes('contrato')) categoriaDetectada = 'contrato';
-    else if(nombreLower.includes('epp')) categoriaDetectada = 'constancia_epp';
-
-    // Guardar copia digital en Documentos y Contratos
-    const reader = new FileReader();
-    reader.onload = async ()=>{
-      workerDocs.push({
-        id:'p'+Date.now(), empId: e.id, categoria: categoriaDetectada,
-        periodo:'', vigencia: categoriaDetectada==='contrato' ? (document.getElementById('contratoOficialFechaEmision').value||null) : null,
-        fileName: `${tpl.nombre.replace(/\s+/g,'_')}_${e.nombre.replace(/\s+/g,'_')}.docx`,
-        fileType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        fileData: reader.result,
-        fecha: new Date().toISOString().slice(0,10),
-        historial: [{accion:'Carga', fecha: new Date().toISOString().slice(0,10), detalle:`${tpl.nombre} generado automáticamente`}]
-      });
-      await saveData('workerDocs', workerDocs);
-      renderBoletas();
-    };
-    reader.readAsDataURL(out);
-
-    showToast(`${tpl.nombre} generado con el formato oficial`);
-  }catch(err){
-    console.error(err);
-    showToast('No se pudo generar el documento. Verifica que los campos {nombre}, {dni}, etc. estén escritos correctamente en tu Word.');
-  }
+  mostrarTallasEpp();
 }
 
 // ---------- EMO ----------
@@ -3850,12 +3095,16 @@ function renderContratos(){
 
   const sorted = [...employees].sort((a,b)=>(a.fechaFin||'9999').localeCompare(b.fechaFin||'9999'));
   const rows = sorted.map(e=>{
-    const docContrato = [...workerDocs].filter(d=>d.empId===e.id && d.categoria==='contrato' && !d.papeleraFecha).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''))[0];
+    const docContrato = docActivoPorCategoria(e.id, 'contrato');
+    const docConstancia = docActivoPorCategoria(e.id, 'constancia_entrega_contrato');
+    const docAdenda = docActivoPorCategoria(e.id, 'adenda_contrato');
     const docCell = docContrato
       ? `<button class="btn btn-ghost btn-sm" onclick="downloadBoleta('${docContrato.id}')">Descargar</button>
          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('contratoPdfInput_${e.id}').click()">Reemplazar</button>
          <button class="btn btn-danger btn-sm" onclick="eliminarDocContrato('${docContrato.id}')">Eliminar</button>`
       : `<button class="btn btn-accent btn-sm" onclick="document.getElementById('contratoPdfInput_${e.id}').click()">Subir</button>`;
+    const constanciaCell = celdaDocGenerico(e.id, 'constancia_entrega_contrato', docConstancia, 'constConstInput');
+    const adendaCell = celdaDocGenerico(e.id, 'adenda_contrato', docAdenda, 'adendaInput');
     return `<tr>
       <td><b>${e.nombre}</b></td>
       <td class="mono">${e.dni}</td>
@@ -3867,14 +3116,65 @@ function renderContratos(){
         ${docCell}
         <input type="file" id="contratoPdfInput_${e.id}" accept=".pdf,.doc,.docx" style="display:none;" onchange="subirDocContrato('${e.id}', this.files[0])">
       </td>
+      <td>${constanciaCell}</td>
+      <td>${adendaCell}</td>
       <td><button class="btn btn-primary btn-sm" onclick="renovarContrato('${e.id}')">Renovar</button></td>
     </tr>`;
   }).join('');
   document.getElementById('contratosTable').innerHTML = employees.length ? `
     <div class="table-scroll">
-    <table><thead><tr><th>Nombre</th><th>DNI</th><th>Cargo</th><th>Área</th><th>Fin de contrato</th><th>Estado</th><th>Documento</th><th></th></tr></thead>
+    <table><thead><tr><th>Nombre</th><th>DNI</th><th>Cargo</th><th>Área</th><th>Fin de contrato</th><th>Estado</th><th>Contrato</th><th>Constancia entrega</th><th>Adenda</th><th></th></tr></thead>
     <tbody>${rows}</tbody></table>
     </div>` : `<div class="empty">Aún no registras colaboradores.</div>`;
+}
+function docActivoPorCategoria(empId, categoria){
+  return [...workerDocs].filter(d=>d.empId===empId && d.categoria===categoria && !d.papeleraFecha).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''))[0];
+}
+const FICHA_DOCS = [
+  {categoria:'dni_foto', label:'DNI (foto)', prefix:'fichaDni'},
+  {categoria:'autorizacion', label:'Autorización', prefix:'fichaAutoriz'},
+  {categoria:'salud', label:'Soporte de Salud (carné, póliza)', prefix:'fichaSalud'},
+  {categoria:'sctr', label:'Soporte de SCTR (póliza)', prefix:'fichaSctr'},
+  {categoria:'pension', label:'Soporte de Pensión (AFP/ONP)', prefix:'fichaPension'}
+];
+function renderFichaDocsBlock(empId){
+  const cont = document.getElementById('fichaDocsBlock');
+  if(!cont) return;
+  const filas = FICHA_DOCS.map(d=>{
+    const doc = docActivoPorCategoria(empId, d.categoria);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+      <span style="flex:1;font-weight:500;">${d.label}</span>
+      ${celdaDocGenerico(empId, d.categoria, doc, d.prefix)}
+    </div>`;
+  }).join('');
+  cont.innerHTML = filas;
+}
+function celdaDocGenerico(empId, categoria, doc, inputPrefix){
+  const inputId = `${inputPrefix}_${empId}`;
+  const boton = doc
+    ? `<button class="btn btn-ghost btn-sm" onclick="downloadBoleta('${doc.id}')">Descargar</button>
+       <button class="btn btn-ghost btn-sm" onclick="document.getElementById('${inputId}').click()">Reemplazar</button>`
+    : `<button class="btn btn-accent btn-sm" onclick="document.getElementById('${inputId}').click()">Subir</button>`;
+  return `${boton}<input type="file" id="${inputId}" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="display:none;" onchange="subirDocGenericoContrato('${empId}','${categoria}', this.files[0])">`;
+}
+async function subirDocGenericoContrato(empId, categoria, file){
+  if(!file) return;
+  if(file.size > 1*1024*1024){ showToast('El archivo es muy grande (máx. 1MB, para no llenar el espacio de almacenamiento)'); return; }
+  const reader = new FileReader();
+  reader.onload = async ()=>{
+    workerDocs.push({
+      id:'p'+Date.now(), empId, categoria, periodo:'',
+      fileName: file.name, fileType: file.type, fileData: reader.result,
+      fecha: new Date().toISOString().slice(0,10),
+      historial: [{accion:'Carga', fecha: new Date().toISOString().slice(0,10), detalle:`${BOLETA_CATEGORIAS[categoria]||categoria} cargada`}]
+    });
+    await saveData('workerDocs', workerDocs);
+    renderContratos();
+    renderConstancias();
+    if(document.getElementById('fichaDocsBlock')) renderFichaDocsBlock(empId);
+    showToast(`${BOLETA_CATEGORIAS[categoria]||categoria} guardada`);
+  };
+  reader.readAsDataURL(file);
 }
 async function subirDocContrato(empId, file){
   if(!file) return;
@@ -3928,6 +3228,307 @@ async function renovarContrato(empId){
   document.getElementById('contratoPdfInput_'+empId).click();
 }
 
+// ---------- Legajo SUNAFIL: checklist, alertas y cese paso a paso ----------
+function switchLegajoTab(tab){
+  document.querySelectorAll('[data-legajo-tab]').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`[data-legajo-tab="${tab}"]`).classList.add('active');
+  document.getElementById('legajoChecklistBlock').style.display = tab==='checklist' ? 'block':'none';
+  document.getElementById('legajoCeseBlock').style.display = tab==='cese' ? 'block':'none';
+  document.getElementById('legajoDocumentosBlock').style.display = tab==='documentos' ? 'block':'none';
+  if(tab==='cese') renderCeseTab();
+  if(tab==='documentos') renderDocumentosSunafil();
+}
+function checklistLegajo(e){
+  const items = [];
+  // SCTR
+  if(!e.vigenciaSctr){
+    items.push({ok:false, label:'Sin SCTR registrado'});
+  } else {
+    const d = daysUntil(e.vigenciaSctr);
+    items.push({ok: d>=0, label: d<0 ? `SCTR vencido el ${fmtDate(e.vigenciaSctr)}` : `SCTR vigente hasta ${fmtDate(e.vigenciaSctr)}`});
+  }
+  // EMO
+  if(!e.fechaEmo){
+    items.push({ok:false, label:'Sin EMO registrado'});
+  } else {
+    const d = daysUntil(e.fechaEmo);
+    items.push({ok: d>=0, label: d<0 ? `EMO vencido el ${fmtDate(e.fechaEmo)}` : `EMO vigente hasta ${fmtDate(e.fechaEmo)}`});
+  }
+  // T-Registro
+  items.push({ok: !!e.tRegistroAlta, label: e.tRegistroAlta ? 'Alta en T-Registro registrada' : 'Alta en T-Registro pendiente (debe hacerse al ingreso)'});
+  return items;
+}
+function renderLegajoSunafil(){
+  const statsEl = document.getElementById('legajoStats');
+  if(!statsEl) return;
+  const activos = employees.filter(e=>e.estado==='activo');
+  let totalOk = 0, totalItems = 0, legajosCompletos = 0;
+  const urgentes = [];
+  activos.forEach(e=>{
+    const items = checklistLegajo(e);
+    const ok = items.filter(i=>i.ok).length;
+    totalOk += ok; totalItems += items.length;
+    if(ok===items.length) legajosCompletos++;
+    items.filter(i=>!i.ok).forEach(i=>urgentes.push({nombre:e.nombre, label:i.label}));
+  });
+  const pctPromedio = totalItems ? Math.round((totalOk/totalItems)*100) : 0;
+  const cesesEnCurso = procesosCese.filter(p=>p.estado==='en_curso').length;
+  statsEl.innerHTML = `
+    <div class="stat-card"><div class="num">${activos.length}</div><div class="label">Trabajadores activos</div></div>
+    <div class="stat-card ${pctPromedio<70?'warn':''}"><div class="num">${pctPromedio}%</div><div class="label">Cumplimiento promedio</div></div>
+    <div class="stat-card"><div class="num">${legajosCompletos}</div><div class="label">Legajos completos</div></div>
+    <div class="stat-card ${urgentes.length?'warn':''}"><div class="num">${urgentes.length}</div><div class="label">Alertas urgentes</div></div>
+    <div class="stat-card ${cesesEnCurso?'warn':''}"><div class="num">${cesesEnCurso}</div><div class="label">Ceses en curso</div></div>
+  `;
+
+  const urgenteEl = document.getElementById('legajoUrgente');
+  if(urgenteEl){
+    urgenteEl.innerHTML = urgentes.length ? `
+      <div class="aviso-box danger">
+        <div class="aviso-title">⚠ Urgente (${urgentes.length})</div>
+        <div class="aviso-list">${urgentes.map(u=>`<span class="aviso-chip">${u.nombre} — ${u.label}</span>`).join('')}</div>
+      </div>` : `<div class="aviso-box"><div class="aviso-title">✓ Sin alertas urgentes pendientes</div></div>`;
+  }
+
+  const sorted = [...activos].sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const rows = sorted.map(e=>{
+    const items = checklistLegajo(e);
+    const ok = items.filter(i=>i.ok).length;
+    const pct = Math.round((ok/items.length)*100);
+    const pillClass = pct===100 ? 'pill-ok' : pct>=50 ? 'pill-warn' : 'pill-danger';
+    return `<tr>
+      <td><b>${e.nombre}</b></td>
+      <td class="mono">${e.dni}</td>
+      <td>${items.map(i=>`<div style="font-size:12px;${i.ok?'':'color:var(--danger);'}">${i.ok?'✓':'✗'} ${i.label}</div>`).join('')}</td>
+      <td><span class="pill ${pillClass}">${pct}%</span></td>
+      <td><button class="btn btn-ghost btn-sm" onclick="openEmployeeModal('${e.id}')">Ver ficha</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('legajoTable').innerHTML = sorted.length ? `
+    <div class="table-scroll">
+    <table><thead><tr><th>Colaborador</th><th>DNI</th><th>Checklist</th><th>Cumplimiento</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    </div>` : `<div class="empty">No hay colaboradores activos.</div>`;
+}
+
+const PASOS_CESE = [
+  {clave:'comunicar', label:'Comunicar el cese al trabajador'},
+  {clave:'liquidacion', label:'Calcular y pagar la liquidación de beneficios sociales'},
+  {clave:'baja_tregistro', label:'Registrar la baja en T-Registro (SUNAT)'},
+  {clave:'certificado', label:'Entregar el certificado de trabajo'},
+  {clave:'constancia_cese', label:'Entregar la constancia de cese / liquidación'}
+];
+function poblarCeseEmployeeSelect(){
+  const sel = document.getElementById('ceseEmployeeSelect');
+  if(!sel) return;
+  const activos = employees.filter(e=>e.estado==='activo');
+  sel.innerHTML = activos.length
+    ? activos.map(e=>`<option value="${e.id}">${e.nombre} — ${e.dni}</option>`).join('')
+    : `<option value="">Sin colaboradores activos</option>`;
+}
+async function iniciarCese(){
+  const empId = document.getElementById('ceseEmployeeSelect').value;
+  if(!empId){ showToast('Selecciona un colaborador'); return; }
+  let proceso = procesosCese.find(p=>p.empId===empId && p.estado==='en_curso');
+  if(!proceso){
+    proceso = {
+      id:'cese'+Date.now(), empId,
+      fechaInicio: new Date().toISOString().slice(0,10),
+      pasos: PASOS_CESE.map(p=>({clave:p.clave, hecho:false, fecha:null})),
+      estado:'en_curso'
+    };
+    procesosCese.push(proceso);
+    await saveData('procesosCese', procesosCese);
+  }
+  renderCeseTab(proceso.id);
+}
+async function toggleCesePaso(procesoId, clave){
+  const proceso = procesosCese.find(p=>p.id===procesoId);
+  if(!proceso) return;
+  const paso = proceso.pasos.find(p=>p.clave===clave);
+  if(!paso) return;
+  paso.hecho = !paso.hecho;
+  paso.fecha = paso.hecho ? new Date().toISOString().slice(0,10) : null;
+  await saveData('procesosCese', procesosCese);
+  renderCeseTab(procesoId);
+}
+async function finalizarCese(procesoId){
+  const proceso = procesosCese.find(p=>p.id===procesoId);
+  if(!proceso) return;
+  if(!proceso.pasos.every(p=>p.hecho)){ showToast('Aún hay pasos pendientes por marcar'); return; }
+  if(!confirm('¿Finalizar el proceso de cese? Esto marcará al colaborador como Inactivo.')) return;
+  proceso.estado = 'completado';
+  proceso.fechaCompletado = new Date().toISOString().slice(0,10);
+  await saveData('procesosCese', procesosCese);
+  await darDeBaja(proceso.empId);
+  showToast('Proceso de cese finalizado');
+  renderCeseTab();
+}
+async function eliminarCese(procesoId){
+  if(!confirm('¿Eliminar este proceso de cese?')) return;
+  procesosCese = procesosCese.filter(p=>p.id!==procesoId);
+  await saveData('procesosCese', procesosCese);
+  renderCeseTab();
+}
+function renderCeseTab(procesoIdAbierto){
+  poblarCeseEmployeeSelect();
+  const wizardEl = document.getElementById('ceseWizard');
+  if(wizardEl){
+    const proceso = procesoIdAbierto ? procesosCese.find(p=>p.id===procesoIdAbierto) : null;
+    if(proceso){
+      const e = employees.find(x=>x.id===proceso.empId);
+      const pasosHtml = proceso.pasos.map(p=>{
+        const def = PASOS_CESE.find(x=>x.clave===p.clave);
+        return `<label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+          <input type="checkbox" ${p.hecho?'checked':''} style="width:auto;" onchange="toggleCesePaso('${proceso.id}','${p.clave}')">
+          <span style="${p.hecho?'text-decoration:line-through;color:var(--ink-soft);':''}">${def?def.label:p.clave}</span>
+          ${p.fecha ? `<span class="hint" style="margin:0 0 0 auto;">${fmtDate(p.fecha)}</span>` : ''}
+        </label>`;
+      }).join('');
+      const todosHechos = proceso.pasos.every(p=>p.hecho);
+      wizardEl.innerHTML = `
+        <div class="panel">
+          <div class="panel-head"><h3>Proceso de cese — ${e?e.nombre:'(colaborador eliminado)'}</h3></div>
+          <div style="padding:16px 18px;">
+            ${pasosHtml}
+            <button class="btn ${todosHechos?'btn-danger':'btn-ghost'} btn-sm" style="margin-top:14px;" onclick="finalizarCese('${proceso.id}')" ${todosHechos?'':'disabled'}>Finalizar cese${todosHechos?'':' (completa todos los pasos)'}</button>
+          </div>
+        </div>`;
+    } else {
+      wizardEl.innerHTML = '';
+    }
+  }
+  const listadoEl = document.getElementById('ceseListado');
+  if(listadoEl){
+    const sorted = [...procesosCese].sort((a,b)=>(b.fechaInicio||'').localeCompare(a.fechaInicio||''));
+    const rows = sorted.map(p=>{
+      const e = employees.find(x=>x.id===p.empId);
+      const hechos = p.pasos.filter(x=>x.hecho).length;
+      return `<tr>
+        <td>${e?e.nombre:'(colaborador eliminado)'}</td>
+        <td>${fmtDate(p.fechaInicio)}</td>
+        <td class="mono">${hechos}/${p.pasos.length}</td>
+        <td>${p.estado==='completado' ? `<span class="pill pill-ok">Completado</span>` : `<span class="pill pill-warn">En curso</span>`}</td>
+        <td class="actions-cell">
+          ${p.estado==='en_curso' ? `<button class="btn btn-ghost btn-sm" onclick="renderCeseTab('${p.id}')">Continuar</button>` : ''}
+          <button class="btn btn-danger btn-sm" onclick="eliminarCese('${p.id}')">Eliminar</button>
+        </td>
+      </tr>`;
+    }).join('');
+    listadoEl.innerHTML = sorted.length ? `
+      <div class="table-scroll">
+      <table><thead><tr><th>Colaborador</th><th>Inicio</th><th>Pasos</th><th>Estado</th><th></th></tr></thead>
+      <tbody>${rows}</tbody></table>
+      </div>` : `<div class="empty">Aún no registras procesos de cese.</div>`;
+  }
+}
+
+// ---------- Carpeta de documentos obligatorios de SUNAFIL (a nivel empresa) ----------
+const SUNAFIL_DOCS_SUGERIDOS = [
+  'Reglamento Interno de Trabajo (RIT)',
+  'Reglamento Interno de Seguridad y Salud en el Trabajo (RISST)',
+  'IPERC (Identificación de Peligros y Evaluación de Riesgos)',
+  'Mapa de Riesgos',
+  'Plan Anual de Seguridad y Salud en el Trabajo',
+  'Acta de Constitución del Comité de SST',
+  'Programa Anual de Capacitaciones en SST',
+  'Registro de Accidentes de Trabajo',
+  'Política de Seguridad y Salud en el Trabajo',
+  'Certificado de Fumigación / Desinsectación'
+];
+function renderSugeridosSunafil(){
+  const cont = document.getElementById('sunafilDocsSugeridos');
+  if(!cont) return;
+  cont.innerHTML = SUNAFIL_DOCS_SUGERIDOS.map(nombre=>
+    `<button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('sunafilDocNombre').value='${nombre.replace(/'/g,"\\'")}'">+ ${nombre}</button>`
+  ).join('');
+}
+async function subirDocumentoSunafil(){
+  const nombre = document.getElementById('sunafilDocNombre').value.trim();
+  const vigencia = document.getElementById('sunafilDocVigencia').value;
+  const fileInput = document.getElementById('sunafilDocFile');
+  if(!nombre || !fileInput.files.length){ showToast('Escribe el nombre del documento y selecciona el archivo'); return; }
+  const file = fileInput.files[0];
+  if(file.size > 1*1024*1024){ showToast('El archivo es muy grande (máx. 1MB, para no llenar el espacio de almacenamiento)'); return; }
+  const reader = new FileReader();
+  reader.onload = async ()=>{
+    documentosSunafil.push({
+      id:'sun'+Date.now(), nombre, vigencia: vigencia||null,
+      fileName: file.name, fileType: file.type, fileData: reader.result,
+      fecha: new Date().toISOString().slice(0,10)
+    });
+    await saveData('documentosSunafil', documentosSunafil);
+    document.getElementById('sunafilDocNombre').value = '';
+    document.getElementById('sunafilDocVigencia').value = '';
+    fileInput.value = '';
+    renderDocumentosSunafil();
+    showToast('Documento guardado');
+  };
+  reader.readAsDataURL(file);
+}
+function actualizarDocumentoSunafil(id, file){
+  if(!file) return;
+  if(file.size > 1*1024*1024){ showToast('El archivo es muy grande (máx. 1MB)'); return; }
+  const doc = documentosSunafil.find(d=>d.id===id);
+  if(!doc) return;
+  const reader = new FileReader();
+  reader.onload = async ()=>{
+    doc.fileName = file.name; doc.fileType = file.type; doc.fileData = reader.result;
+    doc.fecha = new Date().toISOString().slice(0,10);
+    await saveData('documentosSunafil', documentosSunafil);
+    renderDocumentosSunafil();
+    showToast('Documento actualizado');
+  };
+  reader.readAsDataURL(file);
+}
+function descargarDocumentoSunafil(id){
+  const doc = documentosSunafil.find(d=>d.id===id);
+  if(!doc) return;
+  const a = document.createElement('a');
+  a.href = doc.fileData; a.download = doc.fileName;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+async function eliminarDocumentoSunafil(id){
+  if(!confirm('¿Eliminar este documento?')) return;
+  documentosSunafil = documentosSunafil.filter(d=>d.id!==id);
+  await saveData('documentosSunafil', documentosSunafil);
+  renderDocumentosSunafil();
+}
+function renderDocumentosSunafil(){
+  renderSugeridosSunafil();
+  const cont = document.getElementById('sunafilDocsTable');
+  if(!cont) return;
+  const sorted = [...documentosSunafil].sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const rows = sorted.map(d=>{
+    const vigenciaTxt = d.vigencia ? fmtDate(d.vigencia) : '—';
+    let estadoPill = '';
+    if(d.vigencia){
+      const dias = daysUntil(d.vigencia);
+      estadoPill = dias<0 ? `<span class="pill pill-danger">Vencido</span>` : dias<=30 ? `<span class="pill pill-warn">Vence en ${dias}d</span>` : `<span class="pill pill-ok">Vigente</span>`;
+    } else {
+      estadoPill = `<span class="pill pill-muted">Sin vigencia</span>`;
+    }
+    return `<tr>
+      <td><b>${d.nombre}</b></td>
+      <td>${d.fileName}</td>
+      <td>${vigenciaTxt}</td>
+      <td>${estadoPill}</td>
+      <td>${fmtDate(d.fecha)}</td>
+      <td class="actions-cell">
+        <button class="btn btn-ghost btn-sm" onclick="descargarDocumentoSunafil('${d.id}')">Descargar</button>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('sunafilUpdateInput_${d.id}').click()">Actualizar</button>
+        <input type="file" id="sunafilUpdateInput_${d.id}" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="display:none;" onchange="actualizarDocumentoSunafil('${d.id}', this.files[0])">
+        <button class="btn btn-danger btn-sm" onclick="eliminarDocumentoSunafil('${d.id}')">Eliminar</button>
+      </td>
+    </tr>`;
+  }).join('');
+  cont.innerHTML = sorted.length ? `
+    <div class="table-scroll">
+    <table><thead><tr><th>Documento</th><th>Archivo</th><th>Vigencia</th><th>Estado</th><th>Subido</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    </div>` : `<div class="empty">Aún no subes documentos obligatorios.</div>`;
+}
+
 // ---------- Boletas de pago: subir y descargar por colaborador y mes ----------
 function populateBoletaPagoEmployeeSelect(){
   const sel = document.getElementById('boletaPagoEmployeeSelect');
@@ -3937,6 +3538,30 @@ function populateBoletaPagoEmployeeSelect(){
     ? employees.map(e=>`<option value="${e.id}">${e.nombre} — ${e.dni}</option>`).join('')
     : `<option value="">Sin colaboradores registrados</option>`;
   if(prev && employees.some(e=>e.id===prev)) sel.value = prev;
+}
+function actualizarEstadoBoletaConstancia(){
+  const cont = document.getElementById('boletaPagoEstadoChecks');
+  if(!cont) return;
+  const empId = document.getElementById('boletaPagoEmployeeSelect').value;
+  const mes = document.getElementById('boletaPagoMes').value;
+  const anio = document.getElementById('boletaPagoAnio').value;
+  if(!empId || !anio){ cont.innerHTML = ''; return; }
+  const periodo = `${mes} ${anio}`;
+  const tieneBoleta = docsActivos().some(d=>d.categoria==='boleta' && d.empId===empId && d.periodo===periodo);
+  const tieneConstancia = !!buscarConstanciaBoleta(empId, periodo);
+  const chip = (ok, label) => `<span class="pill ${ok?'pill-ok':'pill-muted'}" style="font-size:13px;">${ok?'✓':'○'} ${label}</span>`;
+  cont.innerHTML = `${chip(tieneBoleta,'Boleta subida')} ${chip(tieneConstancia,'Constancia subida')}`;
+}
+async function uploadConstanciaPagoDesdeFormulario(){
+  const empId = document.getElementById('boletaPagoEmployeeSelect').value;
+  const mes = document.getElementById('boletaPagoMes').value;
+  const anio = document.getElementById('boletaPagoAnio').value;
+  const fileInput = document.getElementById('constanciaPagoFile');
+  if(!empId || !anio || !fileInput.files.length){ showToast('Selecciona colaborador, año y archivo de la constancia'); return; }
+  const periodo = `${mes} ${anio}`;
+  await subirConstanciaBoletaInline(empId, periodo, fileInput.files[0]);
+  fileInput.value = '';
+  actualizarEstadoBoletaConstancia();
 }
 function uploadBoletaPago(){
   const empId = document.getElementById('boletaPagoEmployeeSelect').value;
@@ -3969,6 +3594,46 @@ async function eliminarBoletaPago(docId){
   renderBoletasPago();
   showToast('Boleta movida a la Papelera');
 }
+let avisoAbiertoSinBoleta = false;
+function toggleAvisoSinBoleta(){
+  avisoAbiertoSinBoleta = !avisoAbiertoSinBoleta;
+  renderBoletasPago();
+}
+let calendarioBoletasVisible = false;
+function toggleCalendarioBoletas(){
+  calendarioBoletasVisible = !calendarioBoletasVisible;
+  document.getElementById('calendarioBoletasBlock').style.display = calendarioBoletasVisible ? 'block':'none';
+  document.getElementById('btnToggleCalendarioBoletas').textContent = calendarioBoletasVisible ? 'Ocultar calendario' : 'Mostrar calendario';
+  if(calendarioBoletasVisible) renderCalendarioBoletas();
+}
+function renderCalendarioBoletas(){
+  const selAnio = document.getElementById('calendarioBoletasAnio');
+  if(!selAnio) return;
+  const anioActual = new Date().getFullYear();
+  if(!selAnio.options.length){
+    const anios = [anioActual, anioActual-1, anioActual-2];
+    selAnio.innerHTML = anios.map(a=>`<option value="${a}">${a}</option>`).join('');
+    selAnio.value = anioActual;
+    selAnio.addEventListener('change', renderCalendarioBoletas);
+  }
+  if(!calendarioBoletasVisible) return;
+  const anio = selAnio.value;
+  const docs = docsActivos().filter(d=>d.categoria==='boleta');
+  const activos = [...employees].filter(e=>e.estado==='activo').sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const cabecera = MESES_INV.map(m=>`<th style="text-align:center;">${m.slice(0,3)}</th>`).join('');
+  const rows = activos.map(e=>{
+    const celdas = MESES_INV.map(m=>{
+      const periodo = `${m} ${anio}`;
+      const tiene = docs.some(d=>d.empId===e.id && d.periodo===periodo);
+      return `<td style="text-align:center;${tiene?'color:var(--ok, #2e7d32);font-weight:700;':'color:var(--ink-soft);'}">${tiene?'✓':'—'}</td>`;
+    }).join('');
+    return `<tr><td><b>${e.nombre}</b></td>${celdas}</tr>`;
+  }).join('');
+  document.getElementById('calendarioBoletasTable').innerHTML = activos.length ? `
+    <div class="table-scroll">
+    <table><thead><tr><th>Colaborador</th>${cabecera}</tr></thead><tbody>${rows}</tbody></table>
+    </div>` : `<div class="empty">No hay colaboradores activos.</div>`;
+}
 function renderBoletasPago(){
   populateBoletaPagoEmployeeSelect();
   if(!document.getElementById('boletaPagoAnio').value) document.getElementById('boletaPagoAnio').value = new Date().getFullYear();
@@ -3985,9 +3650,24 @@ function renderBoletasPago(){
   if(statsEl){
     statsEl.innerHTML = `
       <div class="stat-card"><div class="num">${docs.length}</div><div class="label">Boletas subidas en total</div></div>
-      <div class="stat-card ${sinBoletaEsteMes.length?'warn':''}"><div class="num">${sinBoletaEsteMes.length}</div><div class="label">Sin boleta este mes (${periodoActual})</div></div>
+      <div class="stat-card ${sinBoletaEsteMes.length?'warn':''}" style="cursor:pointer;" onclick="toggleAvisoSinBoleta()"><div class="num">${sinBoletaEsteMes.length}</div><div class="label">Sin boleta este mes (${periodoActual}) — click para ver</div></div>
     `;
   }
+  const avisoEl = document.getElementById('boletasPagoAviso');
+  if(avisoEl){
+    if(avisoAbiertoSinBoleta && sinBoletaEsteMes.length){
+      avisoEl.innerHTML = `
+        <div class="aviso-box warn">
+          <div class="aviso-title">Colaboradores sin boleta de ${periodoActual}</div>
+          <div class="aviso-list">${sinBoletaEsteMes.map(e=>`<span class="aviso-chip">${e.nombre}</span>`).join('')}</div>
+        </div>`;
+    } else {
+      avisoEl.innerHTML = '';
+    }
+  }
+  renderCalendarioBoletas();
+
+  actualizarEstadoBoletaConstancia();
 
   const filtroColabSel = document.getElementById('boletaPagoFiltroColaborador');
   if(filtroColabSel){
@@ -4016,6 +3696,11 @@ function renderBoletasPago(){
 
   const rows = sorted.map(d=>{
     const e = employees.find(x=>x.id===d.empId);
+    const constancia = buscarConstanciaBoleta(d.empId, d.periodo);
+    const constanciaCell = constancia
+      ? `<button class="btn btn-ghost btn-sm" onclick="downloadBoleta('${constancia.id}')">✓ Descargar</button>
+         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('constBoletaInput_${d.id}').click()">Reemplazar</button>`
+      : `<button class="btn btn-accent btn-sm" onclick="document.getElementById('constBoletaInput_${d.id}').click()">Subir constancia</button>`;
     return `<tr>
       <td>${e ? e.nombre : '(colaborador eliminado)'}</td>
       <td>${d.periodo}</td>
@@ -4025,15 +3710,48 @@ function renderBoletasPago(){
         <button class="btn btn-ghost btn-sm" onclick="downloadBoleta('${d.id}')">Descargar</button>
         <button class="btn btn-danger btn-sm" onclick="eliminarBoletaPago('${d.id}')">Eliminar</button>
       </td>
+      <td class="actions-cell">
+        ${constanciaCell}
+        <input type="file" id="constBoletaInput_${d.id}" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="subirConstanciaBoletaInline('${d.empId}','${d.periodo}', this.files[0])">
+      </td>
     </tr>`;
   }).join('');
   document.getElementById('boletasPagoTable').innerHTML = sorted.length ? `
-    <table><thead><tr><th>Colaborador</th><th>Periodo</th><th>Archivo</th><th>Subido</th><th></th></tr></thead>
-    <tbody>${rows}</tbody></table>` : `<div class="empty">${docs.length ? 'Ninguna boleta coincide con el filtro.' : 'Aún no subes boletas de pago de ningún colaborador.'}</div>`;
+    <div class="table-scroll">
+    <table><thead><tr><th>Colaborador</th><th>Periodo</th><th>Archivo</th><th>Subido</th><th></th><th>Constancia de entrega</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    </div>` : `<div class="empty">${docs.length ? 'Ninguna boleta coincide con el filtro.' : 'Aún no subes boletas de pago de ningún colaborador.'}</div>`;
+}
+function buscarConstanciaBoleta(empId, periodo){
+  return docsActivos().find(d=>d.categoria==='constancia_entrega_boletas' && d.empId===empId && d.periodo===periodo);
+}
+async function subirConstanciaBoletaInline(empId, periodo, file){
+  if(!file) return;
+  if(file.size > 1*1024*1024){ showToast('El archivo es muy grande (máx. 1MB, para no llenar el espacio de almacenamiento)'); return; }
+  const reader = new FileReader();
+  reader.onload = async ()=>{
+    const existente = buscarConstanciaBoleta(empId, periodo);
+    if(existente){
+      existente.fileName = file.name; existente.fileType = file.type; existente.fileData = reader.result;
+      existente.fecha = new Date().toISOString().slice(0,10);
+    } else {
+      workerDocs.push({
+        id:'p'+Date.now(), empId, categoria:'constancia_entrega_boletas', periodo,
+        fileName: file.name, fileType: file.type, fileData: reader.result,
+        fecha: new Date().toISOString().slice(0,10),
+        historial: [{accion:'Registro', fecha: new Date().toISOString().slice(0,10), detalle:`Constancia entrega de boletas registrada — ${periodo}`}]
+      });
+    }
+    await saveData('workerDocs', workerDocs);
+    renderBoletasPago();
+    renderConstancias();
+    showToast('Constancia de entrega guardada');
+  };
+  reader.readAsDataURL(file);
 }
 
 // ---------- Constancias: Contrato, Boletas y entrega de EPP, registradas por fecha ----------
-const CONSTANCIA_TIPOS = ['constancia_entrega_contrato','constancia_entrega_boletas','constancia_epp'];
+const CONSTANCIA_TIPOS = ['constancia_entrega_contrato','adenda_contrato','constancia_entrega_boletas','constancia_epp'];
 function populateConstanciaEmployeeSelect(){
   const sel = document.getElementById('constanciaEmployeeSelect');
   if(!sel) return;
@@ -4043,22 +3761,46 @@ function populateConstanciaEmployeeSelect(){
     : `<option value="">Sin colaboradores registrados</option>`;
   if(prev && employees.some(e=>e.id===prev)) sel.value = prev;
 }
+function toggleConstanciaEppMensual(){
+  const esEppMensual = document.getElementById('constanciaTipo').value === 'constancia_epp';
+  document.getElementById('constanciaFechaField').style.display = esEppMensual ? 'none' : 'flex';
+  document.getElementById('constanciaEppMesField').style.display = esEppMensual ? 'flex' : 'none';
+  const eppAutoHint = document.getElementById('constanciaEppAutoHint');
+  if(eppAutoHint) eppAutoHint.style.display = esEppMensual ? 'none' : 'block';
+  if(esEppMensual && !document.getElementById('constanciaEppAnio').value){
+    document.getElementById('constanciaEppAnio').value = new Date().getFullYear();
+  }
+}
 function registrarConstancia(){
   const empId = document.getElementById('constanciaEmployeeSelect').value;
   const categoria = document.getElementById('constanciaTipo').value;
-  const fecha = document.getElementById('constanciaFecha').value;
+  const esEppMensual = categoria === 'constancia_epp';
   const fileInput = document.getElementById('constanciaFile');
-  if(!empId || !fecha){ showToast('Selecciona colaborador y fecha de entrega'); return; }
+
+  let fecha, periodo, etiquetaFecha;
+  if(esEppMensual){
+    const mes = document.getElementById('constanciaEppMes').value;
+    const anio = document.getElementById('constanciaEppAnio').value;
+    if(!empId || !anio){ showToast('Selecciona colaborador y año'); return; }
+    periodo = `${mes} ${anio}`;
+    fecha = new Date().toISOString().slice(0,10);
+    etiquetaFecha = periodo;
+  } else {
+    fecha = document.getElementById('constanciaFecha').value;
+    if(!empId || !fecha){ showToast('Selecciona colaborador y fecha de entrega'); return; }
+    periodo = '';
+    etiquetaFecha = fmtDate(fecha);
+  }
 
   const registrar = (fileData, fileName)=>{
     workerDocs.push({
       id:'p'+Date.now(), empId, categoria,
-      periodo:'',
-      fileName: fileName || `${BOLETA_CATEGORIAS[categoria]} — ${fmtDate(fecha)}`,
+      periodo,
+      fileName: fileName || `${BOLETA_CATEGORIAS[categoria]} — ${etiquetaFecha}`,
       fileType: fileData ? (fileInput.files[0]?fileInput.files[0].type:'') : '',
       fileData: fileData || null,
       fecha,
-      historial: [{accion:'Registro', fecha, detalle:`${BOLETA_CATEGORIAS[categoria]} registrada`}]
+      historial: [{accion:'Registro', fecha, detalle:`${BOLETA_CATEGORIAS[categoria]} registrada — ${etiquetaFecha}`}]
     });
     saveData('workerDocs', workerDocs).then(()=>{
       document.getElementById('constanciaFecha').value = '';
@@ -4085,17 +3827,14 @@ async function eliminarConstancia(docId){
 function renderConstancias(){
   populateConstanciaEmployeeSelect();
   if(!document.getElementById('constanciaFecha').value) document.getElementById('constanciaFecha').value = new Date().toISOString().slice(0,10);
+  toggleConstanciaEppMensual();
 
-  const docs = docsActivos().filter(d=>CONSTANCIA_TIPOS.includes(d.categoria));
-  const porTipo = {};
-  CONSTANCIA_TIPOS.forEach(t=>{ porTipo[t] = docs.filter(d=>d.categoria===t).length; });
+  const docs = docsActivos().filter(d=>d.categoria==='constancia_epp');
   const statsEl = document.getElementById('constanciasStats');
   if(statsEl){
     statsEl.innerHTML = `
       <div class="stat-card"><div class="num">${docs.length}</div><div class="label">Constancias registradas</div></div>
-      <div class="stat-card"><div class="num">${porTipo['constancia_entrega_contrato']}</div><div class="label">De Contrato</div></div>
-      <div class="stat-card"><div class="num">${porTipo['constancia_entrega_boletas']}</div><div class="label">De Boletas</div></div>
-      <div class="stat-card"><div class="num">${porTipo['constancia_epp']}</div><div class="label">De entrega de EPP</div></div>
+      <div class="stat-card"><div class="num">${docs.length}</div><div class="label">Constancias de entrega de EPPs</div></div>
     `;
   }
 
@@ -4106,11 +3845,9 @@ function renderConstancias(){
     filtroColabSel.value = employees.some(e=>e.id===seleccionActual) ? seleccionActual : 'todos';
   }
   const filtroColab = filtroColabSel ? filtroColabSel.value : 'todos';
-  const filtroTipo = (document.getElementById('constanciaFiltroTipo')||{}).value || 'todos';
 
   let list = [...docs];
   if(filtroColab!=='todos') list = list.filter(d=>d.empId===filtroColab);
-  if(filtroTipo!=='todos') list = list.filter(d=>d.categoria===filtroTipo);
   const nombreDe = id => { const e = employees.find(x=>x.id===id); return e ? e.nombre : ''; };
   const sorted = list.sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'') || nombreDe(a.empId).localeCompare(nombreDe(b.empId)));
 
@@ -4119,6 +3856,7 @@ function renderConstancias(){
     return `<tr>
       <td>${e ? e.nombre : '(colaborador eliminado)'}</td>
       <td><span class="pill pill-muted">${BOLETA_CATEGORIAS[d.categoria]||d.categoria}</span></td>
+      <td>${d.periodo || '—'}</td>
       <td>${fmtDate(d.fecha)}</td>
       <td>${d.fileData ? d.fileName : '<span class="pill pill-muted">Sin archivo</span>'}</td>
       <td class="actions-cell">
@@ -4128,20 +3866,11 @@ function renderConstancias(){
     </tr>`;
   }).join('');
   document.getElementById('constanciasTable').innerHTML = sorted.length ? `
-    <table><thead><tr><th>Colaborador</th><th>Tipo</th><th>Fecha</th><th>Archivo</th><th></th></tr></thead>
-    <tbody>${rows}</tbody></table>` : `<div class="empty">${docs.length ? 'Ninguna constancia coincide con el filtro.' : 'Aún no registras constancias entregadas.'}</div>`;
+    <div class="table-scroll">
+    <table><thead><tr><th>Colaborador</th><th>Tipo</th><th>Periodo</th><th>Fecha</th><th>Archivo</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    </div>` : `<div class="empty">${docs.length ? 'Ninguna constancia coincide con el filtro.' : 'Aún no registras constancias entregadas.'}</div>`;
 }
-
-// Save edited (non-template-default) text back as the stored template for reuse next time, per doc type
-document.addEventListener('DOMContentLoaded', ()=>{
-  const ta = document.getElementById('docTextarea');
-  if(ta){
-    ta.addEventListener('blur', async ()=>{
-      // store as the working template only if user explicitly wants — keep default template intact,
-      // this is intentionally not auto-saved to avoid overwriting the base template with employee-specific text.
-    });
-  }
-});
 
 // ---------- Menus ----------
 const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
@@ -4526,7 +4255,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // (El módulo "Documentos y Contratos" como bitácora propia fue retirado a pedido del usuario.
 //  Se conservan estas utilidades porque otras secciones activas —EMO, EPP, Préstamos, Permisos—
 //  guardan copias digitales de sus constancias en 'workerDocs' para trazabilidad y las descargan desde ahí.)
-const BOLETA_CATEGORIAS = {contrato:'Contrato', adenda:'Adenda', anexo:'Anexo', autorizacion:'Autorización', boleta:'Boleta de pago', sctr:'SCTR', pension:'Pensión', salud:'Salud', emo:'EMO', constancia_epp:'Constancia entrega EPP', formato_epp_semanal:'Formato EPP semanal', constancia_entrega_contrato:'Constancia entrega de contrato', constancia_entrega_boletas:'Constancia entrega de boletas', dni_foto:'DNI (foto)', foto_trabajador:'Foto del trabajador'};
+const BOLETA_CATEGORIAS = {contrato:'Contrato', adenda_contrato:'Adenda de Contrato', anexo:'Anexo', autorizacion:'Autorización', boleta:'Boleta de pago', sctr:'SCTR', pension:'Pensión', salud:'Salud', emo:'EMO', constancia_epp:'Constancia entrega EPP', formato_epp_semanal:'Formato EPP semanal', constancia_entrega_contrato:'Constancia entrega de contrato', constancia_entrega_boletas:'Constancia entrega de boletas', dni_foto:'DNI (foto)', foto_trabajador:'Foto del trabajador'};
 
 async function deleteBoleta(id){
   const b = workerDocs.find(x=>x.id===id);
@@ -5917,8 +5646,12 @@ function openItemModal(id, presetCategoria){
     setSelectOrOtro('itemUbicacion','itemUbicacionOtro','itemUbicacionOtroField', it.ubicacion, UBICACION_VALORES);
     document.getElementById('itemStock').value = it.stock;
     document.getElementById('itemStockMinimo').value = it.stockMinimo;
+    document.getElementById('itemStockMinimoTallas').value = it.stockMinimo;
     document.getElementById('itemNotas').value = it.notas||'';
     document.getElementById('itemDeleteBtn').style.display = 'inline-flex';
+    document.getElementById('itemManejaTallas').checked = !!it.manejaTallas;
+    itemTallasTemp = it.stockPorTalla ? {...it.stockPorTalla} : {};
+    toggleManejaTallas();
   } else {
     document.getElementById('itemModalTitle').textContent = 'Nuevo artículo';
     document.getElementById('itemNombre').value = '';
@@ -5929,22 +5662,65 @@ function openItemModal(id, presetCategoria){
     setSelectOrOtro('itemUbicacion','itemUbicacionOtro','itemUbicacionOtroField', '', UBICACION_VALORES);
     document.getElementById('itemStock').value = 0;
     document.getElementById('itemStockMinimo').value = 0;
+    document.getElementById('itemStockMinimoTallas').value = 0;
     document.getElementById('itemDeleteBtn').style.display = 'none';
+    document.getElementById('itemManejaTallas').checked = false;
+    itemTallasTemp = {};
+    toggleManejaTallas();
   }
+}
+let itemTallasTemp = {};
+function toggleManejaTallas(){
+  const activo = document.getElementById('itemManejaTallas').checked;
+  document.getElementById('itemStockNormalField').style.display = activo ? 'none':'flex';
+  document.getElementById('itemStockTallasField').style.display = activo ? 'block':'none';
+  if(activo) renderItemTallasContainer();
+}
+function renderItemTallasContainer(){
+  const cont = document.getElementById('itemTallasContainer');
+  const tallas = Object.keys(itemTallasTemp);
+  cont.innerHTML = tallas.length ? tallas.map(t=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);">
+      <span style="flex:1;font-weight:600;">Talla ${t}</span>
+      <input type="number" value="${itemTallasTemp[t]}" style="max-width:100px;" onchange="itemTallasTemp['${t}']=parseFloat(this.value)||0; renderItemTallasContainer();">
+      <button type="button" class="btn btn-danger btn-sm" onclick="eliminarTallaItem('${t}')">Quitar</button>
+    </div>`).join('') : `<div class="empty" style="padding:10px 0;">Aún no agregas ninguna talla.</div>`;
+  const total = tallas.reduce((s,t)=>s+(parseFloat(itemTallasTemp[t])||0), 0);
+  document.getElementById('itemStockTotalTallas').value = `${total}`;
+}
+function agregarTallaItem(){
+  const talla = document.getElementById('itemNuevaTalla').value.trim();
+  const cantidad = parseFloat(document.getElementById('itemNuevaTallaCantidad').value)||0;
+  if(!talla){ showToast('Escribe la talla (ej. 40, M)'); return; }
+  itemTallasTemp[talla] = (itemTallasTemp[talla]||0) + cantidad;
+  document.getElementById('itemNuevaTalla').value = '';
+  document.getElementById('itemNuevaTallaCantidad').value = '0';
+  renderItemTallasContainer();
+}
+function eliminarTallaItem(talla){
+  delete itemTallasTemp[talla];
+  renderItemTallasContainer();
 }
 function closeItemModal(){ document.getElementById('itemModalOverlay').classList.remove('active'); }
 async function saveItem(){
   const nombre = document.getElementById('itemNombre').value.trim();
   if(!nombre){ showToast('El nombre del artículo es obligatorio'); return; }
   const id = document.getElementById('itemId').value;
+  const manejaTallas = document.getElementById('itemManejaTallas').checked;
+  const stockPorTalla = manejaTallas ? {...itemTallasTemp} : null;
+  const stockCalculado = manejaTallas
+    ? Object.values(stockPorTalla).reduce((s,v)=>s+(parseFloat(v)||0), 0)
+    : parseFloat(document.getElementById('itemStock').value)||0;
   const data = {
     id: id || ('i'+Date.now()),
     nombre,
     codigo: document.getElementById('itemCodigo').value.trim(),
     categoria: getSelectOrOtroValue('itemCategoria','itemCategoriaOtro'),
     unidad: getSelectOrOtroValue('itemUnidad','itemUnidadOtro'),
-    stock: parseFloat(document.getElementById('itemStock').value)||0,
-    stockMinimo: parseFloat(document.getElementById('itemStockMinimo').value)||0,
+    stock: stockCalculado,
+    stockMinimo: manejaTallas ? (parseFloat(document.getElementById('itemStockMinimoTallas').value)||0) : (parseFloat(document.getElementById('itemStockMinimo').value)||0),
+    manejaTallas,
+    stockPorTalla,
     ubicacion: getSelectOrOtroValue('itemUbicacion','itemUbicacionOtro'),
     notas: document.getElementById('itemNotas').value.trim()
   };
@@ -5968,8 +5744,9 @@ async function deleteItem(id){
 
 function populateInventorySelect(){
   const sel = document.getElementById('movItemSelect');
-  sel.innerHTML = inventoryItems.length
-    ? inventoryItems.map(it=>`<option value="${it.id}">${it.nombre} (stock: ${it.stock} ${it.unidad||''})</option>`).join('')
+  const disponibles = inventoryItems.filter(it=>!it.manejaTallas);
+  sel.innerHTML = disponibles.length
+    ? disponibles.map(it=>`<option value="${it.id}">${it.nombre} (stock: ${it.stock} ${it.unidad||''})</option>`).join('')
     : `<option value="">Registra un artículo primero</option>`;
 }
 
@@ -6042,14 +5819,56 @@ async function corregirStockItem(itemId){
   showToast('Stock corregido y quedó registrado en la bitácora');
 }
 
+let itemRotacionSeleccionado = null;
+function mostrarRotacionTalla(itemId){
+  itemRotacionSeleccionado = itemId;
+  renderRotacionTalla();
+  const panel = document.getElementById('rotacionTallaPanel');
+  if(panel) panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+function renderRotacionTalla(){
+  const panel = document.getElementById('rotacionTallaPanel');
+  if(!panel) return;
+  if(!itemRotacionSeleccionado){ panel.style.display = 'none'; panel.innerHTML=''; return; }
+  const item = inventoryItems.find(it=>it.id===itemRotacionSeleccionado);
+  if(!item || !item.manejaTallas){ panel.style.display = 'none'; return; }
+  const consumo = {};
+  Object.keys(item.stockPorTalla||{}).forEach(t=>consumo[t]=0);
+  inventoryMovements.filter(m=>m.itemId===item.id && m.tipo==='salida' && m.talla).forEach(m=>{
+    consumo[m.talla] = (consumo[m.talla]||0) + (parseFloat(m.cantidad)||0);
+  });
+  const filas = Object.entries(consumo).sort((a,b)=>b[1]-a[1]).map(([talla, total])=>
+    `<tr><td>Talla ${talla}</td><td class="mono">${item.stockPorTalla[talla]||0}</td><td class="mono">${total}</td></tr>`
+  ).join('');
+  panel.style.display = 'block';
+  panel.innerHTML = `
+    <div class="panel-head">
+      <h3>Rotación por talla — ${item.nombre}</h3>
+      <button class="btn btn-ghost btn-sm" onclick="itemRotacionSeleccionado=null; renderRotacionTalla();">Cerrar</button>
+    </div>
+    <div style="padding:16px 18px;">
+      <p class="hint" style="margin:0 0 12px;">Cuánto se ha entregado de cada talla en total — las tallas con más consumo son las que rotan más rápido y conviene reponer primero.</p>
+      <div class="table-scroll">
+      <table><thead><tr><th>Talla</th><th>Stock actual</th><th>Total entregado (histórico)</th></tr></thead>
+      <tbody>${filas}</tbody></table>
+      </div>
+    </div>`;
+}
 function renderInventory(){
   populateInventorySelect();
   if(!document.getElementById('movFecha').value) document.getElementById('movFecha').value = new Date().toISOString().slice(0,10);
+  renderRotacionTalla();
 
   const enNegativo = inventoryItems.filter(it=>it.stock<0);
   const stockBajo = inventoryItems.filter(it=>it.stock>=0 && it.stock<=it.stockMinimo);
   const stockBajoTotal = inventoryItems.filter(it=>it.stock<=it.stockMinimo);
   const movimientosMes = inventoryMovements.filter(m=>m.fecha && m.fecha.slice(0,7)===new Date().toISOString().slice(0,7));
+  const tallasAgotadasChips = [];
+  inventoryItems.filter(it=>it.manejaTallas && it.stockPorTalla).forEach(it=>{
+    Object.entries(it.stockPorTalla).forEach(([talla, cant])=>{
+      if((parseFloat(cant)||0)<=0) tallasAgotadasChips.push(`<span class="aviso-chip">${it.nombre} — talla ${talla} agotada</span>`);
+    });
+  });
   document.getElementById('invStats').innerHTML = `
     <div class="stat-card"><div class="num">${inventoryItems.length}</div><div class="label">Artículos en inventario</div></div>
     <div class="stat-card ${stockBajoTotal.length?'warn':''}"><div class="num">${stockBajoTotal.length}</div><div class="label">Con stock bajo</div></div>
@@ -6070,6 +5889,12 @@ function renderInventory(){
       <div class="aviso-list" style="margin-top:8px;">${stockBajo.map(it=>`<span class="aviso-chip">${it.nombre} — quedan ${it.stock} ${it.unidad||''} (mínimo ${it.stockMinimo})</span>`).join('')}</div>
     </details>`;
   }
+  if(tallasAgotadasChips.length){
+    avisoHtml += `<details class="aviso-box warn" style="cursor:default;">
+      <summary style="cursor:pointer;list-style:none;" class="aviso-title">⚠ Tallas específicas agotadas (${tallasAgotadasChips.length}) — aunque el total del artículo alcance</summary>
+      <div class="aviso-list" style="margin-top:8px;">${tallasAgotadasChips.join('')}</div>
+    </details>`;
+  }
   document.getElementById('invAviso').innerHTML = avisoHtml;
 
   const q = (document.getElementById('invSearch').value||'').toLowerCase();
@@ -6080,16 +5905,24 @@ function renderInventory(){
     let estadoPill = '<span class="pill pill-ok">OK</span>';
     if(negativo) estadoPill = '<span class="pill pill-danger">⚠ Descuadre</span>';
     else if(bajo) estadoPill = '<span class="pill pill-danger">Stock bajo</span>';
+    const tallasDetalle = it.manejaTallas && it.stockPorTalla
+      ? Object.entries(it.stockPorTalla).map(([t,c])=>{
+          const agotada = (parseFloat(c)||0)<=0;
+          return agotada ? `<span style="color:var(--danger);font-weight:700;">${t}: 0 (agotada)</span>` : `${t}: ${c}`;
+        }).join(' · ')
+      : '';
     return `<tr${negativo?' style="background:var(--danger-light);"':''}>
       <td><b>${it.nombre}</b>${it.categoria ? `<div style="font-size:11px;color:var(--ink-soft);">${it.categoria}</div>`:''}</td>
-      <td class="mono">${it.stock} ${it.unidad||''}</td>
+      <td class="mono">${it.stock} ${it.unidad||''}${tallasDetalle ? `<div style="font-size:11px;color:var(--ink-soft);font-weight:400;">${tallasDetalle}</div>` : ''}</td>
       <td class="mono">${it.stockMinimo} ${it.unidad||''}</td>
       <td>${estadoPill}</td>
       <td class="actions-cell">
+        ${it.manejaTallas ? '' : `
         <button class="btn btn-primary btn-sm" onclick="quickAdjust('${it.id}','entrada')" title="Agregar 1">+1</button>
         <button class="btn btn-danger btn-sm" onclick="quickAdjust('${it.id}','salida')" title="Quitar 1">−1</button>
-        ${negativo ? `<button class="btn btn-danger btn-sm" onclick="corregirStockItem('${it.id}')">Corregir stock</button>` : `<button class="btn btn-ghost btn-sm" onclick="corregirStockItem('${it.id}')">Corregir</button>`}
-        <button class="btn btn-ghost btn-sm" onclick="openItemModal('${it.id}')">Editar</button>
+        ${negativo ? `<button class="btn btn-danger btn-sm" onclick="corregirStockItem('${it.id}')">Corregir stock</button>` : `<button class="btn btn-ghost btn-sm" onclick="corregirStockItem('${it.id}')">Corregir</button>`}`}
+        ${it.manejaTallas ? `<button class="btn btn-ghost btn-sm" onclick="mostrarRotacionTalla('${it.id}')">Ver rotación</button>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="openItemModal('${it.id}')">${it.manejaTallas ? 'Editar tallas' : 'Editar'}</button>
       </td>
     </tr>`;
   }).join('');
@@ -6563,37 +6396,81 @@ function switchEppTab(tab){
   document.getElementById('eppFormatoBlock').style.display = tab==='formato' ? 'block':'none';
 }
 
+function tallaSugeridaParaItem(it, e){
+  if(!e) return '';
+  const n = it.nombre.toLowerCase();
+  if(/zapato|calzado|bota/.test(n)) return e.tallaCalzado||'';
+  if(/pantal/.test(n)) return e.tallaPantalon||'';
+  if(/camisa|casaca|chaleco|polo|overol|mameluco/.test(n)) return e.tallaCamisa||'';
+  return '';
+}
 function renderEppChecklist(){
   const cont = document.getElementById('eppChecklist');
   const eppItems = inventoryItems.filter(it=>it.categoria==='EPP (Protección Personal)');
   const vidaDefault = parseInt(document.getElementById('eppVidaUtil').value)||90;
+  const empId = document.getElementById('eppEmployeeSelect') ? document.getElementById('eppEmployeeSelect').value : '';
+  const e = employees.find(x=>x.id===empId);
   cont.innerHTML = eppItems.length ? `
     <div style="display:flex;gap:10px;padding:0 10px;font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;">
       <div style="width:22px;"></div>
       <div style="flex:1;">Artículo</div>
-      <div style="width:70px;">Talla</div>
+      <div style="width:110px;">Talla</div>
       <div style="width:80px;">Cantidad</div>
       <div style="width:110px;">Vida útil (días)</div>
     </div>
-    ${eppItems.map(it=>`
+    ${eppItems.map(it=>{
+      const tallaSugerida = tallaSugeridaParaItem(it, e);
+      const tallaInput = it.manejaTallas
+        ? `<select id="eppTalla_${it.id}" disabled style="width:110px;" onchange="checkEppStockInline('${it.id}')">
+            ${Object.entries(it.stockPorTalla||{}).map(([t,c])=>`<option value="${t}" ${t===tallaSugerida?'selected':''}>${t} (${c})</option>`).join('')}
+          </select>`
+        : `<input type="text" id="eppTalla_${it.id}" placeholder="—" disabled style="width:110px;" value="${tallaSugerida}">`;
+      return `
     <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;">
       <input type="checkbox" id="eppChk_${it.id}" style="width:auto;" onchange="document.getElementById('eppQty_${it.id}').disabled=!this.checked; document.getElementById('eppVida_${it.id}').disabled=!this.checked; document.getElementById('eppTalla_${it.id}').disabled=!this.checked;">
       <label for="eppChk_${it.id}" style="flex:1;margin:0;font-weight:500;">${it.codigo?`[${it.codigo}] `:''}${it.nombre} <span style="color:var(--ink-soft);font-size:12px;">(stock: ${it.stock} ${it.unidad||''})</span></label>
-      <input type="text" id="eppTalla_${it.id}" placeholder="—" disabled style="width:70px;">
-      <input type="number" id="eppQty_${it.id}" min="1" value="1" disabled style="width:80px;" data-stock="${it.stock}" oninput="checkEppStockInline('${it.id}')">
+      ${tallaInput}
+      <input type="number" id="eppQty_${it.id}" min="1" value="1" disabled style="width:80px;" data-stock="${it.stock}" data-maneja-tallas="${it.manejaTallas?'1':'0'}" oninput="checkEppStockInline('${it.id}')">
       <input type="number" id="eppVida_${it.id}" min="1" value="${vidaDefault}" disabled style="width:110px;">
     </div>
-    <div id="eppStockWarn_${it.id}" style="display:none;color:var(--danger);font-size:11.5px;padding:0 10px 6px;margin-top:-6px;">⚠ Cantidad mayor al stock disponible</div>`).join('')}` : `<div class="empty">Registra artículos EPP en Inventario primero.</div>`;
+    <div id="eppStockWarn_${it.id}" style="display:none;color:var(--danger);font-size:11.5px;padding:0 10px 6px;margin-top:-6px;">⚠ Cantidad mayor al stock disponible</div>`;
+    }).join('')}` : `<div class="empty">Registra artículos EPP en Inventario primero.</div>`;
   updateEppVencimientoPreview();
 }
 function checkEppStockInline(itemId){
   const qtyInput = document.getElementById(`eppQty_${itemId}`);
   const warn = document.getElementById(`eppStockWarn_${itemId}`);
-  const stock = parseFloat(qtyInput.dataset.stock)||0;
+  const manejaTallas = qtyInput.dataset.manejaTallas === '1';
+  let stock;
+  if(manejaTallas){
+    const item = inventoryItems.find(it=>it.id===itemId);
+    const tallaSel = document.getElementById(`eppTalla_${itemId}`).value;
+    stock = item && item.stockPorTalla ? (parseFloat(item.stockPorTalla[tallaSel])||0) : 0;
+  } else {
+    stock = parseFloat(qtyInput.dataset.stock)||0;
+  }
   const qty = parseFloat(qtyInput.value)||0;
   const excede = qty > stock;
   warn.style.display = excede ? 'block' : 'none';
+  warn.textContent = manejaTallas ? `⚠ Cantidad mayor al stock disponible de esa talla (${stock})` : '⚠ Cantidad mayor al stock disponible';
   qtyInput.style.borderColor = excede ? 'var(--danger)' : '';
+}
+function mostrarTallasEpp(){
+  const ref = document.getElementById('eppTallasRef');
+  if(ref){
+    const empId = document.getElementById('eppEmployeeSelect').value;
+    const e = employees.find(x=>x.id===empId);
+    if(!e || (!e.tallaPantalon && !e.tallaCamisa && !e.tallaCalzado)){
+      ref.textContent = '';
+    } else {
+      const partes = [];
+      if(e.tallaPantalon) partes.push(`Pantalón: ${e.tallaPantalon}`);
+      if(e.tallaCamisa) partes.push(`Camisa/casaca: ${e.tallaCamisa}`);
+      if(e.tallaCalzado) partes.push(`Calzado: ${e.tallaCalzado}`);
+      ref.innerHTML = `📏 Tallas registradas — ${partes.join(' · ')}`;
+    }
+  }
+  if(document.getElementById('eppChecklist')) renderEppChecklist();
 }
 function updateEppVencimientoPreview(){
   const fecha = document.getElementById('eppFecha').value;
@@ -6628,14 +6505,24 @@ async function saveAsignacionEpp(){
     const fVenc = new Date(fecha+'T00:00:00');
     fVenc.setDate(fVenc.getDate()+vidaUtilDias);
     const fechaVencimiento = fVenc.toISOString().slice(0,10);
-    if(cantidad>item.stock){
-      if(!confirm(`El stock de ${item.nombre} es ${item.stock}. Esta entrega dejaría el stock en negativo. ¿Continuar de todas formas?`)) continue;
+    if(item.manejaTallas){
+      const stockTalla = item.stockPorTalla ? (parseFloat(item.stockPorTalla[talla])||0) : 0;
+      if(!talla){ showToast(`Selecciona la talla de ${item.nombre}`); continue; }
+      if(cantidad>stockTalla){
+        if(!confirm(`El stock de ${item.nombre} talla ${talla} es ${stockTalla}. Esta entrega dejaría esa talla en negativo. ¿Continuar de todas formas?`)) continue;
+      }
+      item.stockPorTalla[talla] = stockTalla - cantidad;
+      item.stock = Object.values(item.stockPorTalla).reduce((s,v)=>s+(parseFloat(v)||0), 0);
+    } else {
+      if(cantidad>item.stock){
+        if(!confirm(`El stock de ${item.nombre} es ${item.stock}. Esta entrega dejaría el stock en negativo. ¿Continuar de todas formas?`)) continue;
+      }
+      item.stock -= cantidad;
     }
-    item.stock -= cantidad;
     inventoryMovements.push({
       id:'mv'+Date.now()+Math.random().toString(36).slice(2,5), itemId:item.id, tipo:'salida', cantidad, fecha,
       entregadoA: e.nombre, motivo:'Asignación de EPP', responsable: responsableEntrega,
-      saldoResultante: item.stock
+      saldoResultante: item.stock, talla: item.manejaTallas ? talla : ''
     });
     eppAsignaciones.push({
       id:'eppa'+Date.now()+Math.random().toString(36).slice(2,5), entregaId, empId, itemId:item.id, cantidad, fecha,
@@ -7298,9 +7185,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
 });
 
 // ---------- Respaldo (guardar / restaurar todo el sistema) ----------
-const BACKUP_KEYS = ['employees','menuEntries','workerDocs','templates','faltas','permisos','descansos','prestamos',
+const BACKUP_KEYS = ['employees','menuEntries','workerDocs','faltas','permisos','descansos','prestamos',
   'registrosDiarios','inventoryItems','inventoryMovements','eventos','encuestas','capacitaciones','reconocimientos',
-  'eppAsignaciones','empresaData','wordDocsGuardados','segurosEmpresa','contratoOficialTemplates','firmasDigitales','asistenciaManual'];
+  'eppAsignaciones','empresaData','wordDocsGuardados','segurosEmpresa','contratoOficialTemplates','firmasDigitales','asistenciaManual','procesosCese','documentosSunafil'];
 
 async function mostrarEspacioAlmacenamiento(){
   document.getElementById('espacioModalOverlay').classList.add('active');
