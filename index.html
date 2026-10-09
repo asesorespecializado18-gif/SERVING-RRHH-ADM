@@ -9,9 +9,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.6/pizzip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.44.0/js/docxtemplater.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 :root{
   --bg:#F6F4EF;
@@ -2318,6 +2315,8 @@ const EMP_FIELD_IDS = ['empNombre','empDni','empDomicilio','empCiudad','empCorre
   'empLicenciaCategoria','empLicenciaNumero','empLicenciaVigencia','empBanco','empNumeroCuenta','empCci',
   'empRefNombre','empRefParentesco','empRefTelefono','empNotas'];
 
+// Remuneración Mínima Vital vigente (D.S. N.° 006-2024-TR, desde el 01/01/2025). Actualizar si el Gobierno la modifica.
+const RMV_VIGENTE = 1130;
 function updateSueldoMensual(){
   const diario = parseFloat(document.getElementById('empSueldoDiario').value) || 0;
   const mensual = diario*30;
@@ -2326,7 +2325,7 @@ function updateSueldoMensual(){
   const warnEl = document.getElementById('empSueldoWarn');
   if(warnEl){
     if(diario===0){ warnEl.textContent = ''; }
-    else if(mensual < 1000){ warnEl.textContent = '⚠ Este sueldo mensual está por debajo de S/ 1,000 — verifica que no sea menor a la RMV vigente.'; }
+    else if(mensual < RMV_VIGENTE){ warnEl.textContent = '⚠ Este sueldo mensual está por debajo de la RMV vigente (S/ ' + RMV_VIGENTE.toLocaleString('es-PE') + '). Verifica el monto o si corresponde a jornada parcial.'; }
     else if(mensual > 20000){ warnEl.textContent = '⚠ Este sueldo mensual supera S/ 20,000 — verifica que el monto sea correcto.'; }
     else { warnEl.textContent = ''; }
   }
