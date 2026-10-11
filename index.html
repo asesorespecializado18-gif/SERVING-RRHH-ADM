@@ -211,6 +211,7 @@ tr:hover td{background:#FAF9F6;}
     <div class="nav-section-label">Operaciones</div>
     <div class="nav-item" data-view="menus"><span class="nav-icon">&#9749;</span> Alimentación general</div>
     <div class="nav-item" data-view="asistencia"><span class="nav-icon">&#128203;</span> Asistencia y Horarios</div>
+    <div class="nav-item" data-view="planillasem"><span class="nav-icon">&#128181;</span> Planilla semanal (pagos)</div>
     <div class="nav-item" data-view="inventario"><span class="nav-icon">&#128230;</span> Inventario</div>
     <div class="nav-item" data-view="bienestar"><span class="nav-icon">&#127807;</span> Bienestar</div>
     <div class="nav-item" data-view="epp"><span class="nav-icon">&#129508;</span> EPP</div>
@@ -901,6 +902,58 @@ tr:hover td{background:#FAF9F6;}
           <div id="reporteMensualTable"></div>
           <p class="hint" style="padding:0 18px 16px;">El monto estimado se calcula con el sueldo diario ÷ 8 horas × horas trabajadas + horas extras, como referencia para la elaboración de la nómina. No reemplaza el cálculo oficial de planilla.</p>
         </div>
+      </div>
+    </div>
+
+    <!-- PLANILLA SEMANAL (PAGOS) -->
+    <div class="view" id="view-planillasem">
+      <div class="view-header">
+        <div>
+          <h2>Planilla semanal (pagos)</h2>
+          <p>Sube la trama semanal de pagos en Excel y controla cuánto se gasta en planilla por semana, mes, concepto y trabajador</p>
+        </div>
+      </div>
+
+      <div class="stat-grid" id="plsStats"></div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>1. Subir trama semanal (Excel)</h3></div>
+        <div style="padding:16px 18px;">
+          <div class="upload-row">
+            <input type="file" id="plsArchivo" accept=".xlsx,.xls" onchange="leerTramaPlanilla(this.files[0])">
+            <label style="margin:0;font-size:12.5px;color:var(--ink-soft);">Formato de tu planilla semanal: columnas APELLIDOS Y NOMBRES, DNI, DÍAS LABORADOS, JORNAL, PAGO SEMANAL, PAGO 25%, SUELDO BRUTO, CENA, Cuarto, Bonificación, Bono por Arco Sumergido, DSCTO y SUELDO NETO.</label>
+          </div>
+          <div id="plsPreview"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>2. Gasto en planilla</h3>
+          <select class="search-box" id="plsFiltroAnio" style="width:120px;" onchange="renderPlanillaSemanal()"></select>
+        </div>
+        <div id="plsGrafico" style="padding:14px 18px 4px;"></div>
+        <div id="plsMeses" style="padding:0 18px 10px;"></div>
+        <div id="plsSemanas"></div>
+      </div>
+
+      <div class="panel" id="plsDetallePanel" style="display:none;">
+        <div class="panel-head">
+          <h3 id="plsDetalleTitulo">Detalle de la semana</h3>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-primary btn-sm" id="plsExportarBtn">Descargar Excel</button>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('plsDetallePanel').style.display='none'">Cerrar</button>
+          </div>
+        </div>
+        <div id="plsDetalle"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>3. Acumulado por trabajador</h3>
+          <select class="search-box" id="plsFiltroMesTrab" style="width:180px;" onchange="renderPlanillaPorTrabajador()"></select>
+        </div>
+        <div id="plsPorTrabajador"></div>
       </div>
     </div>
 
@@ -2216,6 +2269,7 @@ let reconocimientos = [];
 let induccionesSeguridad = [];
 let cesesRegistro = [];
 let eppKits = [];
+let planillasSemanales = [];
 
 // ---------- Init ----------
 async function init(){
@@ -2264,6 +2318,7 @@ async function init(){
   induccionesSeguridad = await loadData('induccionesSeguridad', []);
   cesesRegistro = await loadData('cesesRegistro', []);
   eppKits = await loadData('eppKits', []);
+  planillasSemanales = await loadData('planillasSemanales', []);
 
   document.querySelectorAll('.nav-item').forEach(el=>{
     el.addEventListener('click', ()=>switchView(el.dataset.view));
@@ -2385,6 +2440,7 @@ function renderAll(){
   renderSeguros();
   renderInduccion();
   renderCesados();
+  renderPlanillaSemanal();
   renderPlanillaBancaria();
   renderLegajoSunafil();
   renderDocumentosSunafil();
@@ -7889,7 +7945,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // ---------- Respaldo (guardar / restaurar todo el sistema) ----------
 const BACKUP_KEYS = ['employees','menuEntries','workerDocs','faltas','permisos','descansos','prestamos',
   'registrosDiarios','inventoryItems','inventoryMovements','eventos','encuestas','capacitaciones','reconocimientos',
-  'eppAsignaciones','empresaData','wordDocsGuardados','segurosEmpresa','contratoOficialTemplates','firmasDigitales','asistenciaManual','procesosCese','documentosSunafil','induccionesSeguridad','cesesRegistro','eppKits'];
+  'eppAsignaciones','empresaData','wordDocsGuardados','segurosEmpresa','contratoOficialTemplates','firmasDigitales','asistenciaManual','procesosCese','documentosSunafil','induccionesSeguridad','cesesRegistro','eppKits','planillasSemanales'];
 
 async function mostrarEspacioAlmacenamiento(){
   document.getElementById('espacioModalOverlay').classList.add('active');
@@ -8021,6 +8077,407 @@ function mostrarAvisosPendientes(){
       body: alerts.slice(0,3).join('\n') + (alerts.length>3 ? `\n+${alerts.length-3} más` : '')
     });
   }
+}
+
+// ---------- Planilla semanal (pagos) ----------
+// Cada semana subida se guarda con sus filas (una por persona), otros gastos y totales por concepto.
+const PLS_CONCEPTOS = [
+  ['pagoSemanal','Jornales'], ['pago25','Horas extra'], ['cena','Cena'], ['cuarto','Cuarto'],
+  ['bonificacion','Bonificación'], ['bonoArco','Bono arco sumergido'], ['descuento','Descuentos']
+];
+const PLS_COLUMNAS = { // texto del encabezado (normalizado) -> campo
+  'APELLIDOS Y NOMBRES':'nombre', 'DNI':'dni', 'CARGO':'cargo', 'N° CUENTA':'cuenta', 'CCI':'cci', 'ENTIDAD BANCARIA':'banco',
+  'DIAS LABORADOS':'dias', 'JORNAL':'jornal', 'PAGO SEMANAL':'pagoSemanal', 'HORAS EXTRA 25%':'horasExtra', 'PAGO 25%':'pago25',
+  'SUELDO BRUTO':'bruto', 'CENA':'cena', 'CUARTO':'cuarto', 'BONIFICACION':'bonificacion', 'REINTEGRO':'bonificacion',
+  'BONO POR ARCO SUMERGIDO':'bonoArco', 'DSCTO':'descuento', 'SUELDO NETO':'neto'
+};
+let plsBorrador = null;
+function soles(n){ return 'S/ ' + (Number(n)||0).toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function plsNorm(s){ return String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim(); }
+function plsNum(v){ const n = parseFloat(String(v==null?'':v).replace(/,/g,'')); return isNaN(n) ? 0 : Math.round(n*100)/100; }
+function plsSerialAFecha(n){ const d = new Date(Date.UTC(1899,11,30) + Math.round(n)*86400000); return d.toISOString().slice(0,10); }
+// Busca al trabajador: primero por DNI; si no, por apellidos + nombres (evita confundir a dos hermanos con un nombre en común).
+function plsBuscarEmpleado(nombre, dni){
+  const d = String(dni||'').replace(/\D/g,'');
+  const porDni = d ? employees.find(e=>String(e.dni||'').replace(/\D/g,'').padStart(8,'0')===d.padStart(8,'0')) : null;
+  const t = plsNorm(nombre).replace(/[^A-Z ]/g,'').split(' ').filter(Boolean);
+  const candidatos = employees.filter(e=>{
+    const u = plsNorm(e.nombre).replace(/[^A-Z ]/g,'').split(' ').filter(Boolean);
+    if(t.length<3 || u.length<3) return false;
+    if(u[0].slice(0,5)!==t[0].slice(0,5) || u[1].slice(0,5)!==t[1].slice(0,5)) return false;
+    return u[2]===t[2] || t.slice(2).every(x=>u.slice(2).includes(x));
+  });
+  const porNombre = candidatos.length===1 ? candidatos[0] : null;
+  if(porDni && porNombre && porDni.id!==porNombre.id) return {emp: porNombre, aviso: 'El DNI del Excel pertenece a otra persona ('+porDni.nombre+')'};
+  if(porNombre) return {emp: porNombre, aviso: d && String(porNombre.dni||'').replace(/\D/g,'')!==d ? 'DNI distinto en el Excel ('+d+'); en el sistema: '+porNombre.dni : ''};
+  if(porDni) return {emp: porDni, aviso: ''};
+  return {emp: null, aviso: candidatos.length>1 ? 'Coincide con varias personas: elige la correcta' : 'No está registrado en Personal'};
+}
+const PLS_MESES = {ENE:1,FEB:2,MAR:3,ABR:4,MAY:5,JUN:6,JUL:7,AGO:8,SET:9,SEP:9,OCT:10,NOV:11,DIC:12};
+function plsIso(d, m, y){ return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0'); }
+function plsSumarDias(iso, n){ const d = new Date(iso+'T12:00:00'); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
+// Convierte "J-22ene26", "22ene26" o un número de serie de Excel en fecha ISO.
+function plsFechaDeEtiqueta(v){
+  if(typeof v==='number' && v>40000 && v<60000) return plsSerialAFecha(v);
+  const m = plsNorm(v).match(/(\d{1,2})\s*([A-Z]{3})[A-Z]*\s*(\d{2})\b/);
+  if(!m || !PLS_MESES[m[2]]) return '';
+  return plsIso(+m[1], PLS_MESES[m[2]], 2000 + (+m[3]));
+}
+// Semana de una hoja. Orden de confianza: nombre de la hoja ("29ene26 al 04feb26"), luego el primer y el
+// último día de la cabecera de horas (en estas planillas hay días intermedios copiados de otras semanas).
+function plsSemanaDeHoja(nombreHoja, filas, filaEnc){
+  const partes = plsNorm(nombreHoja).split(' AL ');
+  if(partes.length===2){
+    const ini = plsFechaDeEtiqueta(partes[0]), fin = plsFechaDeEtiqueta(partes[1]);
+    if(ini && fin && fin >= ini) return {inicio: ini, fin};
+  }
+  for(let i=Math.max(0, filaEnc-3); i<=filaEnc; i++){
+    const fechas = Object.keys(filas[i]||{}).sort((a,b)=>a.length-b.length || a.localeCompare(b))
+      .map(c=>plsFechaDeEtiqueta(filas[i][c])).filter(Boolean);
+    if(fechas.length>=2){
+      const ini = fechas[0];
+      let fin = fechas[fechas.length-1];
+      if(fin < ini || fin > plsSumarDias(ini, 7)) fin = plsSumarDias(ini, 6);
+      return {inicio: ini, fin};
+    }
+  }
+  return {inicio:'', fin:''};
+}
+// Lee una hoja con el formato de la planilla semanal. Devuelve null si la hoja no es una planilla.
+function plsLeerHoja(nombreHoja, filas){
+  const esEncabezado = r=>Object.values(r).some(v=>plsNorm(v)==='DIAS LABORADOS') && Object.values(r).some(v=>plsNorm(v)==='SUELDO NETO');
+  // Algunas hojas tienen la tabla de pagos en varios bloques, cada uno con su propio encabezado.
+  const encabezados = filas.map((r,i)=>esEncabezado(r) ? i : -1).filter(i=>i>=0);
+  if(!encabezados.length) return null;
+  const semana = plsSemanaDeHoja(nombreHoja, filas, encabezados[0]);
+  const personas = [];
+  let mapaNeto = null, finUltimoBloque = 0;
+  encabezados.forEach((filaEnc, b)=>{
+    const mapa = {};
+    Object.entries(filas[filaEnc]).forEach(([col,v])=>{ const campo = PLS_COLUMNAS[plsNorm(v)]; if(campo && !mapa[campo]) mapa[campo] = col; });
+    if(!mapa.nombre || !mapa.neto) return;
+    mapaNeto = mapaNeto || mapa.neto;
+    const limite = b+1 < encabezados.length ? encabezados[b+1] : filas.length;
+    let vacias = 0, i = filaEnc+1;
+    for(; i<limite; i++){
+      const r = filas[i];
+      const nombre = String(r[mapa.nombre]||'').trim();
+      const n = plsNorm(nombre);
+      if(!nombre){ if(++vacias >= 6) break; continue; } // filas vacías dentro de la tabla: se saltan
+      vacias = 0;
+      if(n.includes('APELLIDOS') || n==='TOTAL' || nombre.startsWith('*') || n.includes('ALMUERZO')) break;
+      const fila = {nombre};
+      ['dni','cargo','cuenta','cci','banco'].forEach(k=>{ if(mapa[k]) fila[k] = String(r[mapa[k]]||'').trim(); });
+      ['dias','jornal','pagoSemanal','horasExtra','pago25','bruto','cena','cuarto','bonificacion','bonoArco','descuento','neto'].forEach(k=>{ fila[k] = mapa[k] ? plsNum(r[mapa[k]]) : 0; });
+      if(!fila.neto && !fila.bruto && !fila.dias) continue; // fila de plantilla sin pago
+      const m = plsBuscarEmpleado(nombre, fila.dni);
+      fila.empId = m.emp ? m.emp.id : '';
+      fila.aviso = m.aviso;
+      personas.push(fila);
+    }
+    finUltimoBloque = Math.max(finUltimoBloque, i);
+  });
+  const sumaNeto = personas.reduce((s,p)=>s+p.neto,0);
+  // Otros gastos: solo filas marcadas con asterisco (ej. "* ALMUERZO DEL PERSONAL", "* NOTA: ... a cuenta de utilidades")
+  // con monto en la columna de neto. Se descarta si el monto es el total de la columna (algunas hojas lo ponen en esa fila).
+  const otros = [];
+  for(let i=encabezados[0]+1; i<filas.length && mapaNeto; i++){
+    const r = filas[i];
+    const valores = Object.entries(r).filter(([c])=>c!==mapaNeto).map(([,v])=>String(v).trim()).filter(Boolean);
+    if(!valores.some(v=>v.startsWith('*'))) continue;
+    const monto = plsNum(r[mapaNeto]);
+    const texto = valores.filter(v=>v!=='*').sort((a,b)=>b.length-a.length)[0] || '';
+    if(!monto || !texto || /TOTAL/.test(plsNorm(texto))) continue;
+    if(Math.abs(monto - sumaNeto) < 1 || monto > sumaNeto*0.5) continue;
+    otros.push({concepto: texto.replace(/^\*\s*/,'').replace(/^NOTA:\s*/i,''), monto});
+  }
+  return {hoja: nombreHoja, semanaInicio: semana.inicio, semanaFin: semana.fin, personas, otros};
+}
+let plsLote = null;
+function leerTramaPlanilla(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    try{
+      const wb = XLSX.read(new Uint8Array(ev.target.result), {type:'array'});
+      const semanas = [];
+      wb.SheetNames.forEach(nombreHoja=>{
+        const s = plsLeerHoja(nombreHoja, XLSX.utils.sheet_to_json(wb.Sheets[nombreHoja], {header:'A', defval:'', raw:true}));
+        if(s && s.personas.length) semanas.push({...s, archivo: file.name, incluir: true});
+      });
+      if(!semanas.length){ showToast('No encontré una planilla semanal (columnas "DÍAS LABORADOS" y "SUELDO NETO") en el Excel'); return; }
+      if(semanas.length===1){ plsLote = null; plsBorrador = semanas[0]; }
+      else { plsBorrador = null; plsLote = semanas.sort((a,b)=>(a.semanaInicio||'').localeCompare(b.semanaInicio||'')); }
+      renderPlsPreview();
+    }catch(err){
+      console.error(err);
+      showToast('No se pudo leer el Excel. Verifica que sea la planilla semanal (.xlsx)');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+// Arma el registro que se guarda (sin avisos temporales) a partir de una semana leída.
+function plsRegistroDeSemana(b, idExistente){
+  const personas = b.personas.map(p=>{ const {aviso, ...resto} = p; const e = employees.find(x=>x.id===p.empId); return {...resto, area: e ? (e.area||'') : ''}; });
+  const r2 = n=>Math.round(n*100)/100;
+  const totales = {};
+  PLS_CONCEPTOS.forEach(([k])=>totales[k] = r2(personas.reduce((s,p)=>s+(p[k]||0),0)));
+  totales.bruto = r2(personas.reduce((s,p)=>s+p.bruto,0));
+  totales.netoPersonal = r2(personas.reduce((s,p)=>s+p.neto,0));
+  const otros = b.otros.filter(o=>o.concepto || o.monto);
+  totales.otros = r2(otros.reduce((s,o)=>s+(o.monto||0),0));
+  totales.total = r2(totales.netoPersonal + totales.otros);
+  totales.personas = personas.length;
+  totales.dias = r2(personas.reduce((s,p)=>s+p.dias,0));
+  return {id: idExistente || ('pls'+Date.now()+Math.random().toString(36).slice(2,6)), semanaInicio: b.semanaInicio, semanaFin: b.semanaFin,
+    archivo: b.archivo, hoja: b.hoja||'', fechaCarga: hoyISO(), personas, otros, totales};
+}
+function renderPlsLote(){
+  const cont = document.getElementById('plsPreview');
+  const L = plsLote;
+  const filas = L.map((s,i)=>{
+    const existe = planillasSemanales.find(x=>x.semanaInicio===s.semanaInicio && x.semanaFin===s.semanaFin);
+    const neto = s.personas.reduce((t,p)=>t+p.neto,0), otros = s.otros.reduce((t,o)=>t+o.monto,0);
+    const sinPersonal = s.personas.filter(p=>!p.empId).length;
+    const dup = L.filter(x=>x.semanaInicio===s.semanaInicio).length>1;
+    return `<tr${!s.semanaInicio||dup?' style="background:var(--accent-light);"':''}>
+      <td><input type="checkbox" style="width:auto;" ${s.incluir?'checked':''} onchange="plsLote[${i}].incluir=this.checked; renderPlsPreview();"></td>
+      <td style="font-size:12px;">${escHtml(s.hoja)}</td>
+      <td>${s.semanaInicio ? fmtDate(s.semanaInicio)+' – '+fmtDate(s.semanaFin) : '<span style="color:var(--danger);">sin fecha</span>'}${dup?'<div style="color:var(--danger);font-size:11px;">semana repetida en el archivo</div>':''}</td>
+      <td class="mono">${s.personas.length}</td><td class="mono">${soles(neto)}</td><td class="mono">${soles(otros)}</td><td class="mono"><b>${soles(neto+otros)}</b></td>
+      <td style="font-size:11.5px;">${sinPersonal?sinPersonal+' sin ficha en Personal':''}${existe?'<div style="color:var(--accent);">ya cargada: se reemplaza</div>':''}</td>
+    </tr>`;
+  }).join('');
+  const sel = L.filter(s=>s.incluir && s.semanaInicio);
+  const total = sel.reduce((t,s)=>t+s.personas.reduce((a,p)=>a+p.neto,0)+s.otros.reduce((a,o)=>a+o.monto,0),0);
+  const fuera = new Map();
+  sel.forEach(s=>s.personas.filter(p=>!p.empId).forEach(p=>fuera.set(plsNorm(p.nombre), p.nombre)));
+  cont.innerHTML = `<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
+    <p class="hint" style="margin:0 0 8px;">Se encontraron <b>${L.length} semanas</b> en el archivo. Desmarca las que no quieras cargar.</p>
+    <div class="table-scroll"><table>
+      <thead><tr><th></th><th>Hoja</th><th>Semana</th><th>Personas</th><th>Pago personal</th><th>Otros</th><th>Total</th><th>Observaciones</th></tr></thead>
+      <tbody>${filas}</tbody></table></div>
+    ${fuera.size ? `<details style="margin-top:10px;"><summary style="cursor:pointer;">${fuera.size} personas del historial no tienen ficha en Personal (ex trabajadores o no registrados) — se guardan con su nombre</summary>
+      <p class="hint" style="margin:6px 0 0;">${[...fuera.values()].sort().map(escHtml).join(' · ')}</p></details>` : ''}
+    <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:14px;padding:12px 14px;background:var(--primary-light);border-radius:8px;">
+      <div style="font-size:15px;">${sel.length} semanas seleccionadas · TOTAL: <b>${soles(total)}</b></div>
+      <div style="margin-left:auto;display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="plsLote=null; document.getElementById('plsArchivo').value=''; renderPlsPreview();">Cancelar</button>
+        <button class="btn btn-accent btn-sm" onclick="guardarLotePlanillas()">Guardar ${sel.length} semanas</button>
+      </div>
+    </div></div>`;
+}
+async function guardarLotePlanillas(){
+  const sel = plsLote.filter(s=>s.incluir && s.semanaInicio && s.semanaFin);
+  if(!sel.length){ showToast('No hay semanas seleccionadas'); return; }
+  const fechas = sel.map(s=>s.semanaInicio);
+  if(new Set(fechas).size !== fechas.length){ showToast('Hay semanas repetidas seleccionadas; desmarca una de ellas'); return; }
+  const reemplaza = sel.filter(s=>planillasSemanales.some(x=>x.semanaInicio===s.semanaInicio && x.semanaFin===s.semanaFin)).length;
+  if(!confirm(`Se guardarán ${sel.length} semanas${reemplaza?` (${reemplaza} ya existían y se reemplazarán)`:''}. ¿Continuar?`)) return;
+  sel.forEach(s=>{
+    const previa = planillasSemanales.find(x=>x.semanaInicio===s.semanaInicio && x.semanaFin===s.semanaFin);
+    const reg = plsRegistroDeSemana(s, previa ? previa.id : null);
+    planillasSemanales = planillasSemanales.filter(x=>x.id!==reg.id).concat([reg]);
+  });
+  await saveData('planillasSemanales', planillasSemanales);
+  plsLote = null;
+  document.getElementById('plsArchivo').value = '';
+  renderPlanillaSemanal();
+  showToast(`${sel.length} semanas guardadas`);
+}
+function plsDiferenciaCalculo(p){
+  const bruto = p.pagoSemanal + p.pago25;
+  const neto = p.bruto + p.cena + p.cuarto + p.bonificacion + p.bonoArco - p.descuento;
+  const avisos = [];
+  if(p.bruto && Math.abs(bruto - p.bruto) > 0.05) avisos.push(`bruto ${soles(p.bruto)} ≠ jornales + extras ${soles(bruto)}`);
+  if(p.bruto && Math.abs(neto - p.neto) > 0.05) avisos.push(`neto ${soles(p.neto)} ≠ suma de conceptos ${soles(neto)}`);
+  return avisos;
+}
+function renderPlsPreview(){
+  const cont = document.getElementById('plsPreview');
+  if(!cont) return;
+  if(plsLote){ renderPlsLote(); return; }
+  if(!plsBorrador){ cont.innerHTML = ''; return; }
+  const b = plsBorrador;
+  const opts = sel=>`<option value="">— No está en Personal —</option>` + [...employees].sort((x,y)=>x.nombre.localeCompare(y.nombre)).map(e=>`<option value="${escHtml(e.id)}" ${e.id===sel?'selected':''}>${escHtml(e.nombre)}</option>`).join('');
+  const tot = k=>b.personas.reduce((s,p)=>s+(p[k]||0),0);
+  const totOtros = b.otros.reduce((s,o)=>s+(o.monto||0),0);
+  const repetida = planillasSemanales.find(s=>s.semanaInicio===b.semanaInicio && s.semanaFin===b.semanaFin);
+  const rows = b.personas.map((p,i)=>{
+    const e = employees.find(x=>x.id===p.empId);
+    const avisos = [p.aviso, ...plsDiferenciaCalculo(p)].filter(Boolean);
+    if(e && p.jornal && e.sueldoDiario && Math.abs(e.sueldoDiario - p.jornal) > 0.01) avisos.push(`jornal en Personal: ${soles(e.sueldoDiario)}`);
+    if(e && e.estado!=='activo') avisos.push('figura como inactivo en Personal');
+    return `<tr${avisos.length?' style="background:var(--accent-light);"':''}>
+      <td style="font-size:12.5px;"><b>${escHtml(p.nombre)}</b>${p.dni?`<div class="mono" style="font-size:11px;color:var(--ink-soft);">${escHtml(p.dni)}</div>`:''}</td>
+      <td><select onchange="plsBorrador.personas[${i}].empId=this.value; plsBorrador.personas[${i}].aviso=''; renderPlsPreview();" style="max-width:220px;">${opts(p.empId)}</select></td>
+      <td class="mono">${p.dias||''}</td><td class="mono">${p.jornal?soles(p.jornal):''}</td>
+      <td class="mono">${soles(p.bruto)}</td><td class="mono">${soles(p.cena+p.cuarto+p.bonificacion+p.bonoArco)}</td>
+      <td class="mono">${p.descuento?'- '+soles(p.descuento):''}</td><td class="mono"><b>${soles(p.neto)}</b></td>
+      <td style="font-size:11.5px;color:var(--danger);">${avisos.map(escHtml).join('<br>')}</td>
+    </tr>`;
+  }).join('');
+  cont.innerHTML = `
+    <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
+      <div class="field-row">
+        <div class="field"><label>Semana: desde</label><input type="date" value="${escHtml(b.semanaInicio)}" onchange="plsBorrador.semanaInicio=this.value; renderPlsPreview();"></div>
+        <div class="field"><label>hasta</label><input type="date" value="${escHtml(b.semanaFin)}" onchange="plsBorrador.semanaFin=this.value; renderPlsPreview();"></div>
+      </div>
+      ${repetida ? `<div class="aviso-box warn"><div class="aviso-title">Esta semana ya fue subida el ${fmtDate(repetida.fechaCarga)}. Si guardas, se reemplazará.</div></div>` : ''}
+      <p class="hint" style="margin:4px 0 8px;">Archivo: ${escHtml(b.archivo)} · ${b.personas.length} personas. Revisa las filas resaltadas y corrige la persona si hace falta.</p>
+      <div class="table-scroll"><table>
+        <thead><tr><th>En el Excel</th><th>Persona en el sistema</th><th>Días</th><th>Jornal</th><th>Bruto</th><th>Cena/cuarto/bonos</th><th>Dscto.</th><th>Neto</th><th>Observaciones</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr style="font-weight:700;"><td colspan="4">TOTAL PERSONAL</td><td class="mono">${soles(tot('bruto'))}</td><td class="mono">${soles(tot('cena')+tot('cuarto')+tot('bonificacion')+tot('bonoArco'))}</td><td class="mono">- ${soles(tot('descuento'))}</td><td class="mono">${soles(tot('neto'))}</td><td></td></tr></tfoot>
+      </table></div>
+      <h4 style="margin:14px 0 6px;">Otros gastos de la semana</h4>
+      ${b.otros.map((o,i)=>`<div style="display:flex;gap:8px;margin-bottom:6px;">
+        <input value="${escHtml(o.concepto)}" style="flex:1;" onchange="plsBorrador.otros[${i}].concepto=this.value">
+        <input type="number" step="0.01" value="${o.monto}" style="width:130px;" onchange="plsBorrador.otros[${i}].monto=parseFloat(this.value)||0; renderPlsPreview();">
+        <button class="btn btn-danger btn-sm" onclick="plsBorrador.otros.splice(${i},1); renderPlsPreview();">Quitar</button></div>`).join('')}
+      <button class="btn btn-ghost btn-sm" onclick="plsBorrador.otros.push({concepto:'',monto:0}); renderPlsPreview();">+ Agregar otro gasto</button>
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:14px;padding:12px 14px;background:var(--primary-light);border-radius:8px;">
+        <div>Personal: <b>${soles(tot('neto'))}</b></div><div>Otros gastos: <b>${soles(totOtros)}</b></div>
+        <div style="font-size:16px;">TOTAL SEMANA: <b>${soles(tot('neto')+totOtros)}</b></div>
+        <div style="margin-left:auto;display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" onclick="plsBorrador=null; document.getElementById('plsArchivo').value=''; renderPlsPreview();">Cancelar</button>
+          <button class="btn btn-accent btn-sm" onclick="guardarPlanillaSemanal()">Guardar planilla de la semana</button>
+        </div>
+      </div>
+    </div>`;
+}
+async function guardarPlanillaSemanal(){
+  const b = plsBorrador;
+  if(!b) return;
+  if(!b.semanaInicio || !b.semanaFin || b.semanaFin < b.semanaInicio){ showToast('Revisa las fechas de la semana'); return; }
+  const repetida = planillasSemanales.find(s=>s.semanaInicio===b.semanaInicio && s.semanaFin===b.semanaFin);
+  if(repetida && !confirm('Esta semana ya estaba registrada. ¿Reemplazarla con este archivo?')) return;
+  const registro = plsRegistroDeSemana(b, repetida ? repetida.id : null);
+  const totales = registro.totales;
+  planillasSemanales = planillasSemanales.filter(s=>s.id!==registro.id).concat([registro]);
+  await saveData('planillasSemanales', planillasSemanales);
+  plsBorrador = null;
+  document.getElementById('plsArchivo').value = '';
+  renderPlanillaSemanal();
+  showToast(`Planilla guardada: ${soles(totales.total)}`);
+}
+async function eliminarPlanillaSemanal(id){
+  const s = planillasSemanales.find(x=>x.id===id);
+  if(!s || !confirm(`¿Eliminar la planilla del ${fmtDate(s.semanaInicio)} al ${fmtDate(s.semanaFin)}?`)) return;
+  planillasSemanales = planillasSemanales.filter(x=>x.id!==id);
+  await saveData('planillasSemanales', planillasSemanales);
+  document.getElementById('plsDetallePanel').style.display = 'none';
+  renderPlanillaSemanal();
+}
+function verPlanillaSemanal(id){
+  const s = planillasSemanales.find(x=>x.id===id);
+  if(!s) return;
+  const panel = document.getElementById('plsDetallePanel');
+  panel.style.display = 'block';
+  document.getElementById('plsDetalleTitulo').textContent = `Semana del ${fmtDate(s.semanaInicio)} al ${fmtDate(s.semanaFin)} — ${soles(s.totales.total)}`;
+  document.getElementById('plsExportarBtn').onclick = ()=>exportarPlanillaSemanal(id);
+  const filas = [...s.personas].sort((a,b)=>b.neto-a.neto).map(p=>{
+    const e = employees.find(x=>x.id===p.empId);
+    return `<tr><td><b>${escHtml(e ? e.nombre : p.nombre)}</b>${!e?' <span class="pill pill-warn">no está en Personal</span>':''}<div style="font-size:11px;color:var(--ink-soft);">${escHtml(e ? (e.cargo||'') : (p.cargo||''))}</div></td>
+      <td class="mono">${p.dias}</td><td class="mono">${p.jornal?soles(p.jornal):'—'}</td><td class="mono">${soles(p.pagoSemanal)}</td><td class="mono">${p.pago25?soles(p.pago25):''}</td>
+      <td class="mono">${p.cena?soles(p.cena):''}</td><td class="mono">${p.cuarto?soles(p.cuarto):''}</td><td class="mono">${(p.bonificacion+p.bonoArco)?soles(p.bonificacion+p.bonoArco):''}</td>
+      <td class="mono">${p.descuento?'- '+soles(p.descuento):''}</td><td class="mono"><b>${soles(p.neto)}</b></td></tr>`;
+  }).join('');
+  document.getElementById('plsDetalle').innerHTML = `<div class="table-scroll"><table>
+    <thead><tr><th>Trabajador</th><th>Días</th><th>Jornal</th><th>Jornales</th><th>H. extra</th><th>Cena</th><th>Cuarto</th><th>Bonos</th><th>Dscto.</th><th>Neto</th></tr></thead>
+    <tbody>${filas}</tbody></table></div>
+    ${s.otros.length ? `<div style="padding:10px 18px;"><b>Otros gastos:</b> ${s.otros.map(o=>escHtml(o.concepto)+' — '+soles(o.monto)).join(' · ')}</div>` : ''}
+    <p class="hint" style="padding:0 18px 12px;">Archivo: ${escHtml(s.archivo||'—')} · cargado el ${fmtDate(s.fechaCarga)} · <a href="#" onclick="eliminarPlanillaSemanal('${escHtml(s.id)}');return false;" style="color:var(--danger);">Eliminar esta semana</a></p>`;
+  panel.scrollIntoView({behavior:'smooth', block:'start'});
+}
+function exportarPlanillaSemanal(id){
+  const s = planillasSemanales.find(x=>x.id===id);
+  if(!s) return;
+  const datos = s.personas.map(p=>{ const e = employees.find(x=>x.id===p.empId); return {
+    'Apellidos y nombres': e ? e.nombre : p.nombre, 'DNI': e ? e.dni : p.dni, 'Cargo': e ? e.cargo : p.cargo, 'Área': p.area||'',
+    'Banco': e && e.banco ? e.banco : p.banco, 'N° cuenta': e && e.numeroCuenta ? e.numeroCuenta : p.cuenta, 'CCI': e && e.cci ? e.cci : p.cci,
+    'Días': p.dias, 'Jornal': p.jornal, 'Jornales': p.pagoSemanal, 'Horas extra 25%': p.horasExtra, 'Pago H.E.': p.pago25, 'Bruto': p.bruto,
+    'Cena': p.cena, 'Cuarto': p.cuarto, 'Bonificación': p.bonificacion, 'Bono arco sumergido': p.bonoArco, 'Descuento': p.descuento, 'Neto a pagar': p.neto }; });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(datos), 'Planilla');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(s.otros.map(o=>({'Concepto':o.concepto,'Monto':o.monto})).concat([{'Concepto':'TOTAL SEMANA','Monto':s.totales.total}])), 'Otros y total');
+  XLSX.writeFile(wb, `planilla-semanal-${s.semanaInicio}_${s.semanaFin}.xlsx`);
+}
+function renderPlanillaSemanal(){
+  const statsEl = document.getElementById('plsStats');
+  if(!statsEl) return;
+  renderPlsPreview();
+  const anios = [...new Set(planillasSemanales.map(s=>s.semanaFin.slice(0,4)))].sort().reverse();
+  const selAnio = document.getElementById('plsFiltroAnio');
+  const anioSel = selAnio.value && anios.includes(selAnio.value) ? selAnio.value : (anios[0] || hoyISO().slice(0,4));
+  selAnio.innerHTML = (anios.length ? anios : [anioSel]).map(a=>`<option value="${a}">${a}</option>`).join('');
+  selAnio.value = anioSel;
+  const delAnio = planillasSemanales.filter(s=>s.semanaFin.startsWith(anioSel)).sort((a,b)=>a.semanaInicio.localeCompare(b.semanaInicio));
+  const ultima = [...planillasSemanales].sort((a,b)=>b.semanaInicio.localeCompare(a.semanaInicio))[0];
+  const mesActual = hoyISO().slice(0,7);
+  const delMes = planillasSemanales.filter(s=>s.semanaFin.slice(0,7)===mesActual);
+  const totalAnio = delAnio.reduce((s,x)=>s+x.totales.total,0);
+  statsEl.innerHTML = `
+    <div class="stat-card"><div class="num" style="font-size:22px;">${ultima ? soles(ultima.totales.total) : '—'}</div><div class="label">Última semana${ultima?' ('+fmtDate(ultima.semanaInicio)+')':''}</div></div>
+    <div class="stat-card"><div class="num" style="font-size:22px;">${soles(delMes.reduce((s,x)=>s+x.totales.total,0))}</div><div class="label">Gasto del mes (${delMes.length} sem.)</div></div>
+    <div class="stat-card"><div class="num" style="font-size:22px;">${soles(totalAnio)}</div><div class="label">Gasto ${anioSel}</div></div>
+    <div class="stat-card"><div class="num" style="font-size:22px;">${delAnio.length ? soles(totalAnio/delAnio.length) : '—'}</div><div class="label">Promedio semanal</div></div>`;
+  // Gráfico de barras de las últimas 12 semanas, apiladas: personal y otros gastos.
+  const ult = delAnio.slice(-12);
+  const max = Math.max(1, ...ult.map(s=>s.totales.total));
+  document.getElementById('plsGrafico').innerHTML = ult.length ? `
+    <div style="display:flex;align-items:flex-end;gap:6px;height:170px;border-bottom:1px solid var(--border);">
+      ${ult.map(s=>`<div title="${fmtDate(s.semanaInicio)} – ${fmtDate(s.semanaFin)}: ${soles(s.totales.total)}" onclick="verPlanillaSemanal('${escHtml(s.id)}')" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;cursor:pointer;min-width:24px;">
+        <div style="font-size:10px;text-align:center;color:var(--ink-soft);">${Math.round(s.totales.total/1000)}k</div>
+        <div style="height:${s.totales.otros/max*140}px;background:var(--accent);border-radius:3px 3px 0 0;"></div>
+        <div style="height:${s.totales.netoPersonal/max*140}px;background:var(--primary);${s.totales.otros?'':'border-radius:3px 3px 0 0;'}"></div>
+      </div>`).join('')}
+    </div>
+    <div style="display:flex;gap:6px;">${ult.map(s=>`<div style="flex:1;min-width:24px;font-size:10px;text-align:center;color:var(--ink-soft);">${s.semanaInicio.slice(8,10)}/${s.semanaInicio.slice(5,7)}</div>`).join('')}</div>
+    <p class="hint" style="margin:6px 0 0;"><span style="display:inline-block;width:10px;height:10px;background:var(--primary);border-radius:2px;"></span> Pago al personal &nbsp; <span style="display:inline-block;width:10px;height:10px;background:var(--accent);border-radius:2px;"></span> Otros gastos · Haz clic en una barra para ver el detalle.</p>`
+    : '<div class="empty">Aún no subes ninguna planilla semanal.</div>';
+  // Resumen por mes y concepto.
+  const meses = {};
+  delAnio.forEach(s=>{ const m = s.semanaFin.slice(0,7); (meses[m] = meses[m] || []).push(s); });
+  const sum = (lista,k)=>lista.reduce((t,s)=>t+(s.totales[k]||0),0);
+  document.getElementById('plsMeses').innerHTML = Object.keys(meses).length ? `<div class="table-scroll"><table>
+    <thead><tr><th>Mes</th><th>Semanas</th>${PLS_CONCEPTOS.map(([,l])=>`<th>${l}</th>`).join('')}<th>Otros</th><th>Total</th></tr></thead>
+    <tbody>${Object.keys(meses).sort().reverse().map(m=>`<tr><td><b>${new Date(m+'-15').toLocaleDateString('es-PE',{month:'long',year:'numeric'})}</b></td><td class="mono">${meses[m].length}</td>
+      ${PLS_CONCEPTOS.map(([k])=>`<td class="mono">${k==='descuento'&&sum(meses[m],k)?'- ':''}${soles(sum(meses[m],k))}</td>`).join('')}
+      <td class="mono">${soles(sum(meses[m],'otros'))}</td><td class="mono"><b>${soles(sum(meses[m],'total'))}</b></td></tr>`).join('')}</tbody></table></div>` : '';
+  const semanasOrd = [...delAnio].reverse();
+  document.getElementById('plsSemanas').innerHTML = semanasOrd.length ? `<div class="table-scroll"><table>
+    <thead><tr><th>Semana</th><th>Personas</th><th>Días-hombre</th><th>Pago personal</th><th>Otros</th><th>Total</th><th>vs. semana anterior</th><th></th></tr></thead>
+    <tbody>${semanasOrd.map((s,i)=>{ const prev = semanasOrd[i+1]; const dif = prev ? s.totales.total - prev.totales.total : null;
+      return `<tr><td><b>${fmtDate(s.semanaInicio)} – ${fmtDate(s.semanaFin)}</b></td><td class="mono">${s.totales.personas}</td><td class="mono">${s.totales.dias}</td>
+        <td class="mono">${soles(s.totales.netoPersonal)}</td><td class="mono">${soles(s.totales.otros)}</td><td class="mono"><b>${soles(s.totales.total)}</b></td>
+        <td class="mono" style="color:${dif>0?'var(--danger)':'var(--success)'};">${dif===null?'—':(dif>0?'▲ ':'▼ ')+soles(Math.abs(dif))}</td>
+        <td class="actions-cell"><button class="btn btn-ghost btn-sm" onclick="verPlanillaSemanal('${escHtml(s.id)}')">Ver detalle</button><button class="btn btn-ghost btn-sm" onclick="exportarPlanillaSemanal('${escHtml(s.id)}')">Excel</button></td></tr>`; }).join('')}</tbody></table></div>` : '';
+  renderPlanillaPorTrabajador();
+}
+function renderPlanillaPorTrabajador(){
+  const cont = document.getElementById('plsPorTrabajador');
+  const sel = document.getElementById('plsFiltroMesTrab');
+  if(!cont || !sel) return;
+  const meses = [...new Set(planillasSemanales.map(s=>s.semanaFin.slice(0,7)))].sort().reverse();
+  const actual = sel.value;
+  sel.innerHTML = `<option value="anio">Todo el año ${hoyISO().slice(0,4)}</option>` + meses.map(m=>`<option value="${m}">${new Date(m+'-15').toLocaleDateString('es-PE',{month:'long',year:'numeric'})}</option>`).join('');
+  sel.value = actual && (actual==='anio' || meses.includes(actual)) ? actual : 'anio';
+  const semanas = planillasSemanales.filter(s=>sel.value==='anio' ? s.semanaFin.startsWith(hoyISO().slice(0,4)) : s.semanaFin.slice(0,7)===sel.value);
+  const acc = new Map();
+  semanas.forEach(s=>s.personas.forEach(p=>{
+    const k = p.empId || ('x:'+plsNorm(p.nombre));
+    const a = acc.get(k) || {nombre: p.nombre, empId: p.empId, semanas:0, dias:0, bruto:0, extras:0, beneficios:0, descuento:0, neto:0};
+    a.semanas++; a.dias += p.dias; a.bruto += p.bruto; a.extras += p.pago25; a.beneficios += p.cena+p.cuarto+p.bonificacion+p.bonoArco; a.descuento += p.descuento; a.neto += p.neto;
+    acc.set(k, a);
+  }));
+  const lista = [...acc.values()].sort((a,b)=>b.neto-a.neto);
+  cont.innerHTML = lista.length ? `<div class="table-scroll"><table>
+    <thead><tr><th>Trabajador</th><th>Semanas</th><th>Días</th><th>Bruto</th><th>H. extra</th><th>Cena/cuarto/bonos</th><th>Dscto.</th><th>Neto pagado</th></tr></thead>
+    <tbody>${lista.map(a=>{ const e = employees.find(x=>x.id===a.empId); return `<tr><td><b>${escHtml(e?e.nombre:a.nombre)}</b>${!e?' <span class="pill pill-warn">no está en Personal</span>':''}</td>
+      <td class="mono">${a.semanas}</td><td class="mono">${Math.round(a.dias*100)/100}</td><td class="mono">${soles(a.bruto)}</td><td class="mono">${soles(a.extras)}</td>
+      <td class="mono">${soles(a.beneficios)}</td><td class="mono">${a.descuento?'- '+soles(a.descuento):''}</td><td class="mono"><b>${soles(a.neto)}</b></td></tr>`; }).join('')}</tbody></table></div>`
+    : '<div class="empty">Sin datos para el periodo elegido.</div>';
 }
 
 // ---------- Trabajadores cesados ----------
