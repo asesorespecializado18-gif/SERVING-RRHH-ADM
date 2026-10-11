@@ -1851,10 +1851,26 @@ tr:hover td{background:#FAF9F6;}
         <select id="itemCategoria" onchange="toggleOtro('itemCategoria','itemCategoriaOtroField')">
           <option value="Oficina">Oficina</option>
           <option value="EPP (Protección Personal)">EPP (Protección Personal)</option>
+          <option value="Uniforme administrativo">Uniforme administrativo</option>
           <option value="Limpieza y mantenimiento">Limpieza y mantenimiento</option>
           <option value="Otros">Otros</option>
         </select>
         <div id="itemCategoriaOtroField" style="display:none;margin-top:8px;"><input id="itemCategoriaOtro" placeholder="Especifica la categoría"></div>
+      </div>
+      <div class="field">
+        <label>Familia (tipo de protección)</label>
+        <select id="itemFamilia">
+          <option value="">— Sin familia —</option>
+          <option value="CAB · Protección de cabeza">CAB · Protección de cabeza</option>
+          <option value="VIS · Protección visual y facial">VIS · Protección visual y facial</option>
+          <option value="RES · Protección respiratoria">RES · Protección respiratoria</option>
+          <option value="MAN · Protección de manos">MAN · Protección de manos</option>
+          <option value="PIE · Protección de pies">PIE · Protección de pies</option>
+          <option value="COR · Protección corporal">COR · Protección corporal</option>
+          <option value="AUD · Protección auditiva">AUD · Protección auditiva</option>
+          <option value="ALT · Trabajo en altura">ALT · Trabajo en altura</option>
+          <option value="UNI · Uniforme administrativo">UNI · Uniforme administrativo</option>
+        </select>
       </div>
       <div class="field">
         <label>Unidad</label>
@@ -2099,14 +2115,13 @@ async function ofrecerMigracionLocal(){
   const datos = datosLocalesAntiguos();
   const claves = Object.keys(datos);
   if(!claves.length) return;
-  const yaHayNube = cloudCache.has('employees');
-  const msg = yaHayNube
-    ? 'Este navegador tiene datos de la versión anterior del sistema, pero la nube YA tiene datos.\n\n¿Reemplazar los datos de la nube con los de este navegador?\n(Cancelar = mantener la nube y no volver a preguntar en este navegador)'
-    : 'Se encontraron datos del sistema guardados en este navegador (versión anterior).\n\n¿Subirlos ahora a la nube para usarlos desde cualquier PC?';
-  if(!confirm(msg)){
-    if(yaHayNube) localStorage.setItem('crmrrhh__migradoNube', new Date().toISOString());
+  // Si la nube ya tiene datos, NUNCA se reemplaza con los de un navegador: eso borró todo el 11/10/2026
+  // cuando otro navegador con datos antiguos aceptó la pregunta. Para recuperar algo de ahí, usar un respaldo.
+  if(cloudCache.has('employees')){
+    localStorage.setItem('crmrrhh__migradoNube', new Date().toISOString());
     return;
   }
+  if(!confirm('Se encontraron datos del sistema guardados en este navegador (versión anterior).\n\n¿Subirlos ahora a la nube para usarlos desde cualquier PC?')) return;
   const loadingMsg = document.getElementById('authLoadingMsg');
   let hechos = 0;
   for(const k of claves){
@@ -5973,7 +5988,7 @@ function getSelectOrOtroValue(selectId, otroFieldId){
   return sel==='Otros' ? document.getElementById(otroFieldId).value.trim() : sel;
 }
 
-const CATEGORIA_VALORES = ['Oficina','EPP (Protección Personal)','Limpieza y mantenimiento'];
+const CATEGORIA_VALORES = ['Oficina','EPP (Protección Personal)','Uniforme administrativo','Limpieza y mantenimiento'];
 const UNIDAD_VALORES = ['Unidad (UND)','Caja (CJ)','Paquete (PQ)','Resma','Kilogramo (KG)','Litro (L)','Par','Rollo'];
 const UBICACION_VALORES = ['Almacén Central','Recursos Humanos','Administración','Contabilidad','Gerencia General','Logística','Almacén SIMA Callao','Almacén SIMA Chimbote','Almacén SIMA Iquitos','Almacén Caminos del Inca'];
 
@@ -5986,6 +6001,7 @@ function openItemModal(id, presetCategoria){
     document.getElementById('itemNombre').value = it.nombre;
     document.getElementById('itemCodigo').value = it.codigo||'';
     setSelectOrOtro('itemCategoria','itemCategoriaOtro','itemCategoriaOtroField', it.categoria, CATEGORIA_VALORES);
+    document.getElementById('itemFamilia').value = it.familia || '';
     setSelectOrOtro('itemUnidad','itemUnidadOtro','itemUnidadOtroField', it.unidad, UNIDAD_VALORES);
     setSelectOrOtro('itemUbicacion','itemUbicacionOtro','itemUbicacionOtroField', it.ubicacion, UBICACION_VALORES);
     document.getElementById('itemStock').value = it.stock;
@@ -6002,6 +6018,7 @@ function openItemModal(id, presetCategoria){
     document.getElementById('itemCodigo').value = '';
     document.getElementById('itemNotas').value = '';
     setSelectOrOtro('itemCategoria','itemCategoriaOtro','itemCategoriaOtroField', presetCategoria||'', CATEGORIA_VALORES);
+    document.getElementById('itemFamilia').value = '';
     setSelectOrOtro('itemUnidad','itemUnidadOtro','itemUnidadOtroField', '', UNIDAD_VALORES);
     setSelectOrOtro('itemUbicacion','itemUbicacionOtro','itemUbicacionOtroField', '', UBICACION_VALORES);
     document.getElementById('itemStock').value = 0;
@@ -6055,10 +6072,14 @@ async function saveItem(){
   const stockCalculado = manejaTallas
     ? Object.values(stockPorTalla).reduce((s,v)=>s+(parseFloat(v)||0), 0)
     : parseFloat(document.getElementById('itemStock').value)||0;
+  // Se parte del artículo existente para no perder campos que el formulario no muestra (ej. origen del catálogo).
+  const anterior = id ? (inventoryItems.find(it=>it.id===id) || {}) : {};
   const data = {
+    ...anterior,
     id: id || ('i'+Date.now()),
     nombre,
     codigo: document.getElementById('itemCodigo').value.trim(),
+    familia: document.getElementById('itemFamilia').value,
     categoria: getSelectOrOtroValue('itemCategoria','itemCategoriaOtro'),
     unidad: getSelectOrOtroValue('itemUnidad','itemUnidadOtro'),
     stock: stockCalculado,
@@ -6242,8 +6263,14 @@ function renderInventory(){
   document.getElementById('invAviso').innerHTML = avisoHtml;
 
   const q = (document.getElementById('invSearch').value||'').toLowerCase();
-  const filteredItems = inventoryItems.filter(it=>it.nombre.toLowerCase().includes(q));
+  const filteredItems = inventoryItems
+    .filter(it=>[it.nombre, it.codigo, it.familia].some(v=>(v||'').toLowerCase().includes(q)))
+    .sort((a,b)=>(a.familia||'zz').localeCompare(b.familia||'zz') || (a.codigo||'').localeCompare(b.codigo||'', 'es', {numeric:true}) || a.nombre.localeCompare(b.nombre));
+  let familiaPrevia = null;
   const itemRows = filteredItems.map(it=>{
+    const encabezado = (it.familia||'Sin familia') !== familiaPrevia
+      ? `<tr><td colspan="5" style="background:var(--primary-light);font-weight:700;font-size:12px;letter-spacing:.04em;text-transform:uppercase;padding:8px 12px;">${escHtml(it.familia||'Sin familia')}</td></tr>` : '';
+    familiaPrevia = it.familia||'Sin familia';
     const negativo = it.stock<0;
     const bajo = it.stock<=it.stockMinimo;
     let estadoPill = '<span class="pill pill-ok">OK</span>';
@@ -6255,8 +6282,10 @@ function renderInventory(){
           return agotada ? `<span style="color:var(--danger);font-weight:700;">${t}: 0 (agotada)</span>` : `${t}: ${c}`;
         }).join(' · ')
       : '';
-    return `<tr${negativo?' style="background:var(--danger-light);"':''}>
-      <td><b>${it.nombre}</b>${it.categoria ? `<div style="font-size:11px;color:var(--ink-soft);">${it.categoria}</div>`:''}</td>
+    return encabezado + `<tr${negativo?' style="background:var(--danger-light);"':''}>
+      <td>${it.codigo ? `<span class="mono" style="font-size:11.5px;color:var(--primary);font-weight:700;margin-right:6px;">${escHtml(it.codigo)}</span>` : ''}<b>${escHtml(it.nombre)}</b>
+        <div style="font-size:11px;color:var(--ink-soft);">${escHtml(it.categoria||'')}${it.ubicacion ? ' · '+escHtml(it.ubicacion) : ''}</div>
+        ${it.notas && it.notas.includes('⚠') ? `<div style="font-size:11px;color:var(--danger);font-weight:600;">⚠ Verificar con conteo físico</div>` : ''}</td>
       <td class="mono">${it.stock} ${it.unidad||''}${tallasDetalle ? `<div style="font-size:11px;color:var(--ink-soft);font-weight:400;">${tallasDetalle}</div>` : ''}</td>
       <td class="mono">${it.stockMinimo} ${it.unidad||''}</td>
       <td>${estadoPill}</td>
