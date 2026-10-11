@@ -202,6 +202,7 @@ tr:hover td{background:#FAF9F6;}
     <div class="nav-section-label">Cumplimiento</div>
     <div class="nav-item" data-view="legajosunafil"><span class="nav-icon">&#9878;</span> Legajo SUNAFIL</div>
     <div class="nav-item" data-view="emo"><span class="nav-icon">&#127973;</span> EMO</div>
+    <div class="nav-item" data-view="induccion"><span class="nav-icon">&#9937;</span> Inducción de seguridad</div>
     <div class="nav-section-label">Documentos</div>
     <div class="nav-item" data-view="contratos"><span class="nav-icon">&#128196;</span> Contratos</div>
     <div class="nav-item" data-view="boletaspago"><span class="nav-icon">&#128179;</span> Boletas de pago</div>
@@ -1313,6 +1314,86 @@ tr:hover td{background:#FAF9F6;}
       </div>
     </div>
 
+    <!-- INDUCCIÓN DE SEGURIDAD -->
+    <div class="view" id="view-induccion">
+      <div class="view-header">
+        <div>
+          <h2>Inducción de seguridad</h2>
+          <p>Bitácora de inducciones (general, del puesto y del cliente) por trabajador, con vencimientos y constancias</p>
+        </div>
+      </div>
+
+      <div class="stat-grid" id="induccionStats"></div>
+      <div id="induccionAviso"></div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Registrar inducción</h3></div>
+        <div style="padding:16px 18px;">
+          <div class="field-row">
+            <div class="field">
+              <label>Tipo de inducción</label>
+              <select id="induccionTipo">
+                <option value="Inducción del cliente">Inducción del cliente (ingreso a planta)</option>
+                <option value="Inducción general SST">Inducción general SST (empresa)</option>
+                <option value="Inducción específica del puesto">Inducción específica del puesto</option>
+                <option value="Reinducción">Reinducción</option>
+              </select>
+            </div>
+            <div class="field"><label>Cliente / lugar</label><input id="induccionCliente" value="SIMA - Base Naval" placeholder="Ej. SIMA - Base Naval"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Fecha de la inducción</label><input type="date" id="induccionFecha"></div>
+            <div class="field">
+              <label>Vigencia</label>
+              <select id="induccionVigencia">
+                <option value="0">Sin vencimiento</option>
+                <option value="3">3 meses</option>
+                <option value="6">6 meses</option>
+                <option value="12" selected>12 meses</option>
+                <option value="24">24 meses</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Expositor / responsable</label><input id="induccionExpositor" placeholder="Nombre de quien dictó la inducción"></div>
+            <div class="field"><label>Duración (horas)</label><input type="number" id="induccionHoras" min="0" step="0.5" placeholder="Ej. 2"></div>
+          </div>
+
+          <div class="field" style="margin-top:6px;">
+            <label>Trabajadores que recibieron la inducción</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+              <button type="button" class="btn btn-ghost btn-sm" onclick="induccionSeleccionar('sin')">Marcar los que no tienen inducción vigente</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="induccionSeleccionar('todos')">Marcar todos</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="induccionSeleccionar('ninguno')">Desmarcar</button>
+            </div>
+            <div id="induccionTrabajadores" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px 10px;"></div>
+          </div>
+
+          <div class="upload-row" style="margin-top:14px;">
+            <input type="file" id="induccionArchivo" accept=".pdf,.jpg,.jpeg,.png">
+            <label style="margin:0;font-size:12.5px;color:var(--ink-soft);">Adjuntar constancia o lista de asistencia firmada (opcional, máx. 1MB)</label>
+          </div>
+          <div class="field" style="margin-top:12px;"><label>Observaciones (opcional)</label><input id="induccionNotas"></div>
+          <button class="btn btn-accent btn-sm" style="margin-top:10px;" onclick="saveInduccion()">Registrar inducción</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Inducciones registradas</h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <select class="search-box" id="induccionFiltroTrabajador" style="width:220px;" onchange="renderInduccion()">
+              <option value="todos">Todos los trabajadores</option>
+            </select>
+            <select class="search-box" id="induccionFiltroTipo" style="width:200px;" onchange="renderInduccion()">
+              <option value="todos">Todos los tipos</option>
+            </select>
+          </div>
+        </div>
+        <div id="induccionTable"></div>
+      </div>
+    </div>
+
     <!-- PLANILLA Y CUENTAS BANCARIAS -->
     <div class="view" id="view-planilla">
       <div class="view-header">
@@ -1928,6 +2009,7 @@ let eventos = [];
 let encuestas = [];
 let capacitaciones = [];
 let reconocimientos = [];
+let induccionesSeguridad = [];
 
 // ---------- Init ----------
 async function init(){
@@ -1973,6 +2055,7 @@ async function init(){
   encuestas = await loadData('encuestas', []);
   capacitaciones = await loadData('capacitaciones', []);
   reconocimientos = await loadData('reconocimientos', []);
+  induccionesSeguridad = await loadData('induccionesSeguridad', []);
 
   document.querySelectorAll('.nav-item').forEach(el=>{
     el.addEventListener('click', ()=>switchView(el.dataset.view));
@@ -2092,6 +2175,7 @@ function renderAll(){
   renderBienestar();
   renderEpp();
   renderSeguros();
+  renderInduccion();
   renderPlanillaBancaria();
   renderLegajoSunafil();
   renderDocumentosSunafil();
@@ -7282,7 +7366,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // ---------- Respaldo (guardar / restaurar todo el sistema) ----------
 const BACKUP_KEYS = ['employees','menuEntries','workerDocs','faltas','permisos','descansos','prestamos',
   'registrosDiarios','inventoryItems','inventoryMovements','eventos','encuestas','capacitaciones','reconocimientos',
-  'eppAsignaciones','empresaData','wordDocsGuardados','segurosEmpresa','contratoOficialTemplates','firmasDigitales','asistenciaManual','procesosCese','documentosSunafil'];
+  'eppAsignaciones','empresaData','wordDocsGuardados','segurosEmpresa','contratoOficialTemplates','firmasDigitales','asistenciaManual','procesosCese','documentosSunafil','induccionesSeguridad'];
 
 async function mostrarEspacioAlmacenamiento(){
   document.getElementById('espacioModalOverlay').classList.add('active');
@@ -7414,6 +7498,190 @@ function mostrarAvisosPendientes(){
       body: alerts.slice(0,3).join('\n') + (alerts.length>3 ? `\n+${alerts.length-3} más` : '')
     });
   }
+}
+
+// ---------- Inducción de seguridad ----------
+// Un registro por trabajador y por inducción; los trabajadores de una misma sesión comparten sesionId.
+function escHtml(v){
+  return String(v==null ? '' : v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function sumarMeses(fechaISO, meses){
+  const [y,m,d] = fechaISO.split('-').map(Number);
+  // Si el mes destino tiene menos días (ej. 31 ene + 1 mes), se usa su último día.
+  const ultimoDia = new Date(y, m-1+meses+1, 0).getDate();
+  const f = new Date(y, m-1+meses, Math.min(d, ultimoDia));
+  return f.getFullYear()+'-'+String(f.getMonth()+1).padStart(2,'0')+'-'+String(f.getDate()).padStart(2,'0');
+}
+function induccionVigente(r){
+  return !r.vence || daysUntil(r.vence) >= 0;
+}
+function trabajadoresVigentesInduccion(){
+  const hoy = new Date().toISOString().slice(0,10);
+  return employees.filter(e=>e.estado==='activo' && !(e.fechaFin && e.fechaFin < hoy))
+    .sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+}
+function tieneInduccionVigente(empId){
+  return induccionesSeguridad.some(r=>r.empId===empId && induccionVigente(r));
+}
+function induccionSeleccionar(modo){
+  document.querySelectorAll('#induccionTrabajadores input[type=checkbox]').forEach(cb=>{
+    cb.checked = modo==='todos' ? true : modo==='ninguno' ? false : !tieneInduccionVigente(cb.value);
+  });
+}
+function renderInduccionTrabajadores(){
+  const cont = document.getElementById('induccionTrabajadores');
+  if(!cont) return;
+  const marcados = new Set([...cont.querySelectorAll('input:checked')].map(cb=>cb.value));
+  const lista = trabajadoresVigentesInduccion();
+  cont.innerHTML = lista.length ? lista.map(e=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:3px 0;font-size:13px;cursor:pointer;">
+      <input type="checkbox" value="${escHtml(e.id)}" style="width:auto;" ${marcados.has(e.id)?'checked':''}>
+      <span>${escHtml(e.nombre)} <span style="color:var(--ink-soft);">— ${escHtml(e.cargo||'')}</span></span>
+      ${tieneInduccionVigente(e.id) ? '' : '<span class="pill pill-warn" style="margin-left:auto;">Sin inducción vigente</span>'}
+    </label>`).join('') : '<p class="hint" style="margin:4px 0;">No hay trabajadores vigentes.</p>';
+}
+async function saveInduccion(){
+  const tipo = document.getElementById('induccionTipo').value;
+  const cliente = document.getElementById('induccionCliente').value.trim();
+  const fecha = document.getElementById('induccionFecha').value;
+  const meses = parseInt(document.getElementById('induccionVigencia').value) || 0;
+  const empIds = [...document.querySelectorAll('#induccionTrabajadores input:checked')].map(cb=>cb.value);
+  if(!fecha){ showToast('Indica la fecha de la inducción'); return; }
+  if(!empIds.length){ showToast('Marca al menos un trabajador'); return; }
+  const fileInput = document.getElementById('induccionArchivo');
+
+  const registrar = async (fileData, fileName)=>{
+    const sesionId = 'ind'+Date.now();
+    const base = {
+      sesionId, tipo, cliente, fecha,
+      vigenciaMeses: meses, vence: meses ? sumarMeses(fecha, meses) : null,
+      expositor: document.getElementById('induccionExpositor').value.trim(),
+      horas: parseFloat(document.getElementById('induccionHoras').value) || null,
+      notas: document.getElementById('induccionNotas').value.trim(),
+      fechaRegistro: new Date().toISOString().slice(0,10)
+    };
+    empIds.forEach((empId, i)=>{
+      // La constancia se guarda una sola vez (en el primer registro de la sesión) para no duplicar espacio.
+      induccionesSeguridad.push({...base, id: sesionId+'_'+i, empId, fileData: i===0 ? (fileData||null) : null, fileName: fileName||null});
+    });
+    await saveData('induccionesSeguridad', induccionesSeguridad);
+    ['induccionFecha','induccionExpositor','induccionHoras','induccionNotas'].forEach(id=>document.getElementById(id).value='');
+    fileInput.value='';
+    induccionSeleccionar('ninguno');
+    renderInduccion();
+    showToast(`Inducción registrada para ${empIds.length} trabajador(es)`);
+  };
+  if(fileInput.files.length){
+    if(fileInput.files[0].size > 1*1024*1024){ showToast('El archivo es muy grande (máx. 1MB)'); return; }
+    const reader = new FileReader();
+    reader.onload = ()=>registrar(reader.result, fileInput.files[0].name);
+    reader.readAsDataURL(fileInput.files[0]);
+  } else {
+    registrar(null, null);
+  }
+}
+async function deleteInduccion(id){
+  if(!confirm('¿Eliminar este registro de inducción?')) return;
+  const r = induccionesSeguridad.find(x=>x.id===id);
+  induccionesSeguridad = induccionesSeguridad.filter(x=>x.id!==id);
+  // Si el registro borrado tenía la constancia de la sesión, pasarla a otro registro de la misma sesión.
+  if(r && r.fileData){
+    const otro = induccionesSeguridad.find(x=>x.sesionId===r.sesionId);
+    if(otro){ otro.fileData = r.fileData; otro.fileName = r.fileName; }
+  }
+  await saveData('induccionesSeguridad', induccionesSeguridad);
+  renderInduccion();
+}
+function downloadInduccionFile(sesionId){
+  const r = induccionesSeguridad.find(x=>x.sesionId===sesionId && x.fileData);
+  if(!r) return;
+  const a = document.createElement('a');
+  a.href = r.fileData; a.download = r.fileName || 'constancia-induccion';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+function induccionPill(r){
+  if(!r.vence) return `<span class="pill pill-ok">Sin vencimiento</span>`;
+  const d = daysUntil(r.vence);
+  if(d<0) return `<span class="pill pill-danger">Vencida</span>`;
+  if(d<=30) return `<span class="pill pill-warn">Vence en ${d}d</span>`;
+  return `<span class="pill pill-ok">Vigente</span>`;
+}
+function renderInduccion(){
+  const statsEl = document.getElementById('induccionStats');
+  if(!statsEl) return;
+  renderInduccionTrabajadores();
+  const empById = new Map(employees.map(e=>[e.id, e]));
+  const vigentesTrab = trabajadoresVigentesInduccion();
+  const sinInduccion = vigentesTrab.filter(e=>!tieneInduccionVigente(e.id));
+  // Solo cuenta la inducción más reciente de cada trabajador por cliente/lugar, para no alertar por registros ya renovados.
+  const ultimas = new Map();
+  induccionesSeguridad.forEach(r=>{
+    const k = r.empId+'|'+(r.cliente||'').trim().toUpperCase();
+    const prev = ultimas.get(k);
+    if(!prev || (r.fecha||'') > (prev.fecha||'')) ultimas.set(k, r);
+  });
+  const vigIds = new Set(vigentesTrab.map(e=>e.id));
+  const ultimasVig = [...ultimas.values()].filter(r=>vigIds.has(r.empId));
+  const porVencer = ultimasVig.filter(r=>{ const d=daysUntil(r.vence); return r.vence && d>=0 && d<=30; });
+  const vencidas = ultimasVig.filter(r=>r.vence && daysUntil(r.vence)<0);
+
+  statsEl.innerHTML = `
+    <div class="stat-card"><div class="num">${new Set(induccionesSeguridad.map(r=>r.sesionId)).size}</div><div class="label">Inducciones registradas</div></div>
+    <div class="stat-card ok"><div class="num">${vigentesTrab.length - sinInduccion.length}</div><div class="label">Trabajadores con inducción vigente</div></div>
+    <div class="stat-card warn"><div class="num">${porVencer.length}</div><div class="label">Por vencer (30 días)</div></div>
+    <div class="stat-card warn"><div class="num">${sinInduccion.length}</div><div class="label">Trabajadores sin inducción vigente</div></div>
+  `;
+  let avisoHtml = '';
+  if(vencidas.length){
+    avisoHtml += `<div class="aviso-box danger"><div class="aviso-title">Inducciones vencidas</div>
+      <div class="aviso-list">${vencidas.map(r=>`<span class="aviso-chip">${escHtml((empById.get(r.empId)||{}).nombre||'—')} — ${escHtml(r.tipo)} venció el ${fmtDate(r.vence)}</span>`).join('')}</div></div>`;
+  }
+  if(porVencer.length){
+    avisoHtml += `<div class="aviso-box warn"><div class="aviso-title">Inducciones por vencer</div>
+      <div class="aviso-list">${porVencer.map(r=>`<span class="aviso-chip">${escHtml((empById.get(r.empId)||{}).nombre||'—')} — ${escHtml(r.tipo)} vence en ${daysUntil(r.vence)} día(s)</span>`).join('')}</div></div>`;
+  }
+  if(sinInduccion.length){
+    avisoHtml += `<div class="aviso-box warn"><div class="aviso-title">Trabajadores vigentes sin inducción registrada (o con inducción vencida)</div>
+      <div class="aviso-list">${sinInduccion.map(e=>`<span class="aviso-chip">${escHtml(e.nombre)}</span>`).join('')}</div></div>`;
+  }
+  document.getElementById('induccionAviso').innerHTML = avisoHtml;
+
+  const selTrab = document.getElementById('induccionFiltroTrabajador');
+  const selTipo = document.getElementById('induccionFiltroTipo');
+  const valTrab = selTrab.value || 'todos', valTipo = selTipo.value || 'todos';
+  const conRegistro = [...new Set(induccionesSeguridad.map(r=>r.empId))].map(id=>empById.get(id)).filter(Boolean).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  selTrab.innerHTML = `<option value="todos">Todos los trabajadores</option>` + conRegistro.map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.nombre)}</option>`).join('');
+  selTrab.value = conRegistro.some(e=>e.id===valTrab) ? valTrab : 'todos';
+  const tipos = [...new Set(induccionesSeguridad.map(r=>r.tipo))];
+  selTipo.innerHTML = `<option value="todos">Todos los tipos</option>` + tipos.map(t=>`<option value="${escHtml(t)}">${escHtml(t)}</option>`).join('');
+  selTipo.value = tipos.includes(valTipo) ? valTipo : 'todos';
+
+  let lista = [...induccionesSeguridad];
+  if(selTrab.value!=='todos') lista = lista.filter(r=>r.empId===selTrab.value);
+  if(selTipo.value!=='todos') lista = lista.filter(r=>r.tipo===selTipo.value);
+  lista.sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const sesionesConArchivo = new Set(induccionesSeguridad.filter(r=>r.fileData).map(r=>r.sesionId));
+
+  const rows = lista.map(r=>{
+    const e = empById.get(r.empId);
+    return `<tr>
+      <td><b>${escHtml(e ? e.nombre : '(trabajador eliminado)')}</b>${e && e.dni ? `<div class="mono" style="font-size:11px;color:var(--ink-soft);">${escHtml(e.dni)}</div>` : ''}</td>
+      <td>${escHtml(r.tipo)}<div style="font-size:11px;color:var(--ink-soft);">${escHtml(r.cliente||'')}</div></td>
+      <td>${fmtDate(r.fecha)}</td>
+      <td>${r.vence ? fmtDate(r.vence) : '—'}</td>
+      <td>${induccionPill(r)}</td>
+      <td style="font-size:12px;">${escHtml(r.expositor||'—')}${r.horas ? ` · ${r.horas} h` : ''}${r.notas ? `<div style="color:var(--ink-soft);">${escHtml(r.notas)}</div>` : ''}</td>
+      <td class="actions-cell">
+        ${sesionesConArchivo.has(r.sesionId) ? `<button class="btn btn-ghost btn-sm" onclick="downloadInduccionFile('${escHtml(r.sesionId)}')">Constancia</button>` : ''}
+        <button class="btn btn-danger btn-sm" onclick="deleteInduccion('${escHtml(r.id)}')">Eliminar</button>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('induccionTable').innerHTML = lista.length ? `
+    <div class="table-scroll">
+    <table><thead><tr><th>Trabajador</th><th>Tipo / cliente</th><th>Fecha</th><th>Vence</th><th>Estado</th><th>Expositor / notas</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    </div>` : `<div class="empty">Aún no hay inducciones registradas.</div>`;
 }
 
 // ---------- Seguros de la empresa ----------
