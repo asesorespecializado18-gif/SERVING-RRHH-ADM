@@ -12,6 +12,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.6/pizzip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.44.0/js/docxtemplater.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
 :root{
   --bg:#F6F4EF;
@@ -177,17 +180,14 @@ tr:hover td{background:#FAF9F6;}
 
     <div id="authLoginBlock">
       <div class="field"><label>Correo</label><input type="email" id="authEmailInput" readonly style="background:#F3F1EA;color:var(--ink-soft);"></div>
-      <div class="field" style="margin-top:10px;"><label>Contraseña</label><input type="password" id="authPasswordInput" placeholder="Ingresa tu contraseña"></div>
+      <div class="field" style="margin-top:10px;"><label>Contraseña</label><input type="password" id="authPasswordInput" placeholder="Ingresa tu contraseña" autocomplete="current-password"></div>
       <p class="hint" id="authError" style="color:var(--danger);margin:8px 0 0;min-height:16px;"></p>
-      <button class="btn btn-primary" style="width:100%;margin-top:14px;" onclick="intentarLogin()">Ingresar</button>
+      <button class="btn btn-primary" id="authLoginBtn" style="width:100%;margin-top:14px;" onclick="intentarLogin()">Ingresar</button>
+      <button class="btn btn-ghost" style="width:100%;margin-top:8px;font-size:12.5px;" onclick="recuperarContrasena()">¿Olvidaste tu contraseña?</button>
     </div>
 
-    <div id="authSetupBlock" style="display:none;">
-      <p class="hint" style="margin:0 0 12px;">Primera vez que abres el sistema — crea tu contraseña para <b id="authSetupEmail"></b>.</p>
-      <div class="field"><label>Nueva contraseña</label><input type="password" id="authSetupPass1" placeholder="Mínimo 4 caracteres"></div>
-      <div class="field" style="margin-top:10px;"><label>Confirmar contraseña</label><input type="password" id="authSetupPass2"></div>
-      <p class="hint" id="authSetupError" style="color:var(--danger);margin:8px 0 0;min-height:16px;"></p>
-      <button class="btn btn-primary" style="width:100%;margin-top:14px;" onclick="crearContrasenaInicial()">Crear contraseña e ingresar</button>
+    <div id="authLoadingBlock" style="display:none;text-align:center;">
+      <p class="hint" id="authLoadingMsg" style="margin:6px 0;">Cargando datos desde la nube...</p>
     </div>
   </div>
 </div>
@@ -218,7 +218,7 @@ tr:hover td{background:#FAF9F6;}
     <div class="nav-item" data-view="constancias"><span class="nav-icon">&#128450;</span> Constancias de EPPs</div>
     <div class="nav-item" data-view="seguros"><span class="nav-icon">&#128737;</span> Seguros</div>
     <div class="nav-item" data-view="planilla"><span class="nav-icon">&#127974;</span> Planilla y Cuentas Bancarias</div>
-    <div class="sidebar-footer">Datos guardados en tu navegador, de forma privada.</div>
+    <div class="sidebar-footer">Datos guardados en la nube (Firebase), solo accesibles con tu usuario.</div>
     <div style="padding:12px 14px 4px;display:flex;flex-direction:column;gap:8px;">
       <button class="sidebar-action-btn" onclick="toggleDarkMode()"><span id="darkModeIcon">&#9789;</span> <span id="darkModeLabel">Modo noche</span></button>
       <button class="sidebar-action-btn" onclick="toggleAvisos()"><span id="avisosIcon">&#128276;</span> <span id="avisosLabel">Activar avisos</span></button>
@@ -227,6 +227,7 @@ tr:hover td{background:#FAF9F6;}
       <input type="file" id="restoreBackupFile" accept=".json" style="display:none;" onchange="restaurarRespaldo(this.files[0])">
       <button class="sidebar-action-btn" onclick="document.getElementById('claveModalOverlay').classList.add('active')">&#128272; Cambiar contraseña</button>
       <button class="sidebar-action-btn" onclick="mostrarEspacioAlmacenamiento()">&#128202; Ver espacio usado</button>
+      <button class="sidebar-action-btn" onclick="cerrarSesion()">&#10162; Cerrar sesión</button>
     </div>
   </div>
 
@@ -1604,7 +1605,7 @@ tr:hover td{background:#FAF9F6;}
 <div class="modal-overlay" id="espacioModalOverlay">
   <div class="modal" style="max-width:560px;">
     <h3>Espacio de almacenamiento usado</h3>
-    <p class="hint" style="margin:-6px 0 14px;">Cada "cajón" de información (colaboradores, documentos, etc.) tiene un límite de 5MB. Si alguno se acerca al límite, vas a ver un aviso en rojo — en ese caso, avísame y lo organizamos para que no pierdas información.</p>
+    <p class="hint" style="margin:-6px 0 14px;">Los datos están en la nube (Firebase). El plan gratuito incluye 1 GB en total para todo el sistema; los archivos grandes se dividen en partes automáticamente.</p>
     <div id="espacioContenido" style="max-height:60vh;overflow-y:auto;"></div>
     <div class="modal-actions">
       <button class="btn btn-primary" onclick="document.getElementById('espacioModalOverlay').classList.remove('active')">Cerrar</button>
@@ -1616,7 +1617,7 @@ tr:hover td{background:#FAF9F6;}
 <div class="modal-overlay" id="claveModalOverlay">
   <div class="modal" style="max-width:380px;">
     <h3>Cambiar contraseña</h3>
-    <p class="hint" style="margin:-6px 0 14px;">Correo: <b>administracion@servindgonzales.com</b></p>
+    <p class="hint" style="margin:-6px 0 14px;">Correo: <b>servindgonzales@gmail.com</b></p>
     <div class="field"><label>Contraseña actual</label><input type="password" id="claveActualInput"></div>
     <div class="field" style="margin-top:10px;"><label>Contraseña nueva</label><input type="password" id="claveNuevaInput"></div>
     <div class="field" style="margin-top:10px;"><label>Confirmar contraseña nueva</label><input type="password" id="claveNuevaInput2"></div>
@@ -1767,37 +1768,132 @@ tr:hover td{background:#FAF9F6;}
 <div class="toast" id="toast"></div>
 
 <script>
-// ---------- Compatibilidad de almacenamiento ----------
-// Dentro de Claude.ai existe window.storage (persistente en la nube de Claude).
-// Fuera de Claude.ai (por ejemplo, alojado en GitHub Pages) no existe, así que
-// aquí se define un respaldo que usa localStorage del propio navegador,
-// para que la app funcione igual en ambos lugares sin perder datos.
-if(!window.storage){
-  window.storage = {
-    async get(key){
-      const v = localStorage.getItem('crmrrhh_'+key);
-      return v!==null ? {key, value:v} : null;
-    },
-    async set(key, value){
-      localStorage.setItem('crmrrhh_'+key, value);
-      return {key, value};
-    },
-    async delete(key){
-      localStorage.removeItem('crmrrhh_'+key);
-      return {key, deleted:true};
-    },
-    async list(prefix){
-      const keys = [];
-      for(let i=0;i<localStorage.length;i++){
-        const k = localStorage.key(i);
-        if(k && k.startsWith('crmrrhh_')){
-          const bare = k.slice(8);
-          if(!prefix || bare.startsWith(prefix)) keys.push(bare);
-        }
+// ---------- Almacenamiento en la nube (Firebase Firestore) ----------
+// Configuración del proyecto Firebase "serving-rrhh" (app web rrhh-web).
+// Estos valores son públicos por diseño: la protección real está en el login y en firestore.rules.
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBKas__hRWbzh-K5E_SjFSNQpa5XiJv8Mw",
+  authDomain: "serving-rrhh.firebaseapp.com",
+  projectId: "serving-rrhh",
+  storageBucket: "serving-rrhh.firebasestorage.app",
+  messagingSenderId: "745169410052",
+  appId: "1:745169410052:web:46e449c638c4e6c48ebd51"
+};
+const FIREBASE_CONFIGURADO = !String(FIREBASE_CONFIG.apiKey).includes('PEGAR');
+if(FIREBASE_CONFIGURADO) firebase.initializeApp(FIREBASE_CONFIG);
+
+// Cada clave (employees, workerDocs, ...) es un documento en la colección "rrhh".
+// Firestore admite hasta 1 MB por documento, así que los valores grandes se guardan
+// en partes dentro de la subcolección "partes". Primero se escriben las partes nuevas
+// y recién después se actualiza el documento principal: si se corta internet a mitad
+// de camino, el documento principal sigue apuntando a la versión anterior (intacta).
+const CLOUD_COLECCION = 'rrhh';
+const CLOUD_TAM_PARTE = 250000; // caracteres por parte (< 1 MB aun con acentos)
+const cloudCache = new Map();
+
+function cloudCol(){ return firebase.firestore().collection(CLOUD_COLECCION); }
+
+async function cloudLeerDoc(snap){
+  const d = snap.data();
+  if(typeof d.inline === 'string') return d.inline;
+  const partes = await Promise.all(Array.from({length:d.partes}, (_, i)=>
+    snap.ref.collection('partes').doc(d.version+'_'+i).get()
+  ));
+  if(partes.some(p=>!p.exists)) throw new Error('Faltan partes de "'+snap.id+'"');
+  return partes.map(p=>p.data().data).join('');
+}
+
+async function cloudPrecargar(){
+  cloudCache.clear();
+  const snaps = await cloudCol().get();
+  await Promise.all(snaps.docs.map(async snap=>{
+    cloudCache.set(snap.id, await cloudLeerDoc(snap));
+  }));
+}
+
+async function cloudBorrarPartes(ref, version, cantidad){
+  if(!version || !cantidad) return;
+  try{
+    await Promise.all(Array.from({length:cantidad}, (_, i)=>
+      ref.collection('partes').doc(version+'_'+i).delete()
+    ));
+  }catch(e){ console.warn('No se pudieron borrar partes antiguas', e); }
+}
+
+window.storage = {
+  async get(key){
+    return cloudCache.has(key) ? {key, value: cloudCache.get(key)} : null;
+  },
+  async set(key, value){
+    const ref = cloudCol().doc(key);
+    const anterior = await ref.get();
+    const prev = anterior.exists ? anterior.data() : null;
+    const ahora = firebase.firestore.FieldValue.serverTimestamp();
+    if(value.length <= CLOUD_TAM_PARTE){
+      await ref.set({inline: value, actualizado: ahora});
+    } else {
+      const version = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+      const n = Math.ceil(value.length / CLOUD_TAM_PARTE);
+      for(let i=0;i<n;i+=5){
+        await Promise.all(Array.from({length:Math.min(5, n-i)}, (_, j)=>
+          ref.collection('partes').doc(version+'_'+(i+j)).set({data: value.slice((i+j)*CLOUD_TAM_PARTE, (i+j+1)*CLOUD_TAM_PARTE)})
+        ));
       }
-      return {keys, prefix};
+      await ref.set({version, partes: n, tamano: value.length, actualizado: ahora});
     }
-  };
+    cloudCache.set(key, value);
+    if(prev && prev.version) await cloudBorrarPartes(ref, prev.version, prev.partes);
+    return {key, value};
+  },
+  async delete(key){
+    const ref = cloudCol().doc(key);
+    const anterior = await ref.get();
+    await ref.delete();
+    cloudCache.delete(key);
+    if(anterior.exists && anterior.data().version) await cloudBorrarPartes(ref, anterior.data().version, anterior.data().partes);
+    return {key, deleted:true};
+  },
+  async list(prefix){
+    const keys = [...cloudCache.keys()].filter(k=>!prefix || k.startsWith(prefix));
+    return {keys, prefix};
+  }
+};
+
+// Datos que versiones anteriores guardaban en el navegador (localStorage)
+function datosLocalesAntiguos(){
+  const datos = {};
+  for(let i=0;i<localStorage.length;i++){
+    const k = localStorage.key(i);
+    if(k && k.startsWith('crmrrhh_')){
+      const bare = k.slice(8);
+      if(bare !== 'authConfig') datos[bare] = localStorage.getItem(k);
+    }
+  }
+  return datos;
+}
+async function ofrecerMigracionLocal(){
+  if(localStorage.getItem('crmrrhh__migradoNube')) return;
+  const datos = datosLocalesAntiguos();
+  const claves = Object.keys(datos);
+  if(!claves.length) return;
+  const yaHayNube = cloudCache.has('employees');
+  const msg = yaHayNube
+    ? 'Este navegador tiene datos de la versión anterior del sistema, pero la nube YA tiene datos.\n\n¿Reemplazar los datos de la nube con los de este navegador?\n(Cancelar = mantener la nube y no volver a preguntar en este navegador)'
+    : 'Se encontraron datos del sistema guardados en este navegador (versión anterior).\n\n¿Subirlos ahora a la nube para usarlos desde cualquier PC?';
+  if(!confirm(msg)){
+    if(yaHayNube) localStorage.setItem('crmrrhh__migradoNube', new Date().toISOString());
+    return;
+  }
+  const loadingMsg = document.getElementById('authLoadingMsg');
+  let hechos = 0;
+  for(const k of claves){
+    hechos++;
+    if(loadingMsg) loadingMsg.textContent = `Subiendo datos a la nube (${hechos}/${claves.length}): ${k}...`;
+    await window.storage.set(k, datos[k]);
+  }
+  // No se borran los datos locales: quedan como copia de seguridad en este navegador.
+  localStorage.setItem('crmrrhh__migradoNube', new Date().toISOString());
+  showToast('Datos subidos a la nube correctamente');
 }
 
 // ---------- Storage helpers ----------
@@ -7200,26 +7296,26 @@ async function mostrarEspacioAlmacenamiento(){
     filas.push({key, bytes});
   }
   filas.sort((a,b)=>b.bytes-a.bytes);
-  const LIMITE = 5*1024*1024;
+  const LIMITE = 1024*1024*1024; // 1 GB del plan gratuito de Firestore, para todo el sistema
+  const totalBytes = filas.reduce((s,f)=>s+f.bytes,0);
+  const maxBytes = Math.max(1, ...filas.map(f=>f.bytes));
   const rows = filas.map(f=>{
-    const pct = Math.min(100, (f.bytes/LIMITE*100));
+    const pct = f.bytes/maxBytes*100;
     const kb = (f.bytes/1024).toFixed(1);
-    const color = pct>80 ? 'var(--danger)' : pct>50 ? '#C08A2E' : 'var(--primary)';
     return `<div style="margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px;">
         <span><b>${f.key}</b>${f.key==='workerDocs' ? ' <span style="color:var(--ink-soft);">(documentos de todos los trabajadores)</span>' : ''}</span>
-        <span class="mono">${kb} KB / 5,120 KB (${pct.toFixed(1)}%)</span>
+        <span class="mono">${kb} KB</span>
       </div>
       <div style="background:#F3F1EA;border-radius:6px;height:8px;overflow:hidden;">
-        <div style="width:${pct}%;background:${color};height:100%;"></div>
+        <div style="width:${pct}%;background:var(--primary);height:100%;"></div>
       </div>
     </div>`;
   }).join('');
-  const totalBytes = filas.reduce((s,f)=>s+f.bytes,0);
-  const hayAlerta = filas.some(f=>f.bytes/LIMITE > 0.7);
-  cont.innerHTML = (hayAlerta ? `<div class="aviso-box danger" style="margin-bottom:14px;"><div class="aviso-title">⚠ Alguno de estos cajones ya está por llenarse (más del 70%) — avísame para organizarlo antes de que falle un guardado</div></div>` : '')
+  const pctTotal = totalBytes/LIMITE*100;
+  cont.innerHTML = (pctTotal > 80 ? `<div class="aviso-box danger" style="margin-bottom:14px;"><div class="aviso-title">⚠ El sistema ya usa más del 80% del espacio gratuito (1 GB)</div></div>` : '')
     + rows
-    + `<p class="hint" style="margin-top:10px;">Total usado en todo el sistema: ${(totalBytes/1024).toFixed(1)} KB. Importante: cada cajón tiene su propio límite de 5,120 KB (5MB) — no se suman entre sí, así que lo que importa es que ninguno individual llegue al 100%.</p>`;
+    + `<p class="hint" style="margin-top:10px;">Total usado en todo el sistema: ${(totalBytes/1024/1024).toFixed(2)} MB de 1,024 MB (${pctTotal.toFixed(2)}%).</p>`;
 }
 
 
@@ -7485,52 +7581,57 @@ document.addEventListener('DOMContentLoaded', ()=>{
 });
 
 // ---------- Acceso al sistema ----------
-const ADMIN_EMAIL = 'administracion@servindgonzales.com';
-async function hashTexto(texto){
-  const enc = new TextEncoder().encode(texto);
-  const buf = await crypto.subtle.digest('SHA-256', enc);
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-}
-async function initAuth(){
-  document.getElementById('authEmailInput').value = ADMIN_EMAIL;
-  document.getElementById('authSetupEmail').textContent = ADMIN_EMAIL;
-  const logo = getLogoData();
-  if(logo){ document.getElementById('authLogo').src = logo; document.getElementById('authLogo').style.display = 'block'; }
+const ADMIN_EMAIL = 'servindgonzales@gmail.com';
+const MIN_CLAVE = 8;
 
-  const authConfig = await loadData('authConfig', null);
-  if(!authConfig || !authConfig.passwordHash){
-    document.getElementById('authLoginBlock').style.display = 'none';
-    document.getElementById('authSetupBlock').style.display = 'block';
-  } else {
-    document.getElementById('authLoginBlock').style.display = 'block';
-    document.getElementById('authSetupBlock').style.display = 'none';
-    document.getElementById('authPasswordInput').addEventListener('keydown', e=>{ if(e.key==='Enter') intentarLogin(); });
-  }
+function mensajeErrorAuth(err){
+  const c = err && err.code || '';
+  if(c==='auth/invalid-credential' || c==='auth/wrong-password' || c==='auth/user-not-found' || c==='auth/invalid-login-credentials') return 'Contraseña incorrecta.';
+  if(c==='auth/too-many-requests') return 'Demasiados intentos. Espera unos minutos o usa "¿Olvidaste tu contraseña?".';
+  if(c==='auth/network-request-failed') return 'Sin conexión a internet.';
+  if(c==='auth/weak-password') return 'La contraseña es muy débil (mínimo '+MIN_CLAVE+' caracteres).';
+  if(c==='auth/requires-recent-login') return 'Por seguridad, cierra sesión, vuelve a entrar e inténtalo de nuevo.';
+  if(c==='permission-denied') return 'Este usuario no tiene permiso para ver los datos.';
+  return 'Error: ' + (err && err.message || err);
 }
-async function crearContrasenaInicial(){
-  const p1 = document.getElementById('authSetupPass1').value;
-  const p2 = document.getElementById('authSetupPass2').value;
-  const errEl = document.getElementById('authSetupError');
-  if(p1.length < 4){ errEl.textContent = 'La contraseña debe tener al menos 4 caracteres.'; return; }
-  if(p1 !== p2){ errEl.textContent = 'Las contraseñas no coinciden.'; return; }
-  const passwordHash = await hashTexto(p1);
-  await saveData('authConfig', {email: ADMIN_EMAIL, passwordHash});
-  document.getElementById('authOverlay').style.display = 'none';
-  showToast('Contraseña creada. ¡Bienvenido!');
+function mostrarBloqueAuth(cual){
+  document.getElementById('authOverlay').style.display = cual ? 'flex' : 'none';
+  document.getElementById('authLoginBlock').style.display = cual==='login' ? 'block' : 'none';
+  document.getElementById('authLoadingBlock').style.display = cual==='cargando' ? 'block' : 'none';
 }
 async function intentarLogin(){
   const pass = document.getElementById('authPasswordInput').value;
   const errEl = document.getElementById('authError');
-  const authConfig = await loadData('authConfig', null);
-  if(!authConfig){ errEl.textContent = 'No hay contraseña configurada.'; return; }
-  const intento = await hashTexto(pass);
-  if(intento === authConfig.passwordHash){
-    document.getElementById('authOverlay').style.display = 'none';
-    document.getElementById('authError').textContent = '';
+  errEl.textContent = '';
+  if(!FIREBASE_CONFIGURADO){ errEl.textContent = 'Falta configurar Firebase (FIREBASE_CONFIG).'; return; }
+  if(!pass){ errEl.textContent = 'Ingresa tu contraseña.'; return; }
+  const btn = document.getElementById('authLoginBtn');
+  btn.disabled = true;
+  try{
+    await firebase.auth().signInWithEmailAndPassword(ADMIN_EMAIL, pass);
     document.getElementById('authPasswordInput').value = '';
-  } else {
-    errEl.textContent = 'Contraseña incorrecta.';
+  }catch(err){
+    errEl.textContent = mensajeErrorAuth(err);
+  }finally{
+    btn.disabled = false;
   }
+}
+async function recuperarContrasena(){
+  const errEl = document.getElementById('authError');
+  if(!FIREBASE_CONFIGURADO){ errEl.textContent = 'Falta configurar Firebase (FIREBASE_CONFIG).'; return; }
+  try{
+    await firebase.auth().sendPasswordResetEmail(ADMIN_EMAIL);
+    errEl.style.color = 'var(--primary)';
+    errEl.textContent = 'Te enviamos un correo a '+ADMIN_EMAIL+' para restablecer la contraseña.';
+    setTimeout(()=>{ errEl.style.color = ''; }, 8000);
+  }catch(err){
+    errEl.textContent = mensajeErrorAuth(err);
+  }
+}
+async function cerrarSesion(){
+  if(!confirm('¿Cerrar sesión?')) return;
+  await firebase.auth().signOut();
+  location.reload();
 }
 async function actualizarContrasena(){
   const actual = document.getElementById('claveActualInput').value;
@@ -7538,14 +7639,17 @@ async function actualizarContrasena(){
   const nueva2 = document.getElementById('claveNuevaInput2').value;
   const errEl = document.getElementById('claveUpdateStatus');
   errEl.style.color = 'var(--danger)';
-  const authConfig = await loadData('authConfig', null);
-  if(!authConfig){ errEl.textContent = 'No hay contraseña configurada todavía.'; return; }
-  const actualHash = await hashTexto(actual);
-  if(actualHash !== authConfig.passwordHash){ errEl.textContent = 'La contraseña actual no es correcta.'; return; }
-  if(nueva1.length < 4){ errEl.textContent = 'La nueva contraseña debe tener al menos 4 caracteres.'; return; }
+  if(nueva1.length < MIN_CLAVE){ errEl.textContent = 'La nueva contraseña debe tener al menos '+MIN_CLAVE+' caracteres.'; return; }
   if(nueva1 !== nueva2){ errEl.textContent = 'Las contraseñas nuevas no coinciden.'; return; }
-  const nuevoHash = await hashTexto(nueva1);
-  await saveData('authConfig', {email: ADMIN_EMAIL, passwordHash: nuevoHash});
+  try{
+    const user = firebase.auth().currentUser;
+    const cred = firebase.auth.EmailAuthProvider.credential(user.email, actual);
+    await user.reauthenticateWithCredential(cred);
+    await user.updatePassword(nueva1);
+  }catch(err){
+    errEl.textContent = mensajeErrorAuth(err);
+    return;
+  }
   errEl.style.color = 'var(--primary)';
   errEl.textContent = 'Contraseña actualizada correctamente.';
   document.getElementById('claveActualInput').value = '';
@@ -7553,11 +7657,49 @@ async function actualizarContrasena(){
   document.getElementById('claveNuevaInput2').value = '';
 }
 
-(async function bootstrap(){
-  await initAuth();
+let sistemaIniciado = false;
+let sistemaArrancando = false;
+async function arrancarSistema(){
+  if(sistemaArrancando) return;
+  sistemaArrancando = true;
+  mostrarBloqueAuth('cargando');
+  try{
+    await cloudPrecargar();
+    await ofrecerMigracionLocal();
+  }catch(err){
+    console.error(err);
+    sistemaArrancando = false;
+    await firebase.auth().signOut();
+    mostrarBloqueAuth('login');
+    document.getElementById('authError').textContent = 'No se pudieron cargar los datos. ' + mensajeErrorAuth(err);
+    return;
+  }
   await init();
   await initDarkMode();
   await initAvisos();
+  sistemaIniciado = true;
+  mostrarBloqueAuth(null);
+}
+
+(function bootstrap(){
+  document.getElementById('authEmailInput').value = ADMIN_EMAIL;
+  document.getElementById('authPasswordInput').addEventListener('keydown', e=>{ if(e.key==='Enter') intentarLogin(); });
+  if(!FIREBASE_CONFIGURADO){
+    mostrarBloqueAuth('login');
+    document.getElementById('authError').textContent = 'Falta configurar Firebase (FIREBASE_CONFIG).';
+    return;
+  }
+  // La sesión se cierra sola al cerrar el navegador.
+  firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(console.error);
+  firebase.auth().onAuthStateChanged(user=>{
+    if(user && !sistemaIniciado){
+      if(user.email !== ADMIN_EMAIL){ firebase.auth().signOut(); return; }
+      arrancarSistema();
+    } else if(!user){
+      if(sistemaIniciado){ location.reload(); return; }
+      mostrarBloqueAuth('login');
+    }
+  });
 })();
 </script>
 </body>
