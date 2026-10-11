@@ -1118,6 +1118,7 @@ tr:hover td{background:#FAF9F6;}
       <div class="tabs-sub">
         <button class="tab-sub-btn active" data-epp-tab="asignacion" onclick="switchEppTab('asignacion')">1. Asignación de EPP</button>
         <button class="tab-sub-btn" data-epp-tab="stock" onclick="switchEppTab('stock')">2-3. Stock y vencimientos</button>
+        <button class="tab-sub-btn" data-epp-tab="ficha" onclick="switchEppTab('ficha')">Ficha por trabajador</button>
         <button class="tab-sub-btn" data-epp-tab="kits" onclick="switchEppTab('kits')">Kits por puesto</button>
         <button class="tab-sub-btn" data-epp-tab="formato" onclick="switchEppTab('formato')">Formato físico semanal</button>
       </div>
@@ -1176,6 +1177,17 @@ tr:hover td{background:#FAF9F6;}
             </select>
           </div>
           <div id="eppAsignacionesTable"></div>
+        </div>
+      </div>
+
+      <!-- FICHA EPP POR TRABAJADOR -->
+      <div id="eppFichaBlock" style="display:none;">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Ficha EPP del trabajador</h3>
+            <select class="search-box" id="eppFichaEmpleado" style="width:300px;" onchange="renderFichaEpp()"></select>
+          </div>
+          <div id="eppFichaContenido" style="padding:14px 18px;"></div>
         </div>
       </div>
 
@@ -1402,6 +1414,7 @@ tr:hover td{background:#FAF9F6;}
             <label style="margin:0;font-size:12.5px;color:var(--ink-soft);">Adjuntar carta de renuncia, liquidación firmada o constancia (opcional, máx. 1MB)</label>
           </div>
           <div class="field" style="margin-top:12px;"><label>Observaciones</label><input id="ceseRegNotas"></div>
+          <div id="ceseEppDevolucion" style="margin-top:12px;"></div>
           <p class="hint" style="margin:10px 0 0;">Al registrar el cese, el trabajador pasa a <b>Inactivo</b> en Personal. Plazos: liquidación y certificado de trabajo dentro de las 48 horas; baja en T-Registro dentro del día hábil siguiente al cese.</p>
           <div style="display:flex;gap:8px;margin-top:10px;">
             <button class="btn btn-accent btn-sm" onclick="saveCeseRegistro()">Guardar cese</button>
@@ -6803,6 +6816,8 @@ function switchEppTab(tab){
   document.getElementById('eppAsignacionBlock').style.display = tab==='asignacion' ? 'block':'none';
   document.getElementById('eppStockBlock').style.display = tab==='stock' ? 'block':'none';
   document.getElementById('eppKitsBlock').style.display = tab==='kits' ? 'block':'none';
+  document.getElementById('eppFichaBlock').style.display = tab==='ficha' ? 'block':'none';
+  if(tab==='ficha') renderFichaEpp();
   document.getElementById('eppFormatoBlock').style.display = tab==='formato' ? 'block':'none';
   if(tab==='kits') renderKitsEpp();
 }
@@ -6813,13 +6828,62 @@ function eppAsignacionesActuales(lista){
   const activos = new Set(employees.filter(e=>e.estado==='activo').map(e=>e.id));
   const ultima = new Map();
   (lista||eppAsignaciones).forEach(a=>{
-    if(!activos.has(a.empId) || !a.itemId) return;
+    if(!activos.has(a.empId) || !a.itemId || a.devolucion) return;
     const k = a.empId+'|'+a.itemId;
     const p = ultima.get(k);
     if(!p || (a.fecha||'') > (p.fecha||'') || ((a.fecha||'')===(p.fecha||'') && (a.id||'') > (p.id||''))) ultima.set(k, a);
   });
   return [...ultima.values()];
 }
+// EPP que el trabajador tiene hoy: la última entrega de cada artículo que aún no fue devuelta.
+function eppEnPoder(empId){
+  const ultima = new Map();
+  eppAsignaciones.filter(a=>a.empId===empId && a.itemId).forEach(a=>{
+    const p = ultima.get(a.itemId);
+    if(!p || (a.fecha||'') > (p.fecha||'') || ((a.fecha||'')===(p.fecha||'') && (a.id||'') > (p.id||''))) ultima.set(a.itemId, a);
+  });
+  return [...ultima.values()].filter(a=>!a.devolucion);
+}
+const DEVOLUCION_ESTADOS = {
+  bueno: 'Devuelto en buen estado (vuelve al stock)',
+  deteriorado: 'Devuelto deteriorado (se da de baja)',
+  no_devuelto: 'No lo devolvió'
+};
+// Registra la devolución de una entrega. Si vuelve en buen estado, el stock (y su talla) se repone con un movimiento de entrada.
+function aplicarDevolucionEpp(a, estado, fecha, motivo){
+  if(!a || a.devolucion || !DEVOLUCION_ESTADOS[estado]) return false;
+  a.devolucion = {estado, fecha, motivo: motivo||''};
+  if(estado==='bueno'){
+    const it = inventoryItems.find(x=>x.id===a.itemId);
+    const e = employees.find(x=>x.id===a.empId);
+    if(it){
+      const cant = parseFloat(a.cantidad)||1;
+      if(it.manejaTallas && it.stockPorTalla && a.talla){
+        it.stockPorTalla[a.talla] = (parseFloat(it.stockPorTalla[a.talla])||0) + cant;
+        it.stock = Object.values(it.stockPorTalla).reduce((s,v)=>s+(parseFloat(v)||0),0);
+      } else {
+        it.stock = (parseFloat(it.stock)||0) + cant;
+      }
+      inventoryMovements.push({id:'mv'+Date.now()+Math.random().toString(36).slice(2,5), itemId:it.id, tipo:'entrada', cantidad:cant, fecha,
+        entregadoA:'', motivo:'Devolución de EPP — '+(e?e.nombre:'')+(motivo?' ('+motivo+')':''), responsable:'', saldoResultante:it.stock, talla: it.manejaTallas ? (a.talla||'') : ''});
+    }
+  }
+  return true;
+}
+async function registrarDevolucionEpp(asigId){
+  const a = eppAsignaciones.find(x=>x.id===asigId);
+  if(!a) return;
+  const it = inventoryItems.find(x=>x.id===a.itemId);
+  const op = prompt(`Devolución de ${it?it.nombre:'EPP'}${a.talla?' (talla '+a.talla+')':''}:\n\n1 = ${DEVOLUCION_ESTADOS.bueno}\n2 = ${DEVOLUCION_ESTADOS.deteriorado}\n3 = ${DEVOLUCION_ESTADOS.no_devuelto}\n\nEscribe 1, 2 o 3:`, '1');
+  const estado = {'1':'bueno','2':'deteriorado','3':'no_devuelto'}[String(op||'').trim()];
+  if(!estado) return;
+  aplicarDevolucionEpp(a, estado, hoyISO(), 'Registrada desde la ficha EPP');
+  await saveData('eppAsignaciones', eppAsignaciones);
+  if(estado==='bueno'){ await saveData('inventoryItems', inventoryItems); await saveData('inventoryMovements', inventoryMovements); }
+  renderAll();
+  showToast('Devolución registrada');
+}
+
 function kitSugeridoPara(e){
   if(!e) return null;
   const cargo = (e.cargo||'').toLowerCase();
@@ -6849,7 +6913,7 @@ function aplicarKitEpp(){
   const faltan = kit.items.filter(x=>!inventoryItems.some(it=>it.id===x.itemId)).length;
   showToast(`Kit "${kit.nombre}" marcado` + (faltan ? ` (${faltan} artículo(s) ya no existen en inventario)` : ''));
 }
-function reponerEpp(asignacionId){
+function reponerEpp(asignacionId, motivo){
   const a = eppAsignaciones.find(x=>x.id===asignacionId);
   if(!a) return;
   switchView('epp');
@@ -6867,9 +6931,87 @@ function reponerEpp(asignacionId){
     checkEppStockInline(a.itemId);
     chk.scrollIntoView({behavior:'smooth', block:'center'});
   }
-  document.getElementById('eppNotas').value = 'Reposición por vencimiento/desgaste';
+  document.getElementById('eppNotas').value = motivo || 'Reposición por vencimiento/desgaste';
   showToast('Revisa los datos y pulsa "Registrar entrega"');
 }
+function abrirFichaEpp(empId){
+  switchView('epp');
+  document.getElementById('eppFichaEmpleado').value = empId;
+  switchEppTab('ficha');
+}
+function entregarFaltantesKit(empId){
+  const e = employees.find(x=>x.id===empId);
+  const kit = kitSugeridoPara(e);
+  if(!kit) return;
+  const tiene = new Set(eppEnPoder(empId).filter(a=>!(daysUntil(a.fechaVencimiento)<0)).map(a=>a.itemId));
+  switchView('epp');
+  switchEppTab('asignacion');
+  document.getElementById('eppEmployeeSelect').value = empId;
+  if(!document.getElementById('eppFecha').value) document.getElementById('eppFecha').value = hoyISO();
+  mostrarTallasEpp();
+  kit.items.filter(x=>!tiene.has(x.itemId)).forEach(x=>{
+    const chk = document.getElementById(`eppChk_${x.itemId}`);
+    if(!chk) return;
+    chk.checked = true;
+    ['eppQty_','eppVida_','eppTalla_'].forEach(p=>{ const el=document.getElementById(p+x.itemId); if(el) el.disabled=false; });
+    document.getElementById(`eppQty_${x.itemId}`).value = x.cantidad||1;
+    checkEppStockInline(x.itemId);
+  });
+  showToast('Se marcó lo que le falta del kit. Revisa tallas y registra la entrega.');
+}
+function renderFichaEpp(){
+  const sel = document.getElementById('eppFichaEmpleado');
+  const cont = document.getElementById('eppFichaContenido');
+  if(!sel || !cont) return;
+  const actual = sel.value;
+  const lista = [...employees].sort((a,b)=>(a.estado===b.estado?0:a.estado==='activo'?-1:1) || a.nombre.localeCompare(b.nombre));
+  sel.innerHTML = `<option value="">— Elige un trabajador —</option>` + lista.map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.nombre)}${e.estado!=='activo'?' (inactivo)':''}</option>`).join('');
+  sel.value = lista.some(e=>e.id===actual) ? actual : '';
+  const e = employees.find(x=>x.id===sel.value);
+  if(!e){ cont.innerHTML = '<div class="empty">Elige un trabajador para ver su EPP.</div>'; return; }
+  const itemById = new Map(inventoryItems.map(it=>[it.id, it]));
+  const nombreItem = a=>{ const it=itemById.get(a.itemId); return it ? `${it.codigo?`<span class="mono" style="color:var(--primary);font-weight:700;">${escHtml(it.codigo)}</span> `:''}${escHtml(it.nombre)}` : '<span style="color:var(--ink-soft);">(artículo eliminado)</span>'; };
+  const enPoder = eppEnPoder(e.id).sort((a,b)=>(a.fechaVencimiento||'').localeCompare(b.fechaVencimiento||''));
+  const kit = kitSugeridoPara(e);
+  const vigentes = new Set(enPoder.filter(a=>!(daysUntil(a.fechaVencimiento)<0)).map(a=>a.itemId));
+  const faltan = kit ? kit.items.filter(x=>!vigentes.has(x.itemId)) : [];
+  const historial = eppAsignaciones.filter(a=>a.empId===e.id).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const tallas = [e.tallaCamisa?'Camisa '+e.tallaCamisa:'', e.tallaPantalon?'Pantalón '+e.tallaPantalon:'', e.tallaCalzado?'Calzado '+e.tallaCalzado:''].filter(Boolean).join(' · ');
+  const acciones = a=>e.estado==='activo' ? `
+      <button class="btn btn-ghost btn-sm" onclick="reponerEpp('${escHtml(a.id)}','Cambio por deterioro')">Cambio por deterioro</button>
+      <button class="btn btn-ghost btn-sm" onclick="registrarDevolucionEpp('${escHtml(a.id)}')">Devolución</button>` :
+      `<button class="btn btn-ghost btn-sm" onclick="registrarDevolucionEpp('${escHtml(a.id)}')">Registrar devolución</button>`;
+  cont.innerHTML = `
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;font-size:13px;">
+      <div><b>${escHtml(e.nombre)}</b> · ${escHtml(e.cargo||'sin cargo')} ${e.estado!=='activo'?'<span class="pill pill-danger">Inactivo</span>':''}</div>
+      <div>Kit: <b>${kit ? escHtml(kit.nombre) : 'sin kit'}</b></div>
+      <div style="color:var(--ink-soft);">${tallas ? '📏 '+escHtml(tallas) : 'Sin tallas registradas en su ficha'}</div>
+    </div>
+    ${e.estado==='activo' && kit ? (faltan.length
+      ? `<div class="aviso-box warn" style="margin:0 0 12px;"><div class="aviso-title">Le falta del kit "${escHtml(kit.nombre)}" (${faltan.length})</div>
+          <div class="aviso-list">${faltan.map(x=>`<span class="aviso-chip">${nombreItem(x)} ×${x.cantidad}</span>`).join('')}</div>
+          <button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="entregarFaltantesKit('${escHtml(e.id)}')">Entregar lo que falta</button></div>`
+      : `<div class="aviso-box" style="margin:0 0 12px;background:var(--success-light);"><div class="aviso-title" style="color:var(--success);">✓ Tiene vigente todo el EPP de su kit</div></div>`) : ''}
+    ${e.estado!=='activo' && enPoder.length ? `<div class="aviso-box danger" style="margin:0 0 12px;"><div class="aviso-title">Trabajador cesado con ${enPoder.length} EPP sin devolver</div></div>` : ''}
+    <h4 style="margin:6px 0 8px;">EPP en su poder (${enPoder.length})</h4>
+    ${enPoder.length ? `<div class="table-scroll"><table>
+      <thead><tr><th>Artículo</th><th>Talla</th><th>Cant.</th><th>Entregado</th><th>Vence</th><th>Estado</th><th></th></tr></thead>
+      <tbody>${enPoder.map(a=>`<tr>
+        <td>${nombreItem(a)}</td><td>${escHtml(a.talla||'—')}</td><td class="mono">${a.cantidad||1}</td>
+        <td>${fmtDate(a.fecha)}</td><td>${a.fechaVencimiento?fmtDate(a.fechaVencimiento):'—'}</td>
+        <td>${eppVencimientoPill(a)}</td><td class="actions-cell">${acciones(a)}</td></tr>`).join('')}</tbody></table></div>`
+      : '<div class="empty">No tiene EPP registrado en su poder.</div>'}
+    <details style="margin-top:14px;"><summary style="cursor:pointer;font-weight:600;">Historial completo de entregas (${historial.length})</summary>
+      ${historial.length ? `<div class="table-scroll" style="margin-top:8px;"><table>
+        <thead><tr><th>Fecha</th><th>Artículo</th><th>Talla</th><th>Cant.</th><th>Situación</th><th>Notas</th></tr></thead>
+        <tbody>${historial.map(a=>{
+          const vig = enPoder.includes(a);
+          const sit = a.devolucion ? escHtml(DEVOLUCION_ESTADOS[a.devolucion.estado]||a.devolucion.estado)+' ('+fmtDate(a.devolucion.fecha)+')' : (vig ? 'En su poder' : 'Repuesto por una entrega posterior');
+          return `<tr><td>${fmtDate(a.fecha)}</td><td>${nombreItem(a)}</td><td>${escHtml(a.talla||'—')}</td><td class="mono">${a.cantidad||1}</td><td style="font-size:12px;">${sit}</td><td style="font-size:12px;">${escHtml(a.notas||'')}</td></tr>`;
+        }).join('')}</tbody></table></div>` : '<div class="empty">Sin entregas.</div>'}
+    </details>`;
+}
+
 function limpiarFormKit(){
   document.getElementById('kitId').value = '';
   document.getElementById('kitNombre').value = '';
@@ -7727,6 +7869,7 @@ function renderEpp(){
   renderEppChecklist();
   poblarKitSelect();
   renderKitsEpp();
+  renderFichaEpp();
   renderAsignacionesEpp();
   renderEppStock();
   renderFormatoEmployeeSelects();
@@ -7920,7 +8063,30 @@ function poblarCeseRegEmpleados(seleccionado){
     + (editando && !vencidos.includes(editando) && !inactivos.includes(editando) && !otros.includes(editando) ? opt(editando) : '');
   sel.value = seleccionado || '';
 }
+// Lista del EPP que el trabajador tiene en su poder, para registrar su devolución junto con el cese.
+function renderCeseEppDevolucion(empId){
+  const cont = document.getElementById('ceseEppDevolucion');
+  if(!cont) return;
+  if(!empId){ cont.innerHTML = ''; return; }
+  const enPoder = eppEnPoder(empId);
+  const devueltos = eppAsignaciones.filter(a=>a.empId===empId && a.devolucion);
+  const itemById = new Map(inventoryItems.map(it=>[it.id, it]));
+  const nombre = a=>{ const it=itemById.get(a.itemId); return (it ? escHtml((it.codigo?it.codigo+' ':'')+it.nombre) : '(artículo eliminado)') + (a.talla ? ' · talla '+escHtml(a.talla) : '') + ' ×'+(a.cantidad||1); };
+  cont.innerHTML = `<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
+    <div style="font-weight:700;font-size:13px;margin-bottom:6px;">Devolución de EPP</div>
+    ${enPoder.length ? `<p class="hint" style="margin:0 0 8px;">EPP en poder del trabajador. Marca qué devuelve; lo que vuelve en buen estado regresa al stock.</p>
+      ${enPoder.map(a=>`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:5px 0;border-bottom:1px solid var(--border);">
+        <span style="flex:1;min-width:200px;font-size:13px;">${nombre(a)} <span style="color:var(--ink-soft);font-size:11.5px;">(entregado ${fmtDate(a.fecha)})</span></span>
+        <select class="ceseDevSel" data-asig="${escHtml(a.id)}" style="width:280px;">
+          <option value="">Pendiente</option>
+          ${Object.entries(DEVOLUCION_ESTADOS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}
+        </select></div>`).join('')}`
+      : `<p class="hint" style="margin:0;">No tiene EPP pendiente de devolución.</p>`}
+    ${devueltos.length ? `<div style="margin-top:8px;font-size:12px;color:var(--ink-soft);">Ya registrado: ${devueltos.map(a=>nombre(a)+' — '+escHtml(DEVOLUCION_ESTADOS[a.devolucion.estado]||a.devolucion.estado)).join('; ')}</div>` : ''}
+  </div>`;
+}
 function ceseRegAutocompletar(){
+  renderCeseEppDevolucion(document.getElementById('ceseRegEmpleado').value);
   const e = employees.find(x=>x.id===document.getElementById('ceseRegEmpleado').value);
   if(!e || document.getElementById('ceseRegId').value) return;
   if(e.fechaFin && e.fechaFin < hoyISO()){
@@ -7941,6 +8107,7 @@ function limpiarFormCese(){
   document.getElementById('ceseFormTitulo').textContent = 'Registrar cese';
   document.getElementById('ceseRegCancelar').style.display = 'none';
   poblarCeseRegEmpleados('');
+  renderCeseEppDevolucion('');
 }
 function editarCese(id){
   const c = cesesRegistro.find(x=>x.id===id);
@@ -7955,6 +8122,7 @@ function editarCese(id){
   document.getElementById('ceseRegTregistro').value = c.tregistroFecha||'';
   document.getElementById('ceseRegCertificado').value = c.certificadoFecha||'';
   document.getElementById('ceseRegNotas').value = c.notas||'';
+  renderCeseEppDevolucion(c.empId);
   document.getElementById('ceseFormTitulo').textContent = 'Editar cese — ' + c.nombre;
   document.getElementById('ceseRegCancelar').style.display = 'inline-flex';
   document.getElementById('ceseFormTitulo').scrollIntoView({behavior:'smooth', block:'start'});
@@ -7988,8 +8156,17 @@ async function saveCeseRegistro(){
     e.estado = 'inactivo';
     e.motivoBaja = datos.motivo;
     e.fechaCese = fechaCese;
+    let devoluciones = 0, alStock = 0;
+    document.querySelectorAll('#ceseEppDevolucion .ceseDevSel').forEach(sel=>{
+      if(!sel.value) return;
+      const a = eppAsignaciones.find(x=>x.id===sel.dataset.asig);
+      if(aplicarDevolucionEpp(a, sel.value, fechaCese, 'Cese')){ devoluciones++; if(sel.value==='bueno') alStock++; }
+    });
+    c.eppPendientes = eppEnPoder(empId).length;
     await saveData('cesesRegistro', cesesRegistro);
     await saveData('employees', employees);
+    if(devoluciones) await saveData('eppAsignaciones', eppAsignaciones);
+    if(alStock){ await saveData('inventoryItems', inventoryItems); await saveData('inventoryMovements', inventoryMovements); }
     limpiarFormCese();
     renderAll();
     showToast(id ? 'Cese actualizado' : `Cese registrado: ${e.nombre} pasó a Inactivo`);
@@ -8079,7 +8256,8 @@ function renderCesados(){
   const rows = lista.map(c=>`<tr>
       <td><b>${escHtml(c.nombre)}</b><div class="mono" style="font-size:11px;color:var(--ink-soft);">${escHtml(c.dni||'')} · ${escHtml(c.cargo||'')}</div></td>
       <td style="white-space:nowrap;">${c.fechaIngreso ? fmtDate(c.fechaIngreso) : '—'} → ${fmtDate(c.fechaCese)}<div style="font-size:11px;color:var(--ink-soft);">${tiempoServicio(c.fechaIngreso, c.fechaCese)}</div></td>
-      <td>${escHtml(c.motivo||'—')}${c.notas ? `<div style="font-size:11px;color:var(--ink-soft);">${escHtml(c.notas)}</div>` : ''}</td>
+      <td>${escHtml(c.motivo||'—')}${c.notas ? `<div style="font-size:11px;color:var(--ink-soft);">${escHtml(c.notas)}</div>` : ''}
+        ${eppEnPoder(c.empId).length ? `<div><span class="pill pill-warn" style="margin-top:4px;">EPP sin devolver: ${eppEnPoder(c.empId).length}</span></div>` : ''}</td>
       <td>${c.liqMonto!=null ? `<div class="mono">S/ ${Number(c.liqMonto).toFixed(2)}</div>` : ''}${cesePasoPill(c.liqFecha, c.fechaCese, 2)}</td>
       <td>${cesePasoPill(c.tregistroFecha, c.fechaCese, 1)}</td>
       <td>${cesePasoPill(c.certificadoFecha, c.fechaCese, 2)}</td>
