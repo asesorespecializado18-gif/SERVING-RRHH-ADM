@@ -333,7 +333,15 @@ tr:hover td{background:#FAF9F6;}
         <div class="stat-grid" id="legajoStats"></div>
         <div id="legajoUrgente"></div>
         <div class="panel">
-          <div class="panel-head"><h3>Checklist de cumplimiento por colaborador</h3></div>
+          <div class="panel-head">
+            <h3>Matriz de cumplimiento por trabajador</h3>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <input class="search-box" id="matrizBuscar" placeholder="Buscar nombre o DNI" style="width:180px;" oninput="renderLegajoSunafil()">
+              <label style="font-size:12.5px;display:flex;gap:6px;align-items:center;"><input type="checkbox" id="matrizSoloPend" style="width:auto;" onchange="renderLegajoSunafil()"> Solo con pendientes</label>
+              <button class="btn btn-primary btn-sm" onclick="exportarMatrizCumplimiento()">Descargar Excel</button>
+            </div>
+          </div>
+          <p class="hint" style="margin:8px 18px 0;">🟢 en regla · 🟡 por vencer o documento faltante · 🔴 vencido o sin registro. Pasa el mouse sobre una celda para ver el detalle.</p>
           <div id="legajoTable"></div>
         </div>
       </div>
@@ -413,7 +421,11 @@ tr:hover td{background:#FAF9F6;}
       <div id="contratosAviso"></div>
 
       <div class="panel">
-        <div class="panel-head"><h3>Vigencia del Contrato por colaborador</h3></div>
+        <div class="panel-head">
+          <h3>Bandeja de contratos (trabajadores activos)</h3>
+          <input class="search-box" id="contratosBuscar" placeholder="Buscar nombre o DNI" style="width:220px;" oninput="renderContratos()">
+        </div>
+        <div class="tabs-sub" id="contratosTabs" style="padding:0 18px;"></div>
         <div id="contratosTable"></div>
       </div>
     </div>
@@ -1338,6 +1350,44 @@ tr:hover td{background:#FAF9F6;}
 
       <div class="stat-grid" id="segurosStats"></div>
       <div id="segurosAviso"></div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Cobertura por trabajador — SCTR y Vida Ley (actualización masiva)</h3></div>
+        <div style="padding:16px 18px;">
+          <p class="hint" style="margin:0 0 10px;">Cuando llegue la constancia mensual del SCTR o la póliza de Vida Ley, regístrala una sola vez y marca a los trabajadores que cubre: se actualizan sus fechas en Personal.</p>
+          <div class="field-row">
+            <div class="field">
+              <label>Seguro</label>
+              <select id="cobTipo" onchange="renderCoberturaSeguros()">
+                <option value="sctr">SCTR (Salud y Pensión)</option>
+                <option value="vidaley">Seguro Vida Ley</option>
+              </select>
+            </div>
+            <div class="field"><label>Aseguradora</label><input id="cobAseguradora" list="cobAseguradorasList" placeholder="Ej. Rímac, Pacífico, La Positiva"></div>
+            <div class="field"><label>N° de póliza / constancia</label><input id="cobPoliza"></div>
+          </div>
+          <datalist id="cobAseguradorasList"><option value="Rímac Seguros y Reaseguros"><option value="Pacífico Seguros"><option value="La Positiva Seguros y Reaseguros"><option value="Mapfre Perú"><option value="Sanitas Perú"><option value="Protecta Security"><option value="Crecer Seguros"></datalist>
+          <div class="field-row">
+            <div class="field"><label>Inicio de vigencia</label><input type="date" id="cobInicio"></div>
+            <div class="field"><label>Fin de vigencia</label><input type="date" id="cobFin"></div>
+            <div class="field" style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;">
+              <button type="button" class="btn btn-ghost btn-sm" onclick="cobPeriodo(1)">Mes siguiente</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="cobPeriodo(12)">1 año</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0;">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="cobSeleccionar('sin')">Marcar los que no tienen cobertura vigente</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="cobSeleccionar('todos')">Marcar todos</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="cobSeleccionar('ninguno')">Desmarcar</button>
+          </div>
+          <div id="cobTrabajadores" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;"></div>
+          <div class="upload-row" style="margin-top:12px;">
+            <input type="file" id="cobArchivo" accept=".pdf,.jpg,.jpeg,.png">
+            <label style="margin:0;font-size:12.5px;color:var(--ink-soft);">Adjuntar constancia o póliza (opcional, máx. 1MB)</label>
+          </div>
+          <button class="btn btn-accent btn-sm" style="margin-top:10px;" onclick="guardarCoberturaMasiva()">Guardar y actualizar a los trabajadores marcados</button>
+        </div>
+      </div>
 
       <div class="panel">
         <div class="panel-head"><h3>Registrar póliza</h3></div>
@@ -3598,34 +3648,69 @@ function contratoPill(e){
   if(d<=30) return `<span class="pill pill-warn">Vence en ${d}d</span>`;
   return `<span class="pill pill-ok">Vigente</span>`;
 }
+// Desnaturalización: el trabajador siguió laborando después del fin de su contrato (art. 77 LPCL).
+// Se detecta con la planilla semanal (días pagados) y la asistencia manual posteriores a la fecha de fin.
+function trabajoDespuesDelContrato(e){
+  if(!e.fechaFin) return null;
+  const nombreN = plsNorm(e.nombre);
+  let primera = null, dias = 0;
+  (planillasSemanales||[]).forEach(s=>{
+    if(s.semanaFin <= e.fechaFin) return;
+    const p = s.personas.find(x=>x.empId===e.id || (!x.empId && plsNorm(x.nombre)===nombreN));
+    if(!p || !(p.dias>0)) return;
+    let diasDespues = p.dias, desde = s.semanaInicio;
+    if(s.semanaInicio <= e.fechaFin){
+      // Semana que cruza el fin del contrato: solo cuenta lo que excede los días aún cubiertos por el contrato.
+      const cubiertos = Math.round((new Date(e.fechaFin+'T12:00:00') - new Date(s.semanaInicio+'T12:00:00'))/86400000) + 1;
+      diasDespues = p.dias - cubiertos;
+      desde = docsSumarDias(e.fechaFin, 1);
+    }
+    if(diasDespues > 0){ dias += diasDespues; if(!primera || desde < primera) primera = desde; }
+  });
+  (asistenciaManual||[]).forEach(a=>{
+    if(a.empId===e.id && a.fecha > e.fechaFin && a.asistio===true){ if(!primera || a.fecha < primera) primera = a.fecha; }
+  });
+  return primera ? {desde: primera, diasPlanilla: Math.round(dias*100)/100} : null;
+}
+let contratosTabActual = 'vencidos';
+function contratoGrupo(e){
+  if(!e.fechaFin) return 'sinfecha';
+  const d = daysUntil(e.fechaFin);
+  if(d<0) return 'vencidos';
+  if(d<=15) return 'd15';
+  if(d<=30) return 'd30';
+  return 'vigentes';
+}
+function noRenovarContrato(empId){
+  if(!confirm('¿No renovar este contrato? Se abrirá el registro de cese con la fecha de fin del contrato, para registrar liquidación, baja en T-Registro, certificado y devolución de EPP.')) return;
+  switchView('cesados');
+  prepararCese(empId);
+}
 function renderContratos(){
-  const conFecha = employees.filter(e=>e.fechaFin);
-  const vencidos = conFecha.filter(e=>daysUntil(e.fechaFin)<0);
-  const porVencer = conFecha.filter(e=>{ const d=daysUntil(e.fechaFin); return d>=0 && d<=30; });
+  const activos = employees.filter(e=>e.estado==='activo');
+  const grupos = {vencidos:[], d15:[], d30:[], vigentes:[], sinfecha:[]};
+  activos.forEach(e=>grupos[contratoGrupo(e)].push(e));
+  const desnat = activos.map(e=>({e, t: trabajoDespuesDelContrato(e)})).filter(x=>x.t);
   const statsEl = document.getElementById('contratosStats');
   if(statsEl){
     statsEl.innerHTML = `
-      <div class="stat-card"><div class="num">${employees.length}</div><div class="label">Colaboradores</div></div>
-      <div class="stat-card ${porVencer.length?'warn':''}"><div class="num">${porVencer.length}</div><div class="label">Por vencer (30 días)</div></div>
-      <div class="stat-card ${vencidos.length?'warn':''}"><div class="num">${vencidos.length}</div><div class="label">Contrato vencido</div></div>
-    `;
+      <div class="stat-card"><div class="num">${activos.length}</div><div class="label">Trabajadores activos</div></div>
+      <div class="stat-card ${grupos.vencidos.length?'warn':''}"><div class="num">${grupos.vencidos.length}</div><div class="label">Contrato vencido</div></div>
+      <div class="stat-card ${grupos.d15.length?'warn':''}"><div class="num">${grupos.d15.length}</div><div class="label">Vencen en 15 días</div></div>
+      <div class="stat-card"><div class="num">${grupos.d30.length}</div><div class="label">Vencen en 16–30 días</div></div>
+      <div class="stat-card ${desnat.length?'warn':''}"><div class="num">${desnat.length}</div><div class="label">Trabajan sin contrato vigente</div></div>`;
   }
+  document.getElementById('contratosAviso').innerHTML = desnat.length ? `
+    <div class="aviso-box danger"><div class="aviso-title">⚠ Posible desnaturalización: siguen laborando después del fin de su contrato (art. 77 LPCL). Consulta con tu asesor laboral cómo regularizar; no firmes adendas con fecha atrasada.</div>
+      <div class="aviso-list">${desnat.map(x=>`<span class="aviso-chip">${escHtml(x.e.nombre)} — contrato venció ${fmtDate(x.e.fechaFin)}, labora desde ${fmtDate(x.t.desde)}${x.t.diasPlanilla?` (${x.t.diasPlanilla} días pagados en planilla)`:''}</span>`).join('')}</div></div>` : '';
 
-  let avisoHtml = '';
-  if(vencidos.length){
-    const chips = vencidos.map(e=>`<span class="aviso-chip">${e.nombre} — venció ${fmtDate(e.fechaFin)}</span>`).join('');
-    avisoHtml += `<div class="aviso-box danger"><div class="aviso-title">⚠ Contrato vencido</div><div class="aviso-list">${chips}</div></div>`;
-  }
-  if(porVencer.length){
-    const chips = porVencer.map(e=>{
-      const d = daysUntil(e.fechaFin);
-      return `<span class="aviso-chip">${e.nombre} — vence en ${d} día(s) (${fmtDate(e.fechaFin)})</span>`;
-    }).join('');
-    avisoHtml += `<div class="aviso-box warn"><div class="aviso-title">Aviso: Contrato por vencer</div><div class="aviso-list">${chips}</div></div>`;
-  }
-  document.getElementById('contratosAviso').innerHTML = avisoHtml;
-
-  const sorted = [...employees].sort((a,b)=>(a.fechaFin||'9999').localeCompare(b.fechaFin||'9999'));
+  const TABS = [['vencidos','🔴 Vencidos'],['d15','🟠 Vencen en 15 días'],['d30','🟡 Vencen en 30 días'],['vigentes','🟢 Vigentes'],['sinfecha','⚪ Sin fecha de fin']];
+  if(!grupos[contratosTabActual].length){ const conDatos = TABS.find(([k])=>grupos[k].length); if(conDatos) contratosTabActual = conDatos[0]; }
+  document.getElementById('contratosTabs').innerHTML = TABS.map(([k,l])=>`<button class="tab-sub-btn ${k===contratosTabActual?'active':''}" onclick="contratosTabActual='${k}'; renderContratos();">${l} (${grupos[k].length})</button>`).join('');
+  const q = (document.getElementById('contratosBuscar').value||'').trim().toLowerCase();
+  const sorted = grupos[contratosTabActual]
+    .filter(e=>!q || (e.nombre||'').toLowerCase().includes(q) || String(e.dni||'').includes(q))
+    .sort((a,b)=>(a.fechaFin||'9999').localeCompare(b.fechaFin||'9999') || a.nombre.localeCompare(b.nombre));
   const rows = sorted.map(e=>{
     const docContrato = docActivoPorCategoria(e.id, 'contrato');
     const docConstancia = docActivoPorCategoria(e.id, 'constancia_entrega_contrato');
@@ -3637,28 +3722,33 @@ function renderContratos(){
       : `<button class="btn btn-accent btn-sm" onclick="document.getElementById('contratoPdfInput_${e.id}').click()">Subir</button>`;
     const constanciaCell = celdaDocGenerico(e.id, 'constancia_entrega_contrato', docConstancia, 'constConstInput');
     const adendaCell = celdaDocGenerico(e.id, 'adenda_contrato', docAdenda, 'adendaInput');
-    return `<tr>
-      <td><b>${e.nombre}</b></td>
-      <td class="mono">${e.dni}</td>
-      <td>${e.cargo||'—'}</td>
-      <td>${e.area||'—'}</td>
-      <td>${fmtDate(e.fechaFin)}</td>
+    const t = trabajoDespuesDelContrato(e);
+    const ultimo = (e.contratoHistorial||[]).slice(-1)[0];
+    const accion = contratosTabActual==='sinfecha'
+      ? `<button class="btn btn-primary btn-sm" onclick="openEmployeeModal('${e.id}')">Registrar fechas</button>`
+      : `<button class="btn btn-primary btn-sm" onclick="renovarContrato('${e.id}')">Renovar</button>
+         <button class="btn btn-ghost btn-sm" onclick="noRenovarContrato('${e.id}')">No renovar</button>`;
+    return `<tr${t?' style="background:var(--danger-light);"':''}>
+      <td><b>${escHtml(e.nombre)}</b><div style="font-size:11px;color:var(--ink-soft);">${escHtml(e.dni||'')} · ${escHtml(e.cargo||'—')}</div>
+        ${t ? `<div style="font-size:11px;color:var(--danger);font-weight:700;">⚠ Labora desde el ${fmtDate(t.desde)} sin contrato vigente</div>` : ''}</td>
+      <td style="white-space:nowrap;">${e.fechaIngreso?fmtDate(e.fechaIngreso):'—'} → <b>${e.fechaFin?fmtDate(e.fechaFin):'—'}</b>
+        ${ultimo ? `<div style="font-size:11px;color:var(--ink-soft);">Último: ${escHtml(ultimo.tipo)} (${fmtDate(ultimo.fecha)})</div>` : ''}</td>
       <td>${contratoPill(e)}</td>
       <td>
-        ${docCell}
+        <div style="font-size:11px;color:var(--ink-soft);">Contrato firmado</div>${docCell}
         <input type="file" id="contratoPdfInput_${e.id}" accept=".pdf,.doc,.docx" style="display:none;" onchange="subirDocContrato('${e.id}', this.files[0])">
       </td>
-      <td>${constanciaCell}</td>
-      <td>${adendaCell}</td>
-      <td class="actions-cell"><button class="btn btn-primary btn-sm" onclick="renovarContrato('${e.id}')">Renovar</button>
+      <td><div style="font-size:11px;color:var(--ink-soft);">Constancia de entrega</div>${constanciaCell}</td>
+      <td><div style="font-size:11px;color:var(--ink-soft);">Adenda firmada</div>${adendaCell}</td>
+      <td class="actions-cell">${accion}
         <button class="btn btn-ghost btn-sm" onclick="abrirDocumentosTrabajador('${e.id}')">Documentos</button></td>
     </tr>`;
   }).join('');
-  document.getElementById('contratosTable').innerHTML = employees.length ? `
+  document.getElementById('contratosTable').innerHTML = sorted.length ? `
     <div class="table-scroll">
-    <table><thead><tr><th>Nombre</th><th>DNI</th><th>Cargo</th><th>Área</th><th>Fin de contrato</th><th>Estado</th><th>Contrato</th><th>Constancia entrega</th><th>Adenda</th><th></th></tr></thead>
+    <table><thead><tr><th>Trabajador</th><th>Ingreso → Fin</th><th>Estado</th><th colspan="3">Documentos firmados (escaneados)</th><th></th></tr></thead>
     <tbody>${rows}</tbody></table>
-    </div>` : `<div class="empty">Aún no registras colaboradores.</div>`;
+    </div>` : `<div class="empty">${q ? 'Nadie coincide con la búsqueda.' : 'No hay trabajadores en este grupo.'}</div>`;
 }
 function docActivoPorCategoria(empId, categoria){
   return [...workerDocs].filter(d=>d.empId===empId && d.categoria===categoria && !d.papeleraFecha).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''))[0];
@@ -4017,25 +4107,56 @@ function switchLegajoTab(tab){
   if(tab==='cese') renderCeseTab();
   if(tab==='documentos') renderDocumentosSunafil();
 }
+// Matriz de cumplimiento: cada punto tiene nivel ok / warn / danger / na, un texto corto para la celda y el detalle.
+const MATRIZ_COLUMNAS = [['contrato','Contrato'],['contratoDoc','Contrato firmado'],['emo','EMO'],['sctr','SCTR'],['vidaley','Vida Ley'],['induccion','Inducción'],['epp','EPP (kit)'],['tregistro','T-Registro'],['cuenta','Cuenta banco']];
+function itemVigencia(key, nombre, fin, avisoDias){
+  if(!fin) return {key, nivel:'danger', corto:'Sin registro', label:`${nombre}: sin registro`};
+  const d = daysUntil(fin);
+  if(d<0) return {key, nivel:'danger', corto:'Vencido', label:`${nombre} vencido el ${fmtDate(fin)}`};
+  if(d<=avisoDias) return {key, nivel:'warn', corto:'Vence '+fmtDate(fin), label:`${nombre} vence en ${d} día(s) (${fmtDate(fin)})`};
+  return {key, nivel:'ok', corto:fmtDate(fin), label:`${nombre} vigente hasta ${fmtDate(fin)}`};
+}
 function checklistLegajo(e){
   const items = [];
-  // SCTR
-  if(!e.vigenciaSctr){
-    items.push({ok:false, label:'Sin SCTR registrado'});
-  } else {
-    const d = daysUntil(e.vigenciaSctr);
-    items.push({ok: d>=0, label: d<0 ? `SCTR vencido el ${fmtDate(e.vigenciaSctr)}` : `SCTR vigente hasta ${fmtDate(e.vigenciaSctr)}`});
+  const t = trabajoDespuesDelContrato(e);
+  const c = itemVigencia('contrato', 'Contrato', e.fechaFin, 15);
+  if(t){ c.nivel = 'danger'; c.corto = 'Sin contrato'; c.label = `Labora desde el ${fmtDate(t.desde)} con contrato vencido (${fmtDate(e.fechaFin)})`; }
+  items.push(c);
+  items.push(docActivoPorCategoria(e.id, 'contrato')
+    ? {key:'contratoDoc', nivel:'ok', corto:'✓', label:'Contrato firmado escaneado'}
+    : {key:'contratoDoc', nivel:'warn', corto:'Falta subir', label:'No se ha subido el contrato firmado escaneado'});
+  items.push(itemVigencia('emo', 'EMO', e.fechaEmo, 30));
+  items.push(itemVigencia('sctr', 'SCTR', e.vigenciaSctr, 7));
+  items.push(itemVigencia('vidaley', 'Vida Ley', e.vigenciaVidaLey, 15));
+  items.push(tieneInduccionVigente(e.id)
+    ? {key:'induccion', nivel:'ok', corto:'✓', label:'Inducción de seguridad vigente'}
+    : {key:'induccion', nivel:'danger', corto:'Sin registro', label:'Sin inducción de seguridad registrada o vigente'});
+  const kit = kitSugeridoPara(e);
+  const enPoder = eppEnPoder(e.id).filter(a=>!(daysUntil(a.fechaVencimiento)<0));
+  if(!kit) items.push(enPoder.length ? {key:'epp', nivel:'ok', corto:'✓', label:'Tiene EPP entregado (sin kit asignado)'} : {key:'epp', nivel:'na', corto:'No aplica', label:'Sin kit de EPP para su cargo'});
+  else {
+    const vig = new Set(enPoder.map(a=>a.itemId));
+    const faltan = kit.items.filter(x=>!vig.has(x.itemId)).length;
+    items.push(!faltan ? {key:'epp', nivel:'ok', corto:'✓ Kit completo', label:`Kit "${kit.nombre}" completo y vigente`}
+      : faltan < kit.items.length ? {key:'epp', nivel:'warn', corto:`Faltan ${faltan}`, label:`Le faltan ${faltan} EPP del kit "${kit.nombre}"`}
+      : {key:'epp', nivel:'danger', corto:'Sin entrega', label:`Sin EPP vigente del kit "${kit.nombre}"`});
   }
-  // EMO
-  if(!e.fechaEmo){
-    items.push({ok:false, label:'Sin EMO registrado'});
-  } else {
-    const d = daysUntil(e.fechaEmo);
-    items.push({ok: d>=0, label: d<0 ? `EMO vencido el ${fmtDate(e.fechaEmo)}` : `EMO vigente hasta ${fmtDate(e.fechaEmo)}`});
-  }
-  // T-Registro
-  items.push({ok: !!e.tRegistroAlta, label: e.tRegistroAlta ? 'Alta en T-Registro registrada' : 'Alta en T-Registro pendiente (debe hacerse al ingreso)'});
+  items.push(e.tRegistroAlta ? {key:'tregistro', nivel:'ok', corto:'✓', label:'Alta en T-Registro registrada'} : {key:'tregistro', nivel:'warn', corto:'Pendiente', label:'Alta en T-Registro no marcada en su ficha'});
+  items.push(e.numeroCuenta ? {key:'cuenta', nivel:'ok', corto:'✓', label:`Cuenta ${e.banco||''} ${e.numeroCuenta}`} : {key:'cuenta', nivel:'warn', corto:'Falta', label:'Sin cuenta bancaria registrada'});
+  items.forEach(i=>i.ok = i.nivel==='ok' || i.nivel==='na');
   return items;
+}
+function exportarMatrizCumplimiento(){
+  const filas = employees.filter(e=>e.estado==='activo').sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(e=>{
+    const items = checklistLegajo(e);
+    const fila = {'Trabajador': e.nombre, 'DNI': e.dni, 'Cargo': e.cargo};
+    MATRIZ_COLUMNAS.forEach(([k,l])=>{ const i = items.find(x=>x.key===k); fila[l] = i ? i.label : ''; });
+    fila['Cumplimiento %'] = Math.round(items.filter(i=>i.ok).length/items.length*100);
+    return fila;
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filas), 'Matriz');
+  XLSX.writeFile(wb, `matriz-cumplimiento-${hoyISO()}.xlsx`);
 }
 function renderLegajoSunafil(){
   const statsEl = document.getElementById('legajoStats');
@@ -4048,7 +4169,7 @@ function renderLegajoSunafil(){
     const ok = items.filter(i=>i.ok).length;
     totalOk += ok; totalItems += items.length;
     if(ok===items.length) legajosCompletos++;
-    items.filter(i=>!i.ok).forEach(i=>urgentes.push({nombre:e.nombre, label:i.label}));
+    items.filter(i=>i.nivel==='danger').forEach(i=>urgentes.push({nombre:e.nombre, label:i.label}));
   });
   const pctPromedio = totalItems ? Math.round((totalOk/totalItems)*100) : 0;
   const cesesEnCurso = procesosCese.filter(p=>p.estado==='en_curso').length;
@@ -4069,25 +4190,34 @@ function renderLegajoSunafil(){
       </div>` : `<div class="aviso-box"><div class="aviso-title">✓ Sin alertas urgentes pendientes</div></div>`;
   }
 
-  const sorted = [...activos].sort((a,b)=>a.nombre.localeCompare(b.nombre));
-  const rows = sorted.map(e=>{
-    const items = checklistLegajo(e);
-    const ok = items.filter(i=>i.ok).length;
-    const pct = Math.round((ok/items.length)*100);
-    const pillClass = pct===100 ? 'pill-ok' : pct>=50 ? 'pill-warn' : 'pill-danger';
+  const q = (document.getElementById('matrizBuscar') ? document.getElementById('matrizBuscar').value : '').trim().toLowerCase();
+  const soloPend = document.getElementById('matrizSoloPend') && document.getElementById('matrizSoloPend').checked;
+  const COLOR = {ok:'var(--success-light)', warn:'var(--accent-light)', danger:'var(--danger-light)', na:'transparent'};
+  const TINTA = {ok:'var(--success)', warn:'#8A5A12', danger:'var(--danger)', na:'var(--ink-soft)'};
+  const filas = [...activos].map(e=>({e, items: checklistLegajo(e)}))
+    .filter(x=>!q || (x.e.nombre||'').toLowerCase().includes(q) || String(x.e.dni||'').includes(q))
+    .filter(x=>!soloPend || x.items.some(i=>!i.ok))
+    .map(x=>({...x, pct: Math.round(x.items.filter(i=>i.ok).length/x.items.length*100)}))
+    .sort((a,b)=>a.pct-b.pct || a.e.nombre.localeCompare(b.e.nombre));
+  const totalesCol = MATRIZ_COLUMNAS.map(([k])=>activos.filter(e=>{ const i = checklistLegajo(e).find(x=>x.key===k); return i && i.ok; }).length);
+  const rows = filas.map(({e, items, pct})=>{
+    const pillClass = pct===100 ? 'pill-ok' : pct>=60 ? 'pill-warn' : 'pill-danger';
+    const celdas = MATRIZ_COLUMNAS.map(([k])=>{
+      const i = items.find(x=>x.key===k);
+      return `<td title="${escHtml(i.label)}" style="background:${COLOR[i.nivel]};color:${TINTA[i.nivel]};font-size:11.5px;font-weight:600;text-align:center;white-space:nowrap;">${escHtml(i.corto)}</td>`;
+    }).join('');
     return `<tr>
-      <td><b>${e.nombre}</b></td>
-      <td class="mono">${e.dni}</td>
-      <td>${items.map(i=>`<div style="font-size:12px;${i.ok?'':'color:var(--danger);'}">${i.ok?'✓':'✗'} ${i.label}</div>`).join('')}</td>
+      <td style="min-width:180px;"><b>${escHtml(e.nombre)}</b><div style="font-size:11px;color:var(--ink-soft);">${escHtml(e.dni||'')} · ${escHtml(e.cargo||'')}</div></td>
+      ${celdas}
       <td><span class="pill ${pillClass}">${pct}%</span></td>
-      <td><button class="btn btn-ghost btn-sm" onclick="openEmployeeModal('${e.id}')">Ver ficha</button></td>
+      <td><button class="btn btn-ghost btn-sm" onclick="openEmployeeModal('${e.id}')">Ficha</button></td>
     </tr>`;
   }).join('');
-  document.getElementById('legajoTable').innerHTML = sorted.length ? `
+  document.getElementById('legajoTable').innerHTML = filas.length ? `
     <div class="table-scroll">
-    <table><thead><tr><th>Colaborador</th><th>DNI</th><th>Checklist</th><th>Cumplimiento</th><th></th></tr></thead>
+    <table><thead><tr><th>Trabajador</th>${MATRIZ_COLUMNAS.map(([,l],i)=>`<th style="text-align:center;">${l}<div style="font-size:10px;font-weight:500;color:var(--ink-soft);">${totalesCol[i]}/${activos.length} ok</div></th>`).join('')}<th>Cumple</th><th></th></tr></thead>
     <tbody>${rows}</tbody></table>
-    </div>` : `<div class="empty">No hay colaboradores activos.</div>`;
+    </div>` : `<div class="empty">${soloPend || q ? 'Nadie coincide con el filtro.' : 'No hay colaboradores activos.'}</div>`;
 }
 
 const PASOS_CESE = [
@@ -9234,6 +9364,72 @@ function renderInduccion(){
     </div>` : `<div class="empty">Aún no hay inducciones registradas.</div>`;
 }
 
+// ---------- Cobertura SCTR / Vida Ley por trabajador (actualización masiva) ----------
+const COB_TIPOS = {
+  sctr: {ini:'vigenciaSctrInicio', fin:'vigenciaSctr', nombre:'SCTR', tipoPoliza:'SCTR Salud y Pensión'},
+  vidaley: {ini:'vigenciaVidaLeyInicio', fin:'vigenciaVidaLey', nombre:'Vida Ley', tipoPoliza:'Seguro Vida Ley'}
+};
+function cobVigentePill(fin){
+  if(!fin) return '<span class="pill pill-danger">Sin registro</span>';
+  const d = daysUntil(fin);
+  if(d<0) return `<span class="pill pill-danger">Vencido ${fmtDate(fin)}</span>`;
+  if(d<=7) return `<span class="pill pill-warn">Vence ${fmtDate(fin)}</span>`;
+  return `<span class="pill pill-ok">Hasta ${fmtDate(fin)}</span>`;
+}
+function renderCoberturaSeguros(){
+  const cont = document.getElementById('cobTrabajadores');
+  if(!cont) return;
+  const tipo = COB_TIPOS[document.getElementById('cobTipo').value];
+  const marcados = new Set([...cont.querySelectorAll('input:checked')].map(c=>c.value));
+  const lista = employees.filter(e=>e.estado==='activo').sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  cont.innerHTML = lista.map(e=>`<label style="display:flex;align-items:center;gap:8px;padding:5px 10px;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer;">
+      <input type="checkbox" value="${escHtml(e.id)}" style="width:auto;" ${marcados.has(e.id)?'checked':''}>
+      <span style="flex:1;">${escHtml(e.nombre)} <span style="color:var(--ink-soft);">— ${escHtml(e.cargo||'')}</span></span>
+      ${cobVigentePill(e[tipo.fin])}</label>`).join('') || '<div class="empty">No hay trabajadores activos.</div>';
+}
+function cobSeleccionar(modo){
+  const tipo = COB_TIPOS[document.getElementById('cobTipo').value];
+  document.querySelectorAll('#cobTrabajadores input[type=checkbox]').forEach(c=>{
+    const e = employees.find(x=>x.id===c.value);
+    c.checked = modo==='todos' ? true : modo==='ninguno' ? false : !(e && e[tipo.fin] && daysUntil(e[tipo.fin])>=0);
+  });
+}
+function cobPeriodo(meses){
+  const ini = document.getElementById('cobInicio');
+  if(!ini.value) ini.value = hoyISO();
+  document.getElementById('cobFin').value = docsSumarDias(docsSumarDiasMes(ini.value, meses), -1);
+}
+async function guardarCoberturaMasiva(){
+  const clave = document.getElementById('cobTipo').value, tipo = COB_TIPOS[clave];
+  const inicio = document.getElementById('cobInicio').value, fin = document.getElementById('cobFin').value;
+  const aseguradora = document.getElementById('cobAseguradora').value.trim();
+  const ids = [...document.querySelectorAll('#cobTrabajadores input:checked')].map(c=>c.value);
+  if(!inicio || !fin || fin < inicio){ showToast('Revisa las fechas de inicio y fin'); return; }
+  if(!ids.length){ showToast('Marca al menos un trabajador'); return; }
+  if(!confirm(`Se registrará ${tipo.nombre} del ${fmtDate(inicio)} al ${fmtDate(fin)} para ${ids.length} trabajador(es). ¿Continuar?`)) return;
+  const fileInput = document.getElementById('cobArchivo');
+  const guardar = async (fileData, fileName)=>{
+    ids.forEach(id=>{ const e = employees.find(x=>x.id===id); if(e){ e[tipo.ini] = inicio; e[tipo.fin] = fin; } });
+    segurosEmpresa.push({id:'seg'+Date.now(), tipo: tipo.tipoPoliza, aseguradora: aseguradora || '—', numeroPoliza: document.getElementById('cobPoliza').value.trim(),
+      inicio, fin, notas: `Cubre a ${ids.length} trabajador(es)`, empIds: ids, fileData: fileData||null, fileName: fileName||null, fechaRegistro: hoyISO()});
+    await saveData('employees', employees);
+    await saveData('segurosEmpresa', segurosEmpresa);
+    ['cobPoliza','cobInicio','cobFin'].forEach(i=>document.getElementById(i).value='');
+    fileInput.value = '';
+    cobSeleccionar('ninguno');
+    renderAll();
+    showToast(`${tipo.nombre} actualizado para ${ids.length} trabajador(es)`);
+  };
+  if(fileInput.files.length){
+    if(fileInput.files[0].size > 1*1024*1024){ showToast('El archivo es muy grande (máx. 1MB)'); return; }
+    const reader = new FileReader();
+    reader.onload = ()=>guardar(reader.result, fileInput.files[0].name);
+    reader.readAsDataURL(fileInput.files[0]);
+  } else {
+    await guardar(null, null);
+  }
+}
+
 // ---------- Seguros de la empresa ----------
 let currentSeguroFiltroTipo = 'todos';
 let currentSeguroFiltroAseguradora = 'todos';
@@ -9333,6 +9529,7 @@ function populateSegurosFiltros(){
 function renderSeguros(){
   const statsEl = document.getElementById('segurosStats');
   if(!statsEl) return;
+  renderCoberturaSeguros();
   populateSegurosFiltros();
   toggleSeguroAseguradoraOtro();
   const vigentes = segurosEmpresa.filter(s=>daysUntil(s.fin)>=0);
