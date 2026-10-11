@@ -1118,6 +1118,7 @@ tr:hover td{background:#FAF9F6;}
       <div class="tabs-sub">
         <button class="tab-sub-btn active" data-epp-tab="asignacion" onclick="switchEppTab('asignacion')">1. Asignación de EPP</button>
         <button class="tab-sub-btn" data-epp-tab="stock" onclick="switchEppTab('stock')">2-3. Stock y vencimientos</button>
+        <button class="tab-sub-btn" data-epp-tab="kits" onclick="switchEppTab('kits')">Kits por puesto</button>
         <button class="tab-sub-btn" data-epp-tab="formato" onclick="switchEppTab('formato')">Formato físico semanal</button>
       </div>
 
@@ -1131,6 +1132,11 @@ tr:hover td{background:#FAF9F6;}
               <div class="field"><label>Fecha de entrega</label><input type="date" id="eppFecha" onchange="updateEppVencimientoPreview()"></div>
             </div>
             <p class="hint" id="eppTallasRef" style="margin:-6px 0 12px;"></p>
+            <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;background:var(--primary-light);border-radius:8px;padding:10px 12px;margin-bottom:12px;">
+              <div class="field" style="margin:0;flex:1;min-width:220px;"><label>Kit de EPP por puesto</label><select id="eppKitSelect"></select></div>
+              <button class="btn btn-primary btn-sm" type="button" onclick="aplicarKitEpp()">Marcar EPP del kit</button>
+              <span class="hint" id="eppKitHint" style="margin:0;flex-basis:100%;"></span>
+            </div>
             <div class="field-row">
               <div class="field"><label>Vida útil por defecto (días) — puedes ajustarla por cada artículo abajo</label><input type="number" id="eppVidaUtil" value="90" oninput="updateEppVencimientoPreview()"></div>
               <div class="field"><label>Vencimiento / desgaste (automático)</label><input type="text" id="eppVencimientoPreview" readonly style="background:#F3F1EA;color:var(--ink-soft);"></div>
@@ -1170,6 +1176,30 @@ tr:hover td{background:#FAF9F6;}
             </select>
           </div>
           <div id="eppAsignacionesTable"></div>
+        </div>
+      </div>
+
+      <!-- KITS POR PUESTO -->
+      <div id="eppKitsBlock" style="display:none;">
+        <div class="panel">
+          <div class="panel-head"><h3 id="kitFormTitulo">Nuevo kit de EPP</h3></div>
+          <div style="padding:16px 18px;">
+            <input type="hidden" id="kitId">
+            <div class="field-row">
+              <div class="field"><label>Nombre del puesto</label><input id="kitNombre" placeholder="Ej. Soldador"></div>
+              <div class="field"><label>Palabras del cargo que activan este kit (separadas por coma)</label><input id="kitPalabras" placeholder="Ej. soldador, soldadura"></div>
+            </div>
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin:6px 0 8px;">EPP que incluye el kit y cantidad</label>
+            <div id="kitItems" style="display:flex;flex-direction:column;gap:4px;max-height:360px;overflow-y:auto;"></div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+              <button class="btn btn-accent btn-sm" onclick="saveKitEpp()">Guardar kit</button>
+              <button class="btn btn-ghost btn-sm" id="kitCancelar" style="display:none;" onclick="limpiarFormKit()">Cancelar edición</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Kits registrados</h3></div>
+          <div id="kitsTable"></div>
         </div>
       </div>
 
@@ -1872,6 +1902,7 @@ tr:hover td{background:#FAF9F6;}
           <option value="UNI · Uniforme administrativo">UNI · Uniforme administrativo</option>
         </select>
       </div>
+      <div class="field"><label>Vida útil del EPP (días) — para reposición</label><input type="number" id="itemVidaUtil" min="1" placeholder="Ej. 90"></div>
       <div class="field">
         <label>Unidad</label>
         <select id="itemUnidad" onchange="toggleOtro('itemUnidad','itemUnidadOtroField')">
@@ -2171,6 +2202,7 @@ let capacitaciones = [];
 let reconocimientos = [];
 let induccionesSeguridad = [];
 let cesesRegistro = [];
+let eppKits = [];
 
 // ---------- Init ----------
 async function init(){
@@ -2218,6 +2250,7 @@ async function init(){
   reconocimientos = await loadData('reconocimientos', []);
   induccionesSeguridad = await loadData('induccionesSeguridad', []);
   cesesRegistro = await loadData('cesesRegistro', []);
+  eppKits = await loadData('eppKits', []);
 
   document.querySelectorAll('.nav-item').forEach(el=>{
     el.addEventListener('click', ()=>switchView(el.dataset.view));
@@ -6002,6 +6035,7 @@ function openItemModal(id, presetCategoria){
     document.getElementById('itemCodigo').value = it.codigo||'';
     setSelectOrOtro('itemCategoria','itemCategoriaOtro','itemCategoriaOtroField', it.categoria, CATEGORIA_VALORES);
     document.getElementById('itemFamilia').value = it.familia || '';
+    document.getElementById('itemVidaUtil').value = it.vidaUtilDias || '';
     setSelectOrOtro('itemUnidad','itemUnidadOtro','itemUnidadOtroField', it.unidad, UNIDAD_VALORES);
     setSelectOrOtro('itemUbicacion','itemUbicacionOtro','itemUbicacionOtroField', it.ubicacion, UBICACION_VALORES);
     document.getElementById('itemStock').value = it.stock;
@@ -6019,6 +6053,7 @@ function openItemModal(id, presetCategoria){
     document.getElementById('itemNotas').value = '';
     setSelectOrOtro('itemCategoria','itemCategoriaOtro','itemCategoriaOtroField', presetCategoria||'', CATEGORIA_VALORES);
     document.getElementById('itemFamilia').value = '';
+    document.getElementById('itemVidaUtil').value = '';
     setSelectOrOtro('itemUnidad','itemUnidadOtro','itemUnidadOtroField', '', UNIDAD_VALORES);
     setSelectOrOtro('itemUbicacion','itemUbicacionOtro','itemUbicacionOtroField', '', UBICACION_VALORES);
     document.getElementById('itemStock').value = 0;
@@ -6080,6 +6115,7 @@ async function saveItem(){
     nombre,
     codigo: document.getElementById('itemCodigo').value.trim(),
     familia: document.getElementById('itemFamilia').value,
+    vidaUtilDias: parseInt(document.getElementById('itemVidaUtil').value) || null,
     categoria: getSelectOrOtroValue('itemCategoria','itemCategoriaOtro'),
     unidad: getSelectOrOtroValue('itemUnidad','itemUnidadOtro'),
     stock: stockCalculado,
@@ -6766,7 +6802,152 @@ function switchEppTab(tab){
   document.querySelector(`[data-epp-tab="${tab}"]`).classList.add('active');
   document.getElementById('eppAsignacionBlock').style.display = tab==='asignacion' ? 'block':'none';
   document.getElementById('eppStockBlock').style.display = tab==='stock' ? 'block':'none';
+  document.getElementById('eppKitsBlock').style.display = tab==='kits' ? 'block':'none';
   document.getElementById('eppFormatoBlock').style.display = tab==='formato' ? 'block':'none';
+  if(tab==='kits') renderKitsEpp();
+}
+
+// ---------- Kits de EPP por puesto y reposición ----------
+// Entregas "actuales": por trabajador activo y artículo solo cuenta la más reciente; las anteriores ya fueron repuestas.
+function eppAsignacionesActuales(lista){
+  const activos = new Set(employees.filter(e=>e.estado==='activo').map(e=>e.id));
+  const ultima = new Map();
+  (lista||eppAsignaciones).forEach(a=>{
+    if(!activos.has(a.empId) || !a.itemId) return;
+    const k = a.empId+'|'+a.itemId;
+    const p = ultima.get(k);
+    if(!p || (a.fecha||'') > (p.fecha||'') || ((a.fecha||'')===(p.fecha||'') && (a.id||'') > (p.id||''))) ultima.set(k, a);
+  });
+  return [...ultima.values()];
+}
+function kitSugeridoPara(e){
+  if(!e) return null;
+  const cargo = (e.cargo||'').toLowerCase();
+  return eppKits.find(k=>(k.palabras||[]).some(p=>p && cargo.includes(p.toLowerCase()))) || null;
+}
+function poblarKitSelect(){
+  const sel = document.getElementById('eppKitSelect');
+  if(!sel) return;
+  const e = employees.find(x=>x.id===(document.getElementById('eppEmployeeSelect')||{}).value);
+  const sug = kitSugeridoPara(e);
+  sel.innerHTML = `<option value="">— Sin kit (marcar a mano) —</option>` + eppKits.map(k=>`<option value="${escHtml(k.id)}">${escHtml(k.nombre)} (${k.items.length} EPP)</option>`).join('');
+  sel.value = sug ? sug.id : '';
+  const hint = document.getElementById('eppKitHint');
+  if(hint) hint.textContent = sug ? `Sugerido por su cargo (${e.cargo}). Pulsa "Marcar EPP del kit" y revisa tallas y cantidades.` : (e ? 'No hay un kit que coincida con su cargo; elige uno o marca a mano.' : '');
+}
+function aplicarKitEpp(){
+  const kit = eppKits.find(k=>k.id===document.getElementById('eppKitSelect').value);
+  if(!kit){ showToast('Elige un kit'); return; }
+  inventoryItems.filter(it=>it.categoria==='EPP (Protección Personal)').forEach(it=>{
+    const chk = document.getElementById(`eppChk_${it.id}`);
+    if(!chk) return;
+    const linea = kit.items.find(x=>x.itemId===it.id);
+    chk.checked = !!linea;
+    ['eppQty_','eppVida_','eppTalla_'].forEach(p=>{ const el=document.getElementById(p+it.id); if(el) el.disabled = !linea; });
+    if(linea){ document.getElementById(`eppQty_${it.id}`).value = linea.cantidad||1; checkEppStockInline(it.id); }
+  });
+  const faltan = kit.items.filter(x=>!inventoryItems.some(it=>it.id===x.itemId)).length;
+  showToast(`Kit "${kit.nombre}" marcado` + (faltan ? ` (${faltan} artículo(s) ya no existen en inventario)` : ''));
+}
+function reponerEpp(asignacionId){
+  const a = eppAsignaciones.find(x=>x.id===asignacionId);
+  if(!a) return;
+  switchView('epp');
+  switchEppTab('asignacion');
+  document.getElementById('eppEmployeeSelect').value = a.empId;
+  if(!document.getElementById('eppFecha').value) document.getElementById('eppFecha').value = hoyISO();
+  mostrarTallasEpp();
+  const chk = document.getElementById(`eppChk_${a.itemId}`);
+  if(chk){
+    chk.checked = true;
+    ['eppQty_','eppVida_','eppTalla_'].forEach(p=>{ const el=document.getElementById(p+a.itemId); if(el) el.disabled=false; });
+    const t = document.getElementById(`eppTalla_${a.itemId}`);
+    if(t && a.talla) t.value = a.talla;
+    document.getElementById(`eppQty_${a.itemId}`).value = a.cantidad||1;
+    checkEppStockInline(a.itemId);
+    chk.scrollIntoView({behavior:'smooth', block:'center'});
+  }
+  document.getElementById('eppNotas').value = 'Reposición por vencimiento/desgaste';
+  showToast('Revisa los datos y pulsa "Registrar entrega"');
+}
+function limpiarFormKit(){
+  document.getElementById('kitId').value = '';
+  document.getElementById('kitNombre').value = '';
+  document.getElementById('kitPalabras').value = '';
+  document.getElementById('kitFormTitulo').textContent = 'Nuevo kit de EPP';
+  document.getElementById('kitCancelar').style.display = 'none';
+  renderKitItems(null);
+}
+function renderKitItems(kit){
+  const cont = document.getElementById('kitItems');
+  if(!cont) return;
+  const items = inventoryItems.filter(it=>it.categoria==='EPP (Protección Personal)')
+    .sort((a,b)=>(a.codigo||'').localeCompare(b.codigo||'','es',{numeric:true}));
+  cont.innerHTML = items.length ? items.map(it=>{
+    const linea = kit ? kit.items.find(x=>x.itemId===it.id) : null;
+    return `<label style="display:flex;align-items:center;gap:10px;padding:5px 8px;border:1px solid var(--border);border-radius:7px;cursor:pointer;">
+      <input type="checkbox" class="kitChk" value="${escHtml(it.id)}" style="width:auto;" ${linea?'checked':''}>
+      <span style="flex:1;font-size:13px;">${it.codigo?`<span class="mono" style="color:var(--primary);font-weight:700;">${escHtml(it.codigo)}</span> `:''}${escHtml(it.nombre)}</span>
+      <input type="number" class="kitQty" data-item="${escHtml(it.id)}" min="1" value="${linea ? linea.cantidad : 1}" style="width:70px;" onclick="event.stopPropagation()">
+    </label>`;
+  }).join('') : '<div class="empty">Registra artículos EPP en Inventario primero.</div>';
+}
+function editarKitEpp(id){
+  const k = eppKits.find(x=>x.id===id);
+  if(!k) return;
+  document.getElementById('kitId').value = k.id;
+  document.getElementById('kitNombre').value = k.nombre;
+  document.getElementById('kitPalabras').value = (k.palabras||[]).join(', ');
+  document.getElementById('kitFormTitulo').textContent = 'Editar kit — ' + k.nombre;
+  document.getElementById('kitCancelar').style.display = 'inline-flex';
+  renderKitItems(k);
+  document.getElementById('kitFormTitulo').scrollIntoView({behavior:'smooth', block:'start'});
+}
+async function saveKitEpp(){
+  const nombre = document.getElementById('kitNombre').value.trim();
+  if(!nombre){ showToast('Escribe el nombre del puesto'); return; }
+  const items = [...document.querySelectorAll('#kitItems .kitChk:checked')].map(chk=>({
+    itemId: chk.value,
+    cantidad: parseFloat(document.querySelector(`#kitItems .kitQty[data-item="${chk.value}"]`).value) || 1
+  }));
+  if(!items.length){ showToast('Marca al menos un EPP'); return; }
+  const palabras = document.getElementById('kitPalabras').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const id = document.getElementById('kitId').value;
+  const k = id ? eppKits.find(x=>x.id===id) : null;
+  if(k) Object.assign(k, {nombre, palabras, items});
+  else eppKits.push({id:'kit'+Date.now(), nombre, palabras, items});
+  await saveData('eppKits', eppKits);
+  limpiarFormKit();
+  renderKitsEpp();
+  poblarKitSelect();
+  showToast('Kit guardado');
+}
+async function deleteKitEpp(id){
+  if(!confirm('¿Eliminar este kit? Las entregas ya registradas no se modifican.')) return;
+  eppKits = eppKits.filter(k=>k.id!==id);
+  await saveData('eppKits', eppKits);
+  renderKitsEpp();
+  poblarKitSelect();
+}
+function renderKitsEpp(){
+  const cont = document.getElementById('kitsTable');
+  if(!cont) return;
+  if(!document.getElementById('kitId').value) renderKitItems(null);
+  const itemById = new Map(inventoryItems.map(it=>[it.id, it]));
+  const activos = employees.filter(e=>e.estado==='activo');
+  cont.innerHTML = eppKits.length ? `<div class="table-scroll"><table>
+    <thead><tr><th>Puesto</th><th>Se aplica a cargos con</th><th>EPP del kit</th><th>Trabajadores</th><th></th></tr></thead>
+    <tbody>${eppKits.map(k=>`<tr>
+      <td><b>${escHtml(k.nombre)}</b></td>
+      <td style="font-size:12px;">${escHtml((k.palabras||[]).join(', ')||'—')}</td>
+      <td style="font-size:12px;">${k.items.map(x=>{ const it=itemById.get(x.itemId); return it ? `${escHtml(it.codigo||'')} ${escHtml(it.nombre)} ×${x.cantidad}` : '<span style="color:var(--danger);">(artículo eliminado)</span>'; }).join('<br>')}</td>
+      <td class="mono">${activos.filter(e=>kitSugeridoPara(e)===k).length}</td>
+      <td class="actions-cell">
+        <button class="btn btn-ghost btn-sm" onclick="editarKitEpp('${escHtml(k.id)}')">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteKitEpp('${escHtml(k.id)}')">Eliminar</button>
+      </td></tr>`).join('')}</tbody></table></div>
+    <p class="hint" style="margin:10px 18px;">Sin kit: ${escHtml(activos.filter(e=>!kitSugeridoPara(e)).map(e=>e.nombre+' ('+(e.cargo||'sin cargo')+')').join(', ') || 'todos los trabajadores activos tienen kit')}</p>`
+    : `<div class="empty">Aún no hay kits. Crea uno por cada puesto (Soldador, Calderero, Operario…).</div>`;
 }
 
 function tallaSugeridaParaItem(it, e){
@@ -6804,7 +6985,7 @@ function renderEppChecklist(){
       <label for="eppChk_${it.id}" style="flex:1;margin:0;font-weight:500;">${it.codigo?`[${it.codigo}] `:''}${it.nombre} <span style="color:var(--ink-soft);font-size:12px;">(stock: ${it.stock} ${it.unidad||''})</span></label>
       ${tallaInput}
       <input type="number" id="eppQty_${it.id}" min="1" value="1" disabled style="width:80px;" data-stock="${it.stock}" data-maneja-tallas="${it.manejaTallas?'1':'0'}" oninput="checkEppStockInline('${it.id}')">
-      <input type="number" id="eppVida_${it.id}" min="1" value="${vidaDefault}" disabled style="width:110px;">
+      <input type="number" id="eppVida_${it.id}" min="1" value="${it.vidaUtilDias || vidaDefault}" disabled style="width:110px;" title="${it.vidaUtilDias ? 'Vida útil definida para este artículo' : 'Vida útil por defecto'}">
     </div>
     <div id="eppStockWarn_${it.id}" style="display:none;color:var(--danger);font-size:11.5px;padding:0 10px 6px;margin-top:-6px;">⚠ Cantidad mayor al stock disponible</div>`;
     }).join('')}` : `<div class="empty">Registra artículos EPP en Inventario primero.</div>`;
@@ -6844,6 +7025,7 @@ function mostrarTallasEpp(){
     }
   }
   if(document.getElementById('eppChecklist')) renderEppChecklist();
+  poblarKitSelect();
 }
 function updateEppVencimientoPreview(){
   const fecha = document.getElementById('eppFecha').value;
@@ -7233,7 +7415,9 @@ function renderEppStock(){
   const items = inventoryItems.filter(it=>it.categoria==='EPP (Protección Personal)' || it.categoria==='Limpieza y mantenimiento');
   const hoy = new Date().toISOString().slice(0,7);
   const stockBajo = items.filter(it=>it.stock<=it.stockMinimo);
-  const asignacionesFiltradas = currentEppVencFiltro==='todos' ? eppAsignaciones : eppAsignaciones.filter(a=>a.empId===currentEppVencFiltro);
+  // Solo la última entrega de cada EPP por trabajador activo: las anteriores ya se repusieron.
+  const actuales = eppAsignacionesActuales();
+  const asignacionesFiltradas = currentEppVencFiltro==='todos' ? actuales : actuales.filter(a=>a.empId===currentEppVencFiltro);
   const eppPorVencer = asignacionesFiltradas.filter(a=>{ const d=daysUntil(a.fechaVencimiento); return d!==null && d<=30; });
   const vencidos = eppPorVencer.filter(a=>daysUntil(a.fechaVencimiento)<0);
   const porVencer = eppPorVencer.filter(a=>daysUntil(a.fechaVencimiento)>=0);
@@ -7288,7 +7472,7 @@ function renderEppStock(){
   if(vencidos.length){
     const chips = vencidos.map(a=>{
       const e=employees.find(x=>x.id===a.empId); const it=inventoryItems.find(x=>x.id===a.itemId);
-      return `<span class="aviso-chip">${e?e.nombre:'—'} — se le debe: ${it?it.nombre:'—'} (venció ${fmtDate(a.fechaVencimiento)})</span>`;
+      return `<span class="aviso-chip">${e?escHtml(e.nombre):'—'} — se le debe: ${it?escHtml(it.nombre):'—'}${a.talla?' (talla '+escHtml(a.talla)+')':''} (venció ${fmtDate(a.fechaVencimiento)}) <button class="btn btn-primary btn-sm" style="padding:2px 8px;margin-left:4px;" onclick="reponerEpp('${escHtml(a.id)}')">Reponer</button></span>`;
     }).join('');
     avisoHtml += seccion('vencidos','danger','⚠ EPP vencido / desgastado — se le debe la reposición', vencidos.length, chips, true);
   }
@@ -7298,7 +7482,7 @@ function renderEppStock(){
     const chips = porVencer.map(a=>{
       const e=employees.find(x=>x.id===a.empId); const it=inventoryItems.find(x=>x.id===a.itemId);
       const d=daysUntil(a.fechaVencimiento);
-      return `<span class="aviso-chip">${e?e.nombre:'—'} — ${it?it.nombre:'—'} vence en ${d} día(s)</span>`;
+      return `<span class="aviso-chip">${e?escHtml(e.nombre):'—'} — ${it?escHtml(it.nombre):'—'} vence en ${d} día(s) <button class="btn btn-ghost btn-sm" style="padding:2px 8px;margin-left:4px;" onclick="reponerEpp('${escHtml(a.id)}')">Reponer</button></span>`;
     }).join('');
     avisoHtml += seccion('porVencer','warn','Aviso: EPP por vencer / desgastar (30 días)', porVencer.length, chips, false);
   }
@@ -7541,6 +7725,8 @@ function renderFormatoEppTable(){
 
 function renderEpp(){
   renderEppChecklist();
+  poblarKitSelect();
+  renderKitsEpp();
   renderAsignacionesEpp();
   renderEppStock();
   renderFormatoEmployeeSelects();
@@ -7560,7 +7746,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // ---------- Respaldo (guardar / restaurar todo el sistema) ----------
 const BACKUP_KEYS = ['employees','menuEntries','workerDocs','faltas','permisos','descansos','prestamos',
   'registrosDiarios','inventoryItems','inventoryMovements','eventos','encuestas','capacitaciones','reconocimientos',
-  'eppAsignaciones','empresaData','wordDocsGuardados','segurosEmpresa','contratoOficialTemplates','firmasDigitales','asistenciaManual','procesosCese','documentosSunafil','induccionesSeguridad','cesesRegistro'];
+  'eppAsignaciones','empresaData','wordDocsGuardados','segurosEmpresa','contratoOficialTemplates','firmasDigitales','asistenciaManual','procesosCese','documentosSunafil','induccionesSeguridad','cesesRegistro','eppKits'];
 
 async function mostrarEspacioAlmacenamiento(){
   document.getElementById('espacioModalOverlay').classList.add('active');
