@@ -199,6 +199,7 @@ tr:hover td{background:#FAF9F6;}
     <div class="nav-item active" data-view="dashboard"><span class="nav-icon">&#9673;</span> Inicio</div>
     <div class="nav-section-label">Personal</div>
     <div class="nav-item" data-view="personal"><span class="nav-icon">&#9782;</span> Personal</div>
+    <div class="nav-item" data-view="cesados"><span class="nav-icon">&#128682;</span> Trabajadores cesados</div>
     <div class="nav-section-label">Cumplimiento</div>
     <div class="nav-item" data-view="legajosunafil"><span class="nav-icon">&#9878;</span> Legajo SUNAFIL</div>
     <div class="nav-item" data-view="emo"><span class="nav-icon">&#127973;</span> EMO</div>
@@ -1314,6 +1315,88 @@ tr:hover td{background:#FAF9F6;}
       </div>
     </div>
 
+    <!-- TRABAJADORES CESADOS -->
+    <div class="view" id="view-cesados">
+      <div class="view-header">
+        <div>
+          <h2>Trabajadores cesados</h2>
+          <p>Bitácora de ceses: fecha, motivo, liquidación, baja en T-Registro y certificado de trabajo</p>
+        </div>
+      </div>
+
+      <div class="stat-grid" id="cesadosStats"></div>
+      <div id="cesadosAviso"></div>
+
+      <div class="panel">
+        <div class="panel-head"><h3 id="ceseFormTitulo">Registrar cese</h3></div>
+        <div style="padding:16px 18px;">
+          <input type="hidden" id="ceseRegId">
+          <div class="field-row">
+            <div class="field"><label>Trabajador</label><select id="ceseRegEmpleado" onchange="ceseRegAutocompletar()"></select></div>
+            <div class="field"><label>Fecha de cese (último día laborado)</label><input type="date" id="ceseRegFecha"></div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Motivo de cese</label>
+              <select id="ceseRegMotivo">
+                <option value="Vencimiento de contrato">Vencimiento de contrato</option>
+                <option value="Término de obra o servicio">Término de obra o servicio</option>
+                <option value="Renuncia voluntaria">Renuncia voluntaria</option>
+                <option value="Mutuo disenso">Mutuo disenso (acuerdo de ambas partes)</option>
+                <option value="Despido">Despido</option>
+                <option value="No superó periodo de prueba">No superó periodo de prueba</option>
+                <option value="Abandono de trabajo">Abandono de trabajo</option>
+                <option value="Fallecimiento">Fallecimiento</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>¿Recontratable?</label>
+              <select id="ceseRegRecontratable">
+                <option value="si">Sí</option>
+                <option value="evaluar">Evaluar</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Monto de liquidación (S/)</label><input type="number" id="ceseRegLiqMonto" min="0" step="0.01" placeholder="Vacaciones truncas, remuneraciones pendientes, etc."></div>
+            <div class="field"><label>Fecha de pago de la liquidación</label><input type="date" id="ceseRegLiqFecha"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Fecha de baja en T-Registro</label><input type="date" id="ceseRegTregistro"></div>
+            <div class="field"><label>Fecha de entrega del certificado de trabajo</label><input type="date" id="ceseRegCertificado"></div>
+          </div>
+          <div class="upload-row" style="margin-top:14px;">
+            <input type="file" id="ceseRegArchivo" accept=".pdf,.jpg,.jpeg,.png">
+            <label style="margin:0;font-size:12.5px;color:var(--ink-soft);">Adjuntar carta de renuncia, liquidación firmada o constancia (opcional, máx. 1MB)</label>
+          </div>
+          <div class="field" style="margin-top:12px;"><label>Observaciones</label><input id="ceseRegNotas"></div>
+          <p class="hint" style="margin:10px 0 0;">Al registrar el cese, el trabajador pasa a <b>Inactivo</b> en Personal. Plazos: liquidación y certificado de trabajo dentro de las 48 horas; baja en T-Registro dentro del día hábil siguiente al cese.</p>
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            <button class="btn btn-accent btn-sm" onclick="saveCeseRegistro()">Guardar cese</button>
+            <button class="btn btn-ghost btn-sm" id="ceseRegCancelar" style="display:none;" onclick="limpiarFormCese()">Cancelar edición</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Ceses registrados</h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <input class="search-box" id="cesadosBuscar" placeholder="Buscar nombre o DNI" style="width:200px;" oninput="renderCesados()">
+            <select class="search-box" id="cesadosFiltroMotivo" style="width:200px;" onchange="renderCesados()">
+              <option value="todos">Todos los motivos</option>
+            </select>
+            <select class="search-box" id="cesadosFiltroAnio" style="width:120px;" onchange="renderCesados()">
+              <option value="todos">Todos los años</option>
+            </select>
+          </div>
+        </div>
+        <div id="cesadosTable"></div>
+      </div>
+    </div>
+
     <!-- INDUCCIÓN DE SEGURIDAD -->
     <div class="view" id="view-induccion">
       <div class="view-header">
@@ -1881,12 +1964,47 @@ async function cloudLeerDoc(snap){
   return partes.map(p=>p.data().data).join('');
 }
 
+// Protección contra sobrescrituras entre pestañas/PCs: cada documento lleva un campo "rev".
+// Se guarda la rev con la que se cargó cada clave y, al grabar, una transacción comprueba
+// que nadie la haya cambiado mientras tanto. Si cambió, no se graba y se pide recargar.
+const cloudRev = new Map();
+const cloudMisRevs = new Set();
+let cloudDatosDesactualizados = false;
+function nuevaRev(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
 async function cloudPrecargar(){
   cloudCache.clear();
+  cloudRev.clear();
   const snaps = await cloudCol().get();
   await Promise.all(snaps.docs.map(async snap=>{
     cloudCache.set(snap.id, await cloudLeerDoc(snap));
+    cloudRev.set(snap.id, snap.data().rev || null);
   }));
+}
+
+function avisarDatosDesactualizados(clave){
+  if(cloudDatosDesactualizados) return;
+  cloudDatosDesactualizados = true;
+  const barra = document.createElement('div');
+  barra.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99998;background:#B23A32;color:#fff;padding:10px 16px;font-size:13.5px;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;box-shadow:0 2px 10px rgba(0,0,0,.25);';
+  barra.innerHTML = '<b>⚠ Se hicieron cambios en otra pestaña o PC</b><span>Recarga antes de seguir para no borrar esos cambios.</span>';
+  const btn = document.createElement('button');
+  btn.textContent = 'Recargar ahora';
+  btn.style.cssText = 'background:#fff;color:#B23A32;border:0;border-radius:16px;padding:6px 14px;font-weight:700;cursor:pointer;';
+  btn.onclick = ()=>location.reload();
+  barra.appendChild(btn);
+  document.body.appendChild(barra);
+  console.warn('Datos modificados en otro lugar:', clave);
+}
+function escucharCambiosRemotos(){
+  cloudCol().onSnapshot(snap=>{
+    snap.docChanges().forEach(ch=>{
+      if(ch.doc.metadata.hasPendingWrites) return;
+      const rev = ch.type==='removed' ? null : (ch.doc.data().rev || null);
+      if(rev && cloudMisRevs.has(rev)) return;
+      if((cloudRev.get(ch.doc.id) || null) !== rev) avisarDatosDesactualizados(ch.doc.id);
+    });
+  }, err=>console.warn('No se pudo escuchar cambios remotos', err));
 }
 
 async function cloudBorrarPartes(ref, version, cantidad){
@@ -1903,22 +2021,48 @@ window.storage = {
     return cloudCache.has(key) ? {key, value: cloudCache.get(key)} : null;
   },
   async set(key, value){
+    if(cloudDatosDesactualizados){
+      alert('Hay cambios hechos en otra pestaña o PC.\n\nEste cambio NO se guardó para no borrarlos. La página se recargará con la información actual; vuelve a hacer tu cambio.');
+      location.reload();
+      throw new Error('Datos desactualizados');
+    }
     const ref = cloudCol().doc(key);
-    const anterior = await ref.get();
-    const prev = anterior.exists ? anterior.data() : null;
     const ahora = firebase.firestore.FieldValue.serverTimestamp();
+    const rev = nuevaRev();
+    cloudMisRevs.add(rev);
+    let cabecera, versionNueva = null, n = 0;
     if(value.length <= CLOUD_TAM_PARTE){
-      await ref.set({inline: value, actualizado: ahora});
+      cabecera = {inline: value, actualizado: ahora, rev};
     } else {
-      const version = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
-      const n = Math.ceil(value.length / CLOUD_TAM_PARTE);
+      versionNueva = nuevaRev();
+      n = Math.ceil(value.length / CLOUD_TAM_PARTE);
       for(let i=0;i<n;i+=5){
         await Promise.all(Array.from({length:Math.min(5, n-i)}, (_, j)=>
-          ref.collection('partes').doc(version+'_'+(i+j)).set({data: value.slice((i+j)*CLOUD_TAM_PARTE, (i+j+1)*CLOUD_TAM_PARTE)})
+          ref.collection('partes').doc(versionNueva+'_'+(i+j)).set({data: value.slice((i+j)*CLOUD_TAM_PARTE, (i+j+1)*CLOUD_TAM_PARTE)})
         ));
       }
-      await ref.set({version, partes: n, tamano: value.length, actualizado: ahora});
+      cabecera = {version: versionNueva, partes: n, tamano: value.length, actualizado: ahora, rev};
     }
+    const esperada = cloudRev.has(key) ? cloudRev.get(key) : null;
+    let prev = null;
+    try{
+      prev = await firebase.firestore().runTransaction(async tx=>{
+        const actual = await tx.get(ref);
+        const revActual = actual.exists ? (actual.data().rev || null) : null;
+        if(revActual !== esperada) throw new Error('CONFLICTO');
+        tx.set(ref, cabecera);
+        return actual.exists ? actual.data() : null;
+      });
+    }catch(err){
+      if(versionNueva) await cloudBorrarPartes(ref, versionNueva, n);
+      if(err.message==='CONFLICTO'){
+        cloudDatosDesactualizados = true;
+        alert('Otra pestaña o PC modificó esta información mientras la tenías abierta.\n\nTu último cambio NO se guardó para no borrar el de la otra persona. La página se recargará con la información actual; vuelve a hacer tu cambio.');
+        location.reload();
+      }
+      throw err;
+    }
+    cloudRev.set(key, rev);
     cloudCache.set(key, value);
     if(prev && prev.version) await cloudBorrarPartes(ref, prev.version, prev.partes);
     return {key, value};
@@ -1928,6 +2072,7 @@ window.storage = {
     const anterior = await ref.get();
     await ref.delete();
     cloudCache.delete(key);
+    cloudRev.delete(key);
     if(anterior.exists && anterior.data().version) await cloudBorrarPartes(ref, anterior.data().version, anterior.data().partes);
     return {key, deleted:true};
   },
@@ -2010,6 +2155,7 @@ let encuestas = [];
 let capacitaciones = [];
 let reconocimientos = [];
 let induccionesSeguridad = [];
+let cesesRegistro = [];
 
 // ---------- Init ----------
 async function init(){
@@ -2056,6 +2202,7 @@ async function init(){
   capacitaciones = await loadData('capacitaciones', []);
   reconocimientos = await loadData('reconocimientos', []);
   induccionesSeguridad = await loadData('induccionesSeguridad', []);
+  cesesRegistro = await loadData('cesesRegistro', []);
 
   document.querySelectorAll('.nav-item').forEach(el=>{
     el.addEventListener('click', ()=>switchView(el.dataset.view));
@@ -2176,6 +2323,7 @@ function renderAll(){
   renderEpp();
   renderSeguros();
   renderInduccion();
+  renderCesados();
   renderPlanillaBancaria();
   renderLegajoSunafil();
   renderDocumentosSunafil();
@@ -3125,7 +3273,24 @@ function uploadPersonalExcel(file){
           notas: String(row['Notas']||'').trim()
         };
         const existing = employees.find(e=>e.dni===dni);
-        if(existing){ Object.assign(existing, data, {id: existing.id}); actualizados++; }
+        if(existing){
+          // Solo se actualizan los campos cuya celda trae un valor: una celda vacía no borra lo que ya hay
+          // (antes se sobrescribían EMO, sueldos y fechas con vacío o con valores por defecto).
+          const COLUMNAS = {fechaNacimiento:'Fecha nacimiento', estadoCivil:'Estado civil', domicilio:'Domicilio', ciudad:'Ciudad',
+            correo1:'Correo 1', correo2:'Correo 2', celular1:'Celular 1', celular2:'Celular 2', cargo:'Cargo o puesto', area:'Área',
+            sueldoDiario:'Sueldo diario', sueldoMensual:'Sueldo diario', horaEntrada:'Hora entrada', horaSalida:'Hora salida',
+            fechaIngreso:'Fecha ingreso', fechaFin:'Fecha fin contrato', estado:'Estado', salud:'Régimen salud', fechaSalud:'Vencimiento salud',
+            pension:'Sistema pensión', afpNombre:'AFP', vigenciaSctrInicio:'Inicio vigencia SCTR', vigenciaSctr:'Fin vigencia SCTR',
+            vigenciaVidaLeyInicio:'Inicio vigencia Vida Ley', vigenciaVidaLey:'Fin vigencia Vida Ley', fechaEmoInicio:'Inicio vigencia EMO',
+            fechaEmo:'Fin vigencia EMO', tieneLicencia:'Tiene licencia', licenciaCategoria:'Categoría licencia', licenciaNumero:'Número licencia',
+            licenciaVigencia:'Vigencia licencia', refNombre:'Referencia nombre', refParentesco:'Referencia parentesco',
+            refTelefono:'Referencia teléfono', notas:'Notas'};
+          existing.nombre = nombre;
+          Object.entries(COLUMNAS).forEach(([campo, col])=>{
+            if(String(row[col]==null ? '' : row[col]).trim() !== '') existing[campo] = data[campo];
+          });
+          actualizados++;
+        }
         else { employees.push({...data, id:'e'+Date.now()+Math.random().toString(36).slice(2,7)}); nuevos++; }
       });
       await saveData('employees', employees);
@@ -7366,7 +7531,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // ---------- Respaldo (guardar / restaurar todo el sistema) ----------
 const BACKUP_KEYS = ['employees','menuEntries','workerDocs','faltas','permisos','descansos','prestamos',
   'registrosDiarios','inventoryItems','inventoryMovements','eventos','encuestas','capacitaciones','reconocimientos',
-  'eppAsignaciones','empresaData','wordDocsGuardados','segurosEmpresa','contratoOficialTemplates','firmasDigitales','asistenciaManual','procesosCese','documentosSunafil','induccionesSeguridad'];
+  'eppAsignaciones','empresaData','wordDocsGuardados','segurosEmpresa','contratoOficialTemplates','firmasDigitales','asistenciaManual','procesosCese','documentosSunafil','induccionesSeguridad','cesesRegistro'];
 
 async function mostrarEspacioAlmacenamiento(){
   document.getElementById('espacioModalOverlay').classList.add('active');
@@ -7500,6 +7665,223 @@ function mostrarAvisosPendientes(){
   }
 }
 
+// ---------- Trabajadores cesados ----------
+// Cada cese guarda una copia de nombre/DNI/cargo/ingreso para que el historial no dependa de la ficha del trabajador.
+function hoyISO(){ return new Date().toISOString().slice(0,10); }
+function diasDesde(fechaISO){ const d = daysUntil(fechaISO); return d===null ? null : -d; }
+function tiempoServicio(ini, fin){
+  if(!ini || !fin || fin < ini) return '—';
+  // Se cuenta el último día como laborado: se compara contra el día siguiente al cese.
+  const [y1,m1,d1] = ini.split('-').map(Number), [yf,mf,df] = fin.split('-').map(Number);
+  const sig = new Date(yf, mf-1, df+1);
+  const y2 = sig.getFullYear(), m2 = sig.getMonth()+1, d2 = sig.getDate();
+  let meses = (y2-y1)*12 + (m2-m1), dias = d2-d1;
+  if(dias < 0){ meses--; dias += new Date(y2, m2-1, 0).getDate(); }
+  const anios = Math.floor(meses/12); meses = meses%12;
+  return [anios ? anios+' a' : '', meses ? meses+' m' : '', dias ? dias+' d' : ''].filter(Boolean).join(' ') || '0 d';
+}
+function contratosVencidosSinCese(){
+  const hoy = hoyISO();
+  return employees.filter(e=>e.estado==='activo' && e.fechaFin && e.fechaFin < hoy)
+    .sort((a,b)=>a.fechaFin.localeCompare(b.fechaFin));
+}
+function inactivosSinRegistroCese(){
+  const conRegistro = new Set(cesesRegistro.map(c=>c.empId));
+  return employees.filter(e=>e.estado==='inactivo' && !conRegistro.has(e.id));
+}
+function poblarCeseRegEmpleados(seleccionado){
+  const sel = document.getElementById('ceseRegEmpleado');
+  if(!sel) return;
+  const vencidos = contratosVencidosSinCese();
+  const idsVencidos = new Set(vencidos.map(e=>e.id));
+  const otros = employees.filter(e=>e.estado==='activo' && !idsVencidos.has(e.id)).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const inactivos = inactivosSinRegistroCese();
+  const editando = seleccionado ? employees.find(e=>e.id===seleccionado) : null;
+  const opt = e=>`<option value="${escHtml(e.id)}">${escHtml(e.nombre)} — ${escHtml(e.dni||'')}</option>`;
+  sel.innerHTML = `<option value="">— Selecciona —</option>`
+    + (vencidos.length ? `<optgroup label="Contrato vencido (posible cese)">${vencidos.map(opt).join('')}</optgroup>` : '')
+    + (inactivos.length ? `<optgroup label="Inactivos sin registro de cese">${inactivos.map(opt).join('')}</optgroup>` : '')
+    + (otros.length ? `<optgroup label="Activos">${otros.map(opt).join('')}</optgroup>` : '')
+    + (editando && !vencidos.includes(editando) && !inactivos.includes(editando) && !otros.includes(editando) ? opt(editando) : '');
+  sel.value = seleccionado || '';
+}
+function ceseRegAutocompletar(){
+  const e = employees.find(x=>x.id===document.getElementById('ceseRegEmpleado').value);
+  if(!e || document.getElementById('ceseRegId').value) return;
+  if(e.fechaFin && e.fechaFin < hoyISO()){
+    document.getElementById('ceseRegFecha').value = e.fechaFin;
+    document.getElementById('ceseRegMotivo').value = 'Vencimiento de contrato';
+  }
+}
+function prepararCese(empId){
+  limpiarFormCese();
+  poblarCeseRegEmpleados(empId);
+  ceseRegAutocompletar();
+  document.getElementById('ceseFormTitulo').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function limpiarFormCese(){
+  ['ceseRegId','ceseRegFecha','ceseRegLiqMonto','ceseRegLiqFecha','ceseRegTregistro','ceseRegCertificado','ceseRegNotas','ceseRegArchivo'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ceseRegMotivo').value = 'Vencimiento de contrato';
+  document.getElementById('ceseRegRecontratable').value = 'si';
+  document.getElementById('ceseFormTitulo').textContent = 'Registrar cese';
+  document.getElementById('ceseRegCancelar').style.display = 'none';
+  poblarCeseRegEmpleados('');
+}
+function editarCese(id){
+  const c = cesesRegistro.find(x=>x.id===id);
+  if(!c) return;
+  poblarCeseRegEmpleados(c.empId);
+  document.getElementById('ceseRegId').value = c.id;
+  document.getElementById('ceseRegFecha').value = c.fechaCese||'';
+  document.getElementById('ceseRegMotivo').value = c.motivo||'Otro';
+  document.getElementById('ceseRegRecontratable').value = c.recontratable||'si';
+  document.getElementById('ceseRegLiqMonto').value = c.liqMonto==null ? '' : c.liqMonto;
+  document.getElementById('ceseRegLiqFecha').value = c.liqFecha||'';
+  document.getElementById('ceseRegTregistro').value = c.tregistroFecha||'';
+  document.getElementById('ceseRegCertificado').value = c.certificadoFecha||'';
+  document.getElementById('ceseRegNotas').value = c.notas||'';
+  document.getElementById('ceseFormTitulo').textContent = 'Editar cese — ' + c.nombre;
+  document.getElementById('ceseRegCancelar').style.display = 'inline-flex';
+  document.getElementById('ceseFormTitulo').scrollIntoView({behavior:'smooth', block:'start'});
+}
+async function saveCeseRegistro(){
+  const id = document.getElementById('ceseRegId').value;
+  const empId = document.getElementById('ceseRegEmpleado').value;
+  const fechaCese = document.getElementById('ceseRegFecha').value;
+  const e = employees.find(x=>x.id===empId);
+  if(!e){ showToast('Selecciona el trabajador'); return; }
+  if(!fechaCese){ showToast('Indica la fecha de cese'); return; }
+  if(e.fechaIngreso && fechaCese < e.fechaIngreso){ showToast('La fecha de cese es anterior a la fecha de ingreso'); return; }
+  const fileInput = document.getElementById('ceseRegArchivo');
+  const montoTxt = document.getElementById('ceseRegLiqMonto').value;
+
+  const guardar = async (fileData, fileName)=>{
+    const datos = {
+      empId, nombre: e.nombre, dni: e.dni, cargo: e.cargo, fechaIngreso: e.fechaIngreso || '',
+      fechaCese, motivo: document.getElementById('ceseRegMotivo').value,
+      recontratable: document.getElementById('ceseRegRecontratable').value,
+      liqMonto: montoTxt==='' ? null : parseFloat(montoTxt),
+      liqFecha: document.getElementById('ceseRegLiqFecha').value,
+      tregistroFecha: document.getElementById('ceseRegTregistro').value,
+      certificadoFecha: document.getElementById('ceseRegCertificado').value,
+      notas: document.getElementById('ceseRegNotas').value.trim()
+    };
+    let c = id ? cesesRegistro.find(x=>x.id===id) : null;
+    if(c){ Object.assign(c, datos); }
+    else { c = {...datos, id:'cs'+Date.now(), fechaRegistro: hoyISO(), fileData:null, fileName:null}; cesesRegistro.push(c); }
+    if(fileData){ c.fileData = fileData; c.fileName = fileName; }
+    e.estado = 'inactivo';
+    e.motivoBaja = datos.motivo;
+    e.fechaCese = fechaCese;
+    await saveData('cesesRegistro', cesesRegistro);
+    await saveData('employees', employees);
+    limpiarFormCese();
+    renderAll();
+    showToast(id ? 'Cese actualizado' : `Cese registrado: ${e.nombre} pasó a Inactivo`);
+  };
+  if(fileInput.files.length){
+    if(fileInput.files[0].size > 1*1024*1024){ showToast('El archivo es muy grande (máx. 1MB)'); return; }
+    const reader = new FileReader();
+    reader.onload = ()=>guardar(reader.result, fileInput.files[0].name);
+    reader.readAsDataURL(fileInput.files[0]);
+  } else {
+    await guardar(null, null);
+  }
+}
+async function anularCese(id){
+  const c = cesesRegistro.find(x=>x.id===id);
+  if(!c) return;
+  if(!confirm(`¿Anular el cese de ${c.nombre}?\n\nSe borrará este registro y el trabajador volverá a estar Activo.`)) return;
+  cesesRegistro = cesesRegistro.filter(x=>x.id!==id);
+  const e = employees.find(x=>x.id===c.empId);
+  if(e){ e.estado = 'activo'; e.motivoBaja = ''; delete e.fechaCese; }
+  await saveData('cesesRegistro', cesesRegistro);
+  if(e) await saveData('employees', employees);
+  renderAll();
+  showToast('Cese anulado');
+}
+function downloadCeseFile(id){
+  const c = cesesRegistro.find(x=>x.id===id);
+  if(!c || !c.fileData) return;
+  const a = document.createElement('a');
+  a.href = c.fileData; a.download = c.fileName || 'documento-cese';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+function cesePasoPill(fechaHecho, fechaCese, plazoDias){
+  if(fechaHecho) return `<span class="pill pill-ok">${fmtDate(fechaHecho)}</span>`;
+  const dias = diasDesde(fechaCese);
+  if(dias!==null && dias > plazoDias) return `<span class="pill pill-danger">Pendiente (${dias} d)</span>`;
+  return `<span class="pill pill-warn">Pendiente</span>`;
+}
+function renderCesados(){
+  const statsEl = document.getElementById('cesadosStats');
+  if(!statsEl) return;
+  const sel = document.getElementById('ceseRegEmpleado');
+  if(!document.getElementById('ceseRegId').value) poblarCeseRegEmpleados(sel.value);
+  const anioActual = hoyISO().slice(0,4);
+  const pendientes = cesesRegistro.filter(c=>!c.liqFecha || !c.tregistroFecha || !c.certificadoFecha);
+  const vencidos = contratosVencidosSinCese();
+  const inactivos = inactivosSinRegistroCese();
+  statsEl.innerHTML = `
+    <div class="stat-card"><div class="num">${cesesRegistro.length}</div><div class="label">Ceses registrados</div></div>
+    <div class="stat-card"><div class="num">${cesesRegistro.filter(c=>(c.fechaCese||'').startsWith(anioActual)).length}</div><div class="label">Ceses en ${anioActual}</div></div>
+    <div class="stat-card warn"><div class="num">${pendientes.length}</div><div class="label">Con trámites pendientes</div></div>
+    <div class="stat-card warn"><div class="num">${vencidos.length}</div><div class="label">Contratos vencidos sin cese ni renovación</div></div>
+  `;
+  let aviso = '';
+  if(vencidos.length){
+    aviso += `<div class="aviso-box danger"><div class="aviso-title">Contratos vencidos que siguen como Activos — registra el cese o renueva el contrato en Personal</div>
+      <div class="aviso-list">${vencidos.map(e=>`<span class="aviso-chip" style="cursor:pointer;" onclick="prepararCese('${escHtml(e.id)}')">${escHtml(e.nombre)} — venció ${fmtDate(e.fechaFin)} · Registrar cese</span>`).join('')}</div></div>`;
+  }
+  if(inactivos.length){
+    aviso += `<div class="aviso-box warn"><div class="aviso-title">Trabajadores inactivos sin registro de cese</div>
+      <div class="aviso-list">${inactivos.map(e=>`<span class="aviso-chip" style="cursor:pointer;" onclick="prepararCese('${escHtml(e.id)}')">${escHtml(e.nombre)} · Completar</span>`).join('')}</div></div>`;
+  }
+  const atrasados = pendientes.filter(c=>{ const d = diasDesde(c.fechaCese); return d!==null && d > 2; });
+  if(atrasados.length){
+    aviso += `<div class="aviso-box danger"><div class="aviso-title">Trámites de cese fuera de plazo</div>
+      <div class="aviso-list">${atrasados.map(c=>`<span class="aviso-chip">${escHtml(c.nombre)}: ${[!c.liqFecha?'liquidación':'', !c.tregistroFecha?'baja T-Registro':'', !c.certificadoFecha?'certificado':''].filter(Boolean).join(', ')}</span>`).join('')}</div></div>`;
+  }
+  document.getElementById('cesadosAviso').innerHTML = aviso;
+
+  const selMot = document.getElementById('cesadosFiltroMotivo'), selAnio = document.getElementById('cesadosFiltroAnio');
+  const vMot = selMot.value || 'todos', vAnio = selAnio.value || 'todos';
+  const motivos = [...new Set(cesesRegistro.map(c=>c.motivo).filter(Boolean))].sort();
+  const anios = [...new Set(cesesRegistro.map(c=>(c.fechaCese||'').slice(0,4)).filter(Boolean))].sort().reverse();
+  selMot.innerHTML = `<option value="todos">Todos los motivos</option>` + motivos.map(m=>`<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('');
+  selMot.value = motivos.includes(vMot) ? vMot : 'todos';
+  selAnio.innerHTML = `<option value="todos">Todos los años</option>` + anios.map(a=>`<option value="${a}">${a}</option>`).join('');
+  selAnio.value = anios.includes(vAnio) ? vAnio : 'todos';
+
+  const q = (document.getElementById('cesadosBuscar').value||'').trim().toLowerCase();
+  let lista = [...cesesRegistro];
+  if(selMot.value!=='todos') lista = lista.filter(c=>c.motivo===selMot.value);
+  if(selAnio.value!=='todos') lista = lista.filter(c=>(c.fechaCese||'').startsWith(selAnio.value));
+  if(q) lista = lista.filter(c=>(c.nombre||'').toLowerCase().includes(q) || String(c.dni||'').includes(q));
+  lista.sort((a,b)=>(b.fechaCese||'').localeCompare(a.fechaCese||''));
+  const recon = {si:'<span class="pill pill-ok">Sí</span>', evaluar:'<span class="pill pill-warn">Evaluar</span>', no:'<span class="pill pill-danger">No</span>'};
+
+  const rows = lista.map(c=>`<tr>
+      <td><b>${escHtml(c.nombre)}</b><div class="mono" style="font-size:11px;color:var(--ink-soft);">${escHtml(c.dni||'')} · ${escHtml(c.cargo||'')}</div></td>
+      <td style="white-space:nowrap;">${c.fechaIngreso ? fmtDate(c.fechaIngreso) : '—'} → ${fmtDate(c.fechaCese)}<div style="font-size:11px;color:var(--ink-soft);">${tiempoServicio(c.fechaIngreso, c.fechaCese)}</div></td>
+      <td>${escHtml(c.motivo||'—')}${c.notas ? `<div style="font-size:11px;color:var(--ink-soft);">${escHtml(c.notas)}</div>` : ''}</td>
+      <td>${c.liqMonto!=null ? `<div class="mono">S/ ${Number(c.liqMonto).toFixed(2)}</div>` : ''}${cesePasoPill(c.liqFecha, c.fechaCese, 2)}</td>
+      <td>${cesePasoPill(c.tregistroFecha, c.fechaCese, 1)}</td>
+      <td>${cesePasoPill(c.certificadoFecha, c.fechaCese, 2)}</td>
+      <td>${recon[c.recontratable] || '—'}</td>
+      <td class="actions-cell">
+        <button class="btn btn-ghost btn-sm" onclick="editarCese('${escHtml(c.id)}')">Editar</button>
+        ${c.fileData ? `<button class="btn btn-ghost btn-sm" onclick="downloadCeseFile('${escHtml(c.id)}')">Documento</button>` : ''}
+        <button class="btn btn-danger btn-sm" onclick="anularCese('${escHtml(c.id)}')">Anular</button>
+      </td>
+    </tr>`).join('');
+  document.getElementById('cesadosTable').innerHTML = lista.length ? `
+    <div class="table-scroll">
+    <table><thead><tr><th>Trabajador</th><th>Ingreso → Cese</th><th>Motivo</th><th>Liquidación</th><th>Baja T-Registro</th><th>Certificado</th><th>Recontratable</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    </div>` : `<div class="empty">${cesesRegistro.length ? 'Ningún cese coincide con el filtro.' : 'Aún no hay ceses registrados.'}</div>`;
+}
+
 // ---------- Inducción de seguridad ----------
 // Un registro por trabajador y por inducción; los trabajadores de una misma sesión comparten sesionId.
 function escHtml(v){
@@ -7577,7 +7959,7 @@ async function saveInduccion(){
     reader.onload = ()=>registrar(reader.result, fileInput.files[0].name);
     reader.readAsDataURL(fileInput.files[0]);
   } else {
-    registrar(null, null);
+    await registrar(null, null);
   }
 }
 async function deleteInduccion(id){
@@ -7944,6 +8326,7 @@ async function arrancarSistema(){
   await init();
   await initDarkMode();
   await initAvisos();
+  escucharCambiosRemotos();
   sistemaIniciado = true;
   mostrarBloqueAuth(null);
 }
