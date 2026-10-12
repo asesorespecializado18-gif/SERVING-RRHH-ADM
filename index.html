@@ -198,9 +198,11 @@ tr:hover td{background:#FAF9F6;}
       <h1>RRHH</h1>
     </div>
     <div class="nav-item active" data-view="dashboard"><span class="nav-icon">&#9673;</span> Inicio</div>
+    <div class="nav-item" data-view="reportes"><span class="nav-icon">&#128202;</span> Centro de reportes</div>
     <div class="nav-section-label">Personal</div>
     <div class="nav-item" data-view="personal"><span class="nav-icon">&#9782;</span> Personal</div>
     <div class="nav-item" data-view="cesados"><span class="nav-icon">&#128682;</span> Trabajadores cesados</div>
+    <div class="nav-item" data-view="vacaciones"><span class="nav-icon">&#127958;</span> Vacaciones</div>
     <div class="nav-section-label">Cumplimiento</div>
     <div class="nav-item" data-view="legajosunafil"><span class="nav-icon">&#9878;</span> Legajo SUNAFIL</div>
     <div class="nav-item" data-view="emo"><span class="nav-icon">&#127973;</span> EMO</div>
@@ -212,6 +214,7 @@ tr:hover td{background:#FAF9F6;}
     <div class="nav-section-label">Operaciones</div>
     <div class="nav-item" data-view="menus"><span class="nav-icon">&#9749;</span> Alimentación general</div>
     <div class="nav-item" data-view="asistencia"><span class="nav-icon">&#128203;</span> Asistencia y Horarios</div>
+    <div class="nav-item" data-view="horasextra"><span class="nav-icon">&#9201;</span> Horas extra</div>
     <div class="nav-item" data-view="planillasem"><span class="nav-icon">&#128181;</span> Planilla semanal (pagos)</div>
     <div class="nav-item" data-view="inventario"><span class="nav-icon">&#128230;</span> Inventario</div>
     <div class="nav-item" data-view="bienestar"><span class="nav-icon">&#127807;</span> Bienestar</div>
@@ -251,6 +254,17 @@ tr:hover td{background:#FAF9F6;}
       <div class="stat-grid" id="dashStats"></div>
 
       <div id="respaldoAviso"></div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Aportes y retenciones · AFP · ONP · EsSalud</h3>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select class="search-box" id="aportesAnio" style="width:100px;" onchange="renderAportes()"></select>
+            <button class="btn btn-ghost btn-sm" onclick="exportarAportesExcel()">Excel detalle</button>
+          </div>
+        </div>
+        <div id="aportesContenido" style="padding:14px 18px;"></div>
+      </div>
 
       <div class="ticker-wrap">
         <div class="ticker-label">Vencimientos en los próximos 30 días</div>
@@ -434,8 +448,13 @@ tr:hover td{background:#FAF9F6;}
       <div class="view-header">
         <div>
           <h2>Boletas de pago</h2>
-          <p>Sube y descarga la boleta de pago mensual de cada colaborador</p>
+          <p>Genera las boletas semanales desde la planilla y controla su entrega; también puedes subir boletas escaneadas</p>
         </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Boletas semanales (generadas desde la planilla)</h3></div>
+        <div id="bsPanel" style="padding:14px 18px;"></div>
       </div>
 
       <div class="stat-grid" id="boletasPagoStats"></div>
@@ -919,6 +938,28 @@ tr:hover td{background:#FAF9F6;}
     </div>
 
     <!-- PLANILLA SEMANAL (PAGOS) -->
+    <div class="view" id="view-reportes">
+      <div class="view-header">
+        <div>
+          <h2>Centro de reportes</h2>
+          <p>Descarga en Excel o PDF los reportes principales del sistema, listos para gerencia, el contador o una inspección</p>
+        </div>
+      </div>
+      <div class="panel">
+        <div style="padding:14px 18px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+          <div class="field" style="margin:0;"><label>Desde</label><input type="date" id="repDesde" onchange="renderReportes()"></div>
+          <div class="field" style="margin:0;"><label>Hasta</label><input type="date" id="repHasta" onchange="renderReportes()"></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="btn btn-ghost btn-sm" onclick="repRango('mes')">Este mes</button>
+            <button class="btn btn-ghost btn-sm" onclick="repRango('mesAnterior')">Mes anterior</button>
+            <button class="btn btn-ghost btn-sm" onclick="repRango('anio')">Este año</button>
+          </div>
+          <p class="hint" style="margin:0;flex-basis:100%;">El rango de fechas se aplica a los reportes marcados con 📅. Los demás muestran la situación al día de hoy.</p>
+        </div>
+      </div>
+      <div id="repLista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px;"></div>
+    </div>
+
     <div class="view" id="view-planillasem">
       <div class="view-header">
         <div>
@@ -1544,6 +1585,90 @@ tr:hover td{background:#FAF9F6;}
       </div>
     </div>
 
+    <!-- VACACIONES -->
+    <div class="view" id="view-vacaciones">
+      <div class="view-header">
+        <div>
+          <h2>Vacaciones</h2>
+          <p>Microempresa: 15 días calendario por cada año completo de servicios. Control de días ganados, gozados, pendientes y vencidos</p>
+        </div>
+      </div>
+      <div class="stat-grid" id="vacStats"></div>
+      <div id="vacAviso"></div>
+      <div class="panel">
+        <div class="panel-head"><h3>Registrar vacaciones gozadas</h3></div>
+        <div style="padding:16px 18px;">
+          <div class="field-row" style="grid-template-columns:2fr 1fr 1fr 1fr;">
+            <div class="field"><label>Trabajador</label><select id="vacEmpleado" onchange="vacMostrarSaldo()"></select></div>
+            <div class="field"><label>Desde</label><input type="date" id="vacDesde" onchange="vacCalcularDias()"></div>
+            <div class="field"><label>Hasta</label><input type="date" id="vacHasta" onchange="vacCalcularDias()"></div>
+            <div class="field"><label>Días calendario</label><input type="number" id="vacDias" min="1" step="1"></div>
+          </div>
+          <div class="field"><label>Observaciones</label><input id="vacNotas" placeholder="Ej. periodo 2025-2026, adelanto de vacaciones, etc."></div>
+          <div id="vacSaldo" class="hint" style="margin:6px 0 0;"></div>
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            <button class="btn btn-accent btn-sm" onclick="guardarVacaciones()">Guardar</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Saldo por trabajador</h3>
+          <div style="display:flex;gap:8px;">
+            <input class="search-box" id="vacBuscar" placeholder="Buscar nombre o DNI" style="width:200px;" oninput="renderVacaciones()">
+            <button class="btn btn-ghost btn-sm" onclick="exportarVacacionesExcel()">Excel</button>
+          </div>
+        </div>
+        <div id="vacTabla"></div>
+      </div>
+    </div>
+
+    <!-- HORAS EXTRA -->
+    <div class="view" id="view-horasextra">
+      <div class="view-header">
+        <div>
+          <h2>Horas extra (sobretiempo)</h2>
+          <p>Registro obligatorio del trabajo en sobretiempo (D.S. 008-2002-TR) y comparación con lo pagado en la planilla</p>
+        </div>
+      </div>
+      <div class="stat-grid" id="heStats"></div>
+      <div class="panel">
+        <div class="panel-head"><h3>Registrar horas extra</h3></div>
+        <div style="padding:16px 18px;">
+          <div class="field-row" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+            <div class="field"><label>Fecha</label><input type="date" id="heFecha"></div>
+            <div class="field"><label>Hora de inicio</label><input type="time" id="heInicio" onchange="heCalcularHoras()"></div>
+            <div class="field"><label>Hora de término</label><input type="time" id="heFin" onchange="heCalcularHoras()"></div>
+            <div class="field"><label>Horas</label><input type="number" id="heHoras" min="0.25" step="0.25"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Motivo / labor realizada</label><input id="heMotivo" placeholder="Ej. culminación de soldadura módulo B, SIMA"></div>
+            <div class="field"><label>Autorizado por</label><input id="heAutoriza" placeholder="Nombre del supervisor o jefe"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0 6px;">
+            <label style="margin:0;">Trabajadores</label>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-ghost btn-sm" onclick="heSeleccionar(true)">Marcar todos</button>
+              <button class="btn btn-ghost btn-sm" onclick="heSeleccionar(false)">Ninguno</button>
+            </div>
+          </div>
+          <div id="heTrabajadores" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:4px 12px;max-height:220px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:8px 10px;"></div>
+          <p class="hint" style="margin:8px 0 0;">El sobretiempo es voluntario y debe registrarse el mismo día. Pago: primeras 2 horas del día con 25% adicional y las siguientes con 35% (valor hora = jornal ÷ 8).</p>
+          <div style="margin-top:10px;"><button class="btn btn-accent btn-sm" onclick="guardarHorasExtra()">Guardar registro</button></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Semana: registro vs. planilla</h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <select class="search-box" id="heSemana" style="width:260px;" onchange="renderHorasExtra()"></select>
+            <button class="btn btn-accent btn-sm" onclick="heDescargarFormato()">Formato para firmas (PDF)</button>
+          </div>
+        </div>
+        <div id="heTabla"></div>
+      </div>
+    </div>
+
     <!-- INDUCCIÓN DE SEGURIDAD -->
     <div class="view" id="view-induccion">
       <div class="view-header">
@@ -1841,6 +1966,16 @@ tr:hover td{background:#FAF9F6;}
           </select>
         </div>
       </div>
+      <div class="field-row" id="afpComisionRow">
+        <div class="field">
+          <label>Tipo de comisión AFP</label>
+          <select id="empAfpComision">
+            <option value="mixta">Mixta (sobre saldo) — afiliados desde 2013, la más común</option>
+            <option value="flujo">Sobre la remuneración (flujo)</option>
+          </select>
+        </div>
+        <div class="field"><label>CUSPP</label><input id="empCuspp" placeholder="Código único del afiliado (figura en la constancia de la AFP)"></div>
+      </div>
 
       <h3 style="font-size:14px;margin:18px 0 10px;color:var(--ink-soft);">SCTR</h3>
       <div class="field-row">
@@ -2091,6 +2226,34 @@ tr:hover td{background:#FAF9F6;}
 </div>
 
 <!-- MODAL DOCUMENTOS DEL TRABAJADOR (contrato, adendas, legajo) -->
+<div class="modal-overlay" id="liqModalOverlay">
+  <div class="modal" style="max-width:760px;">
+    <h3 id="liqTitulo">Liquidación de beneficios sociales</h3>
+    <input type="hidden" id="liqCeseId">
+    <div id="liqAviso"></div>
+    <div class="field-row">
+      <div class="field"><label>Remuneración computable mensual (S/)</label><input type="number" step="0.01" id="liqRemMensual" oninput="liqRecalcular()"></div>
+      <div class="field"><label>Días laborados aún no pagados</label><input type="number" step="0.01" id="liqDiasPend" value="0" oninput="liqRecalcular()"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Otros ingresos: concepto</label><input id="liqOtrosConcepto" oninput="liqRecalcular()"></div>
+      <div class="field"><label>Otros ingresos: monto (S/)</label><input type="number" step="0.01" id="liqOtrosMonto" value="0" oninput="liqRecalcular()"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Adelantos / préstamos por descontar (S/)</label><input type="number" step="0.01" id="liqPrestamos" value="0" oninput="liqRecalcular()"></div>
+      <div class="field"><label>Otros descuentos: concepto</label><input id="liqDescConcepto" oninput="liqRecalcular()"></div>
+      <div class="field"><label>Monto (S/)</label><input type="number" step="0.01" id="liqDescMonto" value="0" oninput="liqRecalcular()"></div>
+    </div>
+    <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:4px 0 10px;"><input type="checkbox" id="liqIndemnizacion" style="width:auto;" onchange="liqRecalcular()"> Incluir indemnización por despido arbitrario (microempresa: 10 remuneraciones diarias por año, tope 90)</label>
+    <div id="liqResumen"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap;">
+      <button class="btn btn-ghost" onclick="document.getElementById('liqModalOverlay').classList.remove('active')">Cerrar</button>
+      <button class="btn btn-primary" onclick="liqGuardarEnCese()">Guardar monto en el cese</button>
+      <button class="btn btn-accent" onclick="liqDescargarPdf()">Descargar liquidación (PDF)</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="docsTrabModalOverlay">
   <div class="modal" style="max-width:760px;">
     <h3 id="docsTrabTitulo">Documentos del trabajador</h3>
@@ -2391,6 +2554,11 @@ let induccionesSeguridad = [];
 let cesesRegistro = [];
 let eppKits = [];
 let planillasSemanales = [];
+let boletasSemanales = [];
+let aportesConfig = {};
+let aportesPagos = [];
+let vacacionesRegistro = [];
+let horasExtraRegistro = [];
 
 // ---------- Init ----------
 async function init(){
@@ -2440,6 +2608,11 @@ async function init(){
   cesesRegistro = await loadData('cesesRegistro', []);
   eppKits = await loadData('eppKits', []);
   planillasSemanales = await loadData('planillasSemanales', []);
+  boletasSemanales = await loadData('boletasSemanales', []);
+  aportesConfig = await loadData('aportesConfig', {});
+  aportesPagos = await loadData('aportesPagos', []);
+  vacacionesRegistro = await loadData('vacacionesRegistro', []);
+  horasExtraRegistro = await loadData('horasExtraRegistro', []);
 
   document.querySelectorAll('.nav-item').forEach(el=>{
     el.addEventListener('click', ()=>switchView(el.dataset.view));
@@ -2484,6 +2657,8 @@ function switchView(name){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
   document.querySelector('.nav-item[data-view="'+name+'"]').classList.add('active');
+  if(name==='reportes') renderReportes();
+  if(name==='boletaspago') renderBoletasSemanales();
 }
 
 function showToast(msg){
@@ -2562,6 +2737,11 @@ function renderAll(){
   renderInduccion();
   renderCesados();
   renderPlanillaSemanal();
+  renderBoletasSemanales();
+  renderReportes();
+  renderAportes();
+  renderVacaciones();
+  renderHorasExtra();
   renderPlanillaBancaria();
   renderLegajoSunafil();
   renderDocumentosSunafil();
@@ -2847,6 +3027,7 @@ function renderPersonalTable(filter){
 
 function toggleAfpField(){
   document.getElementById('afpNombreField').style.display = document.getElementById('empPension').value==='AFP' ? 'block':'none';
+  document.getElementById('afpComisionRow').style.display = document.getElementById('empPension').value==='AFP' ? '':'none';
 }
 function toggleLicenciaFields(){
   const tiene = document.getElementById('empTieneLicencia').value==='si';
@@ -2953,6 +3134,8 @@ function openEmployeeModal(id){
     document.getElementById('empFechaSalud').value = e.fechaSalud||'';
     document.getElementById('empPension').value = e.pension;
     document.getElementById('empAfpNombre').value = e.afpNombre||'Integra';
+    document.getElementById('empAfpComision').value = e.afpComision||'mixta';
+    document.getElementById('empCuspp').value = e.cuspp||'';
     document.getElementById('empVigenciaSctrInicio').value = e.vigenciaSctrInicio||'';
     document.getElementById('empVigenciaSctr').value = e.vigenciaSctr||'';
     document.getElementById('empVigenciaVidaLeyInicio').value = e.vigenciaVidaLeyInicio||'';
@@ -2991,6 +3174,8 @@ function openEmployeeModal(id){
     document.getElementById('empSalud').value='EsSalud';
     document.getElementById('empPension').value='AFP';
     document.getElementById('empAfpNombre').value='Integra';
+    document.getElementById('empAfpComision').value='mixta';
+    document.getElementById('empCuspp').value='';
     document.getElementById('empEstadoCivil').value='Soltero(a)';
     document.getElementById('empSexo').value='';
     document.getElementById('empPaisNacimiento').value='Perú';
@@ -3057,6 +3242,8 @@ async function saveEmployee(){
     fechaSalud: document.getElementById('empFechaSalud').value,
     pension: document.getElementById('empPension').value,
     afpNombre: document.getElementById('empAfpNombre').value,
+    afpComision: document.getElementById('empAfpComision').value,
+    cuspp: document.getElementById('empCuspp').value.trim(),
     vigenciaSctrInicio: document.getElementById('empVigenciaSctrInicio').value,
     vigenciaSctr: document.getElementById('empVigenciaSctr').value,
     vigenciaVidaLeyInicio: document.getElementById('empVigenciaVidaLeyInicio').value,
@@ -3075,7 +3262,8 @@ async function saveEmployee(){
     refTelefono: document.getElementById('empRefTelefono').value.trim(),
     notas: document.getElementById('empNotas').value.trim()
   };
-  if(id){ employees = employees.map(e=>e.id===id?data:e); }
+  // Al editar se conservan los campos que no están en el formulario (historial de contratos, CUSPP, cese, etc.).
+  if(id){ employees = employees.map(e=>e.id===id ? {...e, ...data} : e); }
   else { employees.push(data); }
   await saveData('employees', employees);
   closeEmployeeModal();
@@ -3629,8 +3817,8 @@ async function subirPdfEmo(empId, file){
       id:'p'+Date.now(), empId, categoria:'emo',
       periodo:'',
       fileName: file.name, fileType: file.type, fileData: reader.result,
-      fecha: new Date().toISOString().slice(0,10),
-      historial: [{accion:'Carga', fecha: new Date().toISOString().slice(0,10), detalle:'PDF del EMO cargado'}]
+      fecha: hoyISO(),
+      historial: [{accion:'Carga', fecha: hoyISO(), detalle:'PDF del EMO cargado'}]
     });
     await saveData('workerDocs', workerDocs);
     renderEmo();
@@ -3788,8 +3976,8 @@ async function subirDocGenericoContrato(empId, categoria, file){
     workerDocs.push({
       id:'p'+Date.now(), empId, categoria, periodo:'',
       fileName: file.name, fileType: file.type, fileData: reader.result,
-      fecha: new Date().toISOString().slice(0,10),
-      historial: [{accion:'Carga', fecha: new Date().toISOString().slice(0,10), detalle:`${BOLETA_CATEGORIAS[categoria]||categoria} cargada`}]
+      fecha: hoyISO(),
+      historial: [{accion:'Carga', fecha: hoyISO(), detalle:`${BOLETA_CATEGORIAS[categoria]||categoria} cargada`}]
     });
     await saveData('workerDocs', workerDocs);
     renderContratos();
@@ -3809,8 +3997,8 @@ async function subirDocContrato(empId, file){
       id:'p'+Date.now(), empId, categoria:'contrato',
       periodo:'',
       fileName: file.name, fileType: file.type, fileData: reader.result,
-      fecha: new Date().toISOString().slice(0,10),
-      historial: [{accion:'Carga', fecha: new Date().toISOString().slice(0,10), detalle:'Contrato cargado'}]
+      fecha: hoyISO(),
+      historial: [{accion:'Carga', fecha: hoyISO(), detalle:'Contrato cargado'}]
     });
     await saveData('workerDocs', workerDocs);
     renderContratos();
@@ -4242,7 +4430,7 @@ async function iniciarCese(){
   if(!proceso){
     proceso = {
       id:'cese'+Date.now(), empId,
-      fechaInicio: new Date().toISOString().slice(0,10),
+      fechaInicio: hoyISO(),
       pasos: PASOS_CESE.map(p=>({clave:p.clave, hecho:false, fecha:null})),
       estado:'en_curso'
     };
@@ -4257,7 +4445,7 @@ async function toggleCesePaso(procesoId, clave){
   const paso = proceso.pasos.find(p=>p.clave===clave);
   if(!paso) return;
   paso.hecho = !paso.hecho;
-  paso.fecha = paso.hecho ? new Date().toISOString().slice(0,10) : null;
+  paso.fecha = paso.hecho ? hoyISO() : null;
   await saveData('procesosCese', procesosCese);
   renderCeseTab(procesoId);
 }
@@ -4267,7 +4455,7 @@ async function finalizarCese(procesoId){
   if(!proceso.pasos.every(p=>p.hecho)){ showToast('Aún hay pasos pendientes por marcar'); return; }
   if(!confirm('¿Finalizar el proceso de cese? Esto marcará al colaborador como Inactivo.')) return;
   proceso.estado = 'completado';
-  proceso.fechaCompletado = new Date().toISOString().slice(0,10);
+  proceso.fechaCompletado = hoyISO();
   await saveData('procesosCese', procesosCese);
   await darDeBaja(proceso.empId);
   showToast('Proceso de cese finalizado');
@@ -4364,7 +4552,7 @@ async function subirDocumentoSunafil(){
     documentosSunafil.push({
       id:'sun'+Date.now(), nombre, vigencia: vigencia||null,
       fileName: file.name, fileType: file.type, fileData: reader.result,
-      fecha: new Date().toISOString().slice(0,10)
+      fecha: hoyISO()
     });
     await saveData('documentosSunafil', documentosSunafil);
     document.getElementById('sunafilDocNombre').value = '';
@@ -4383,7 +4571,7 @@ function actualizarDocumentoSunafil(id, file){
   const reader = new FileReader();
   reader.onload = async ()=>{
     doc.fileName = file.name; doc.fileType = file.type; doc.fileData = reader.result;
-    doc.fecha = new Date().toISOString().slice(0,10);
+    doc.fecha = hoyISO();
     await saveData('documentosSunafil', documentosSunafil);
     renderDocumentosSunafil();
     showToast('Documento actualizado');
@@ -4487,8 +4675,8 @@ function uploadBoletaPago(){
       id:'p'+Date.now(), empId, categoria:'boleta',
       periodo,
       fileName: file.name, fileType: file.type, fileData: reader.result,
-      fecha: new Date().toISOString().slice(0,10),
-      historial: [{accion:'Carga', fecha: new Date().toISOString().slice(0,10), detalle:`Boleta de pago cargada: ${periodo}`}]
+      fecha: hoyISO(),
+      historial: [{accion:'Carga', fecha: hoyISO(), detalle:`Boleta de pago cargada: ${periodo}`}]
     });
     await saveData('workerDocs', workerDocs);
     fileInput.value='';
@@ -4642,13 +4830,13 @@ async function subirConstanciaBoletaInline(empId, periodo, file){
     const existente = buscarConstanciaBoleta(empId, periodo);
     if(existente){
       existente.fileName = file.name; existente.fileType = file.type; existente.fileData = reader.result;
-      existente.fecha = new Date().toISOString().slice(0,10);
+      existente.fecha = hoyISO();
     } else {
       workerDocs.push({
         id:'p'+Date.now(), empId, categoria:'constancia_entrega_boletas', periodo,
         fileName: file.name, fileType: file.type, fileData: reader.result,
-        fecha: new Date().toISOString().slice(0,10),
-        historial: [{accion:'Registro', fecha: new Date().toISOString().slice(0,10), detalle:`Constancia entrega de boletas registrada — ${periodo}`}]
+        fecha: hoyISO(),
+        historial: [{accion:'Registro', fecha: hoyISO(), detalle:`Constancia entrega de boletas registrada — ${periodo}`}]
       });
     }
     await saveData('workerDocs', workerDocs);
@@ -4692,7 +4880,7 @@ function registrarConstancia(){
     const anio = document.getElementById('constanciaEppAnio').value;
     if(!empId || !anio){ showToast('Selecciona colaborador y año'); return; }
     periodo = `${mes} ${anio}`;
-    fecha = new Date().toISOString().slice(0,10);
+    fecha = hoyISO();
     etiquetaFecha = periodo;
   } else {
     fecha = document.getElementById('constanciaFecha').value;
@@ -4735,7 +4923,7 @@ async function eliminarConstancia(docId){
 }
 function renderConstancias(){
   populateConstanciaEmployeeSelect();
-  if(!document.getElementById('constanciaFecha').value) document.getElementById('constanciaFecha').value = new Date().toISOString().slice(0,10);
+  if(!document.getElementById('constanciaFecha').value) document.getElementById('constanciaFecha').value = hoyISO();
   toggleConstanciaEppMensual();
 
   const docs = docsActivos().filter(d=>d.categoria==='constancia_epp');
@@ -4815,7 +5003,7 @@ function toggleMenuTipoLabels(){
 }
 function openMenuModal(){
   document.getElementById('menuModalOverlay').classList.add('active');
-  document.getElementById('menuFecha').value = new Date().toISOString().slice(0,10);
+  document.getElementById('menuFecha').value = hoyISO();
   document.getElementById('menuTipo').value = 'Menú';
   document.getElementById('menuCantidad').value='';
   document.getElementById('menuPrecio').value='';
@@ -4905,7 +5093,7 @@ function renderMenus(){
   populateMenuFilters();
   renderAlimPagos();
 
-  const today = new Date().toISOString().slice(0,10);
+  const today = hoyISO();
   const todayEntries = menuEntries.filter(m=>m.fecha===today);
   const totalHoy = todayEntries.reduce((s,m)=>s+(m.total||0),0);
 
@@ -5121,7 +5309,7 @@ function descargarControlPagosPdf(){
   doc.setFont('helvetica','bold'); doc.setFontSize(14);
   doc.text('CONTROL DE PAGOS — ALIMENTACIÓN GENERAL', marginX, y); y += 20;
   if(emp.razonSocial){ doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.text(emp.razonSocial, marginX, y); y += 16; }
-  doc.setFontSize(9); doc.text(`Generado el ${fmtDate(new Date().toISOString().slice(0,10))}`, marginX, y); y += 20;
+  doc.setFontSize(9); doc.text(`Generado el ${fmtDate(hoyISO())}`, marginX, y); y += 20;
 
   doc.setFont('helvetica','bold'); doc.setFontSize(9);
   doc.text('Fecha', marginX, y); doc.text('Tipo', marginX+70, y); doc.text('Detalle', marginX+130, y); doc.text('Total', marginX+380, y); doc.text('Estado', marginX+440, y);
@@ -5143,7 +5331,7 @@ function descargarControlPagosPdf(){
   doc.setFont('helvetica','bold');
   doc.text(`Total pagado: S/ ${totalPagadoPdf.toFixed(2)}     Total pendiente: S/ ${totalPendientePdf.toFixed(2)}`, marginX, y);
 
-  doc.save(`control_pagos_alimentacion_${new Date().toISOString().slice(0,10)}.pdf`);
+  doc.save(`control_pagos_alimentacion_${hoyISO()}.pdf`);
   showToast('Control de pagos descargado');
 }
 
@@ -5169,7 +5357,7 @@ const BOLETA_CATEGORIAS = {contrato:'Contrato', adenda_contrato:'Adenda de Contr
 async function deleteBoleta(id){
   const b = workerDocs.find(x=>x.id===id);
   if(!b) return;
-  b.papeleraFecha = new Date().toISOString().slice(0,10);
+  b.papeleraFecha = hoyISO();
   await saveData('workerDocs', workerDocs);
 }
 function docsActivos(){
@@ -5326,7 +5514,7 @@ function descargarPlanillaBancariaExcel(){
   });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Planilla y cuentas');
-  XLSX.writeFile(wb, `planilla_cuentas_bancarias_${new Date().toISOString().slice(0,10)}.xlsx`);
+  XLSX.writeFile(wb, `planilla_cuentas_bancarias_${hoyISO()}.xlsx`);
   showToast('Excel descargado');
 }
 
@@ -5740,8 +5928,8 @@ async function generarDocumentoPermisoPdf(id){
     periodo:'', vigencia:null,
     fileName: `permiso_${e.nombre.replace(/\s+/g,'_')}_${p.inicio}.pdf`,
     fileType:'application/pdf', fileData: pdfDataUrl,
-    fecha: new Date().toISOString().slice(0,10),
-    historial: [{accion:'Carga', fecha: new Date().toISOString().slice(0,10), detalle:'Constancia de permiso generada automáticamente'}]
+    fecha: hoyISO(),
+    historial: [{accion:'Carga', fecha: hoyISO(), detalle:'Constancia de permiso generada automáticamente'}]
   });
   await saveData('workerDocs', workerDocs);
   showToast('Documento de permiso generado');
@@ -5818,7 +6006,7 @@ function descargarPrestamosPdfConsolidado(){
   doc.setFont('helvetica','bold'); doc.setFontSize(14);
   doc.text('PRÉSTAMOS, ADELANTOS Y DESCUENTOS — REPORTE CONSOLIDADO', marginX, y); y += 20;
   if(emp.razonSocial){ doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.text(emp.razonSocial, marginX, y); y += 16; }
-  doc.setFontSize(9); doc.text(`Generado el ${fmtDate(new Date().toISOString().slice(0,10))}`, marginX, y); y += 22;
+  doc.setFontSize(9); doc.text(`Generado el ${fmtDate(hoyISO())}`, marginX, y); y += 22;
 
   const sorted = [...prestamos].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
   const cols = [
@@ -5859,7 +6047,7 @@ function descargarPrestamosPdfConsolidado(){
   const totalReembolsosPdf = sorted.filter(p=>['Reembolso EPP','Reembolso Otros'].includes(p.tipo)).reduce((s,p)=>s+saldoPrestamo(p),0);
   doc.text(`Total pendiente por reembolsar (para contabilidad): S/ ${totalReembolsosPdf.toFixed(2)}`, marginX, y);
 
-  doc.save(`prestamos_adelantos_consolidado_${new Date().toISOString().slice(0,10)}.pdf`);
+  doc.save(`prestamos_adelantos_consolidado_${hoyISO()}.pdf`);
   showToast('Reporte consolidado descargado');
 }
 
@@ -5874,7 +6062,7 @@ async function registrarPagoPrestamo(id){
   const monto = parseFloat(montoStr);
   if(isNaN(monto) || monto<=0){ showToast('Monto inválido'); return; }
   p.pagos = p.pagos || [];
-  p.pagos.push({fecha: new Date().toISOString().slice(0,10), monto: Math.min(monto, saldo)});
+  p.pagos.push({fecha: hoyISO(), monto: Math.min(monto, saldo)});
   await saveData('prestamos', prestamos);
   renderPrestamos();
   showToast('Pago registrado');
@@ -5974,7 +6162,7 @@ async function pagarCuotaPrestamo(numeroCuota){
   const monto = parseFloat(montoStr);
   if(isNaN(monto) || monto<=0){ showToast('Monto inválido'); return; }
   p.pagos = p.pagos || [];
-  p.pagos.push({fecha: new Date().toISOString().slice(0,10), monto: Math.min(monto, saldo)});
+  p.pagos.push({fecha: hoyISO(), monto: Math.min(monto, saldo)});
   await saveData('prestamos', prestamos);
   renderPrestamoPagosModal();
   renderPrestamos();
@@ -6051,8 +6239,8 @@ async function generarConstanciaPrestamoPdf(id){
     periodo:'', vigencia:null,
     fileName: `constancia_${p.tipo.toLowerCase().replace(/\s+/g,'_')}_${e.nombre.replace(/\s+/g,'_')}.pdf`,
     fileType:'application/pdf', fileData: pdfDataUrl,
-    fecha: new Date().toISOString().slice(0,10),
-    historial: [{accion:'Carga', fecha: new Date().toISOString().slice(0,10), detalle:`Constancia de ${p.tipo.toLowerCase()} generada automáticamente`}]
+    fecha: hoyISO(),
+    historial: [{accion:'Carga', fecha: hoyISO(), detalle:`Constancia de ${p.tipo.toLowerCase()} generada automáticamente`}]
   });
   await saveData('workerDocs', workerDocs);
   showToast('Constancia con cronograma generada');
@@ -6105,7 +6293,7 @@ function renderPrestamos(){
 let currentFormatoManualArea = 'todas';
 function initFormatoManual(){
   if(!document.getElementById('formatoManualFecha').value){
-    document.getElementById('formatoManualFecha').value = new Date().toISOString().slice(0,10);
+    document.getElementById('formatoManualFecha').value = hoyISO();
   }
   poblarSelectAgregarFormatoManual();
   cargarFormatoManualFecha();
@@ -6395,7 +6583,7 @@ function saveDescanso(){
     descansos.push({
       id:'d'+Date.now(), empId, inicio, fin, dias, motivo, firmaId,
       fileData: fileData||null, fileName: fileName||null,
-      fechaRegistro: new Date().toISOString().slice(0,10)
+      fechaRegistro: hoyISO()
     });
     saveData('descansos', descansos).then(()=>{
       document.getElementById('descansoInicio').value='';
@@ -6469,7 +6657,7 @@ function generarConstanciaDescansoPdf(id){
   doc.text('EL EMPLEADOR', marginX, y);
   y += 40;
   doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
-  doc.text(`Emitido el ${fmtDate(new Date().toISOString().slice(0,10))}`, marginX, y);
+  doc.text(`Emitido el ${fmtDate(hoyISO())}`, marginX, y);
 
   doc.save(`constancia_descanso_medico_${e.nombre.replace(/\s+/g,'_')}.pdf`);
 }
@@ -6671,7 +6859,7 @@ function populateInventorySelect(){
 async function saveMovement(tipo){
   const itemId = document.getElementById('movItemSelect').value;
   const cantidad = parseFloat(document.getElementById('movCantidad').value);
-  const fecha = document.getElementById('movFecha').value || new Date().toISOString().slice(0,10);
+  const fecha = document.getElementById('movFecha').value || hoyISO();
   if(!itemId || !cantidad || cantidad<=0){ showToast('Selecciona un artículo e indica una cantidad válida'); return; }
   const item = inventoryItems.find(it=>it.id===itemId);
   if(!item) return;
@@ -6700,7 +6888,7 @@ async function quickAdjust(itemId, tipo){
   item.stock = tipo==='entrada' ? item.stock+1 : item.stock-1;
   inventoryMovements.push({
     id:'mv'+Date.now(), itemId, tipo, cantidad:1,
-    fecha: new Date().toISOString().slice(0,10),
+    fecha: hoyISO(),
     entregadoA:'', motivo:'Ajuste rápido', responsable:'',
     saldoResultante: item.stock
   });
@@ -6727,7 +6915,7 @@ async function corregirStockItem(itemId){
   item.stock = nuevo;
   inventoryMovements.push({
     id:'mv'+Date.now(), itemId, tipo:'ajuste', cantidad: Math.abs(diferencia),
-    fecha: new Date().toISOString().slice(0,10),
+    fecha: hoyISO(),
     entregadoA:'', motivo:`Corrección de stock: ${nota.trim()}`, responsable:'',
     saldoResultante: item.stock
   });
@@ -6774,13 +6962,13 @@ function renderRotacionTalla(){
 }
 function renderInventory(){
   populateInventorySelect();
-  if(!document.getElementById('movFecha').value) document.getElementById('movFecha').value = new Date().toISOString().slice(0,10);
+  if(!document.getElementById('movFecha').value) document.getElementById('movFecha').value = hoyISO();
   renderRotacionTalla();
 
   const enNegativo = inventoryItems.filter(it=>it.stock<0);
   const stockBajo = inventoryItems.filter(it=>it.stock>=0 && it.stock<=it.stockMinimo);
   const stockBajoTotal = inventoryItems.filter(it=>it.stock<=it.stockMinimo);
-  const movimientosMes = inventoryMovements.filter(m=>m.fecha && m.fecha.slice(0,7)===new Date().toISOString().slice(0,7));
+  const movimientosMes = inventoryMovements.filter(m=>m.fecha && m.fecha.slice(0,7)===hoyISO().slice(0,7));
   const tallasAgotadasChips = [];
   inventoryItems.filter(it=>it.manejaTallas && it.stockPorTalla).forEach(it=>{
     Object.entries(it.stockPorTalla).forEach(([talla, cant])=>{
@@ -6958,7 +7146,7 @@ function exportInventoryMovPdf(){
   if(emp.razonSocial) doc.text(emp.razonSocial, marginX+60, y);
   y += 22;
   doc.setFontSize(9);
-  doc.text(`Generado el ${fmtDate(new Date().toISOString().slice(0,10))} — ${movFiltrados.length} movimiento(s)`, marginX, y);
+  doc.text(`Generado el ${fmtDate(hoyISO())} — ${movFiltrados.length} movimiento(s)`, marginX, y);
   y += 18;
 
   const cols = [
@@ -7866,7 +8054,7 @@ async function reportarPerdidaEpp(entregaId){
   const cuotas = parseInt(cuotasStr)||1;
 
   prestamos.push({
-    id:'pr'+Date.now(), empId: e.id, fecha: new Date().toISOString().slice(0,10), monto,
+    id:'pr'+Date.now(), empId: e.id, fecha: hoyISO(), monto,
     tipo: 'Descuento EPP', cuotas,
     motivo: `Pérdida/daño por descuido de "${itemLabel}" (entrega del ${fmtDate(a0.fecha)})`,
     pagos: []
@@ -8034,8 +8222,8 @@ async function generarConstanciaEppPdf(entregaId){
     fileName: `constancia_epp_${e.nombre.replace(/\s+/g,'_')}_${a0.fecha}.pdf`,
     fileType:'application/pdf',
     fileData: pdfDataUrl,
-    fecha: new Date().toISOString().slice(0,10),
-    historial: [{accion:'Carga', fecha: new Date().toISOString().slice(0,10), detalle:'Constancia de entrega de EPP generada automáticamente'}]
+    fecha: hoyISO(),
+    historial: [{accion:'Carga', fecha: hoyISO(), detalle:'Constancia de entrega de EPP generada automáticamente'}]
   });
   await saveData('workerDocs', workerDocs);
   renderBoletas();
@@ -8059,7 +8247,7 @@ function poblarEppVencFiltro(){
 function renderEppStock(){
   poblarEppVencFiltro();
   const items = inventoryItems.filter(it=>it.categoria==='EPP (Protección Personal)' || it.categoria==='Limpieza y mantenimiento');
-  const hoy = new Date().toISOString().slice(0,7);
+  const hoy = hoyISO().slice(0,7);
   const stockBajo = items.filter(it=>it.stock<=it.stockMinimo);
   // Solo la última entrega de cada EPP por trabajador activo: las anteriores ya se repusieron.
   const actuales = eppAsignacionesActuales();
@@ -8167,7 +8355,7 @@ function descargarHistorialEppPdf(){
   const titulo = currentEppVencFiltro==='todos' ? 'HISTORIAL DE EPP — TODOS LOS COLABORADORES' : `HISTORIAL DE EPP — ${(employees.find(x=>x.id===currentEppVencFiltro)||{}).nombre||''}`;
   doc.text(titulo, marginX, y, {maxWidth:420}); y += 22;
   if(emp.razonSocial){ doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.text(emp.razonSocial, marginX, y); y+=18; }
-  doc.setFontSize(9); doc.text(`Generado el ${fmtDate(new Date().toISOString().slice(0,10))}`, marginX, y); y += 20;
+  doc.setFontSize(9); doc.text(`Generado el ${fmtDate(hoyISO())}`, marginX, y); y += 20;
 
   const sorted = [...asignacionesFiltradas].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
   doc.setFont('helvetica','bold');
@@ -8335,8 +8523,8 @@ function subirFormatoEppFirmado(){
       periodo: semana, vigencia: null,
       fileName: `formato_epp_${e.nombre.replace(/\s+/g,'_')}_semana_${semana}.${file.name.split('.').pop()}`,
       fileType: file.type, fileData: reader.result,
-      fecha: new Date().toISOString().slice(0,10),
-      historial: [{accion:'Carga', fecha: new Date().toISOString().slice(0,10), detalle:`Formato físico semanal firmado (semana ${fmtDate(semana)})`}]
+      fecha: hoyISO(),
+      historial: [{accion:'Carga', fecha: hoyISO(), detalle:`Formato físico semanal firmado (semana ${fmtDate(semana)})`}]
     });
     await saveData('workerDocs', workerDocs);
     fileInput.value=''; document.getElementById('formatoSemanaSubida').value='';
@@ -8393,7 +8581,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // ---------- Respaldo (guardar / restaurar todo el sistema) ----------
 const BACKUP_KEYS = ['employees','menuEntries','workerDocs','faltas','permisos','descansos','prestamos',
   'registrosDiarios','inventoryItems','inventoryMovements','eventos','encuestas','capacitaciones','reconocimientos',
-  'eppAsignaciones','empresaData','wordDocsGuardados','segurosEmpresa','contratoOficialTemplates','firmasDigitales','asistenciaManual','procesosCese','documentosSunafil','induccionesSeguridad','cesesRegistro','eppKits','planillasSemanales'];
+  'eppAsignaciones','empresaData','wordDocsGuardados','segurosEmpresa','contratoOficialTemplates','firmasDigitales','asistenciaManual','procesosCese','documentosSunafil','induccionesSeguridad','cesesRegistro','eppKits','planillasSemanales','boletasSemanales','aportesConfig','aportesPagos','vacacionesRegistro','horasExtraRegistro'];
 
 async function mostrarEspacioAlmacenamiento(){
   document.getElementById('espacioModalOverlay').classList.add('active');
@@ -8435,11 +8623,11 @@ async function guardarRespaldo(){
   const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = `respaldo-serving-rrhh-${new Date().toISOString().slice(0,10)}.json`;
+  a.href = url; a.download = `respaldo-serving-rrhh-${hoyISO()}.json`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  await saveData('ultimoRespaldoFecha', new Date().toISOString().slice(0,10));
-  ultimoRespaldoFecha = new Date().toISOString().slice(0,10);
+  await saveData('ultimoRespaldoFecha', hoyISO());
+  ultimoRespaldoFecha = hoyISO();
   renderDashboard();
   showToast('Respaldo descargado');
 }
@@ -8928,9 +9116,1067 @@ function renderPlanillaPorTrabajador(){
     : '<div class="empty">Sin datos para el periodo elegido.</div>';
 }
 
+// ---------- Aportes y retenciones: AFP, ONP (descuento al trabajador) y EsSalud / SIS (aporte del empleador) ----------
+// Tasas editables desde el panel de Inicio; los valores por defecto deben confirmarse con la tabla vigente de la SBS.
+const APORTES_DEFECTO = {afpAporte:10, afpPrima:1.37, afpFlujo:{Integra:1.55, Prima:1.60, Habitat:1.47, Profuturo:1.69}, onp:13, essalud:9, sisMensual:15, rmv:RMV_VIGENTE};
+const AP_CONCEPTOS = ['AFP','ONP','EsSalud','SIS'];
+function apCfg(){ const c = aportesConfig || {}; return {...APORTES_DEFECTO, ...c, afpFlujo:{...APORTES_DEFECTO.afpFlujo, ...(c.afpFlujo||{})}}; }
+function apR2(n){ return Math.round((Number(n)||0)*100)/100; }
+// Base afecta: jornales, horas extra y bonos. La cena y el cuarto son condiciones de trabajo (no remunerativos).
+function apBase(p){ return apR2((p.pagoSemanal||0) + (p.pago25||0) + (p.bonificacion||0) + (p.bonoArco||0)); }
+// Retención de pensión de una fila de planilla. Sin ficha en Personal se asume AFP Integra con comisión mixta.
+function apRetencion(p, e){
+  const c = apCfg(), base = apBase(p);
+  if(e && e.pension==='ONP'){ const v = apR2(base*c.onp/100); return {base, sistema:'ONP', lineas:[[`ONP ${c.onp}%`, v]], total:v, supuesto:false}; }
+  const afp = (e && e.afpNombre) || 'Integra', comision = (e && e.afpComision) || 'mixta';
+  const lineas = [[`AFP ${afp} - aporte obligatorio ${c.afpAporte}%`, apR2(base*c.afpAporte/100)], [`AFP ${afp} - prima de seguro ${c.afpPrima}%`, apR2(base*c.afpPrima/100)]];
+  if(comision==='flujo'){ const t = c.afpFlujo[afp] || 0; lineas.push([`AFP ${afp} - comisión ${t}%`, apR2(base*t/100)]); }
+  return {base, sistema:'AFP', afp, lineas, total: apR2(lineas.reduce((s,x)=>s+x[1],0)), supuesto: !e};
+}
+function apNetoConRetencion(p){ const e = employees.find(x=>x.id===p.empId) || null; return apR2(p.neto - apRetencion(p, e).total); }
+// Cálculo mensual de un año. Cada semana se asigna al mes en que termina (igual que el resumen de la planilla).
+// EsSalud: 9% de la base del mes, con base mínima de la RMV proporcional a los días laborados. SIS: monto fijo mensual.
+function apCalcularAnio(anio){
+  const c = apCfg(), meses = {};
+  planillasSemanales.filter(s=>s.semanaFin.startsWith(anio)).forEach(s=>{
+    const mes = s.semanaFin.slice(0,7);
+    const M = meses[mes] = meses[mes] || {mes, semanas:0, porPersona:new Map()};
+    M.semanas++;
+    s.personas.forEach(p=>{
+      const e = employees.find(x=>x.id===p.empId) || null, ret = apRetencion(p, e), k = p.empId || 'x:'+plsNorm(p.nombre);
+      const P = M.porPersona.get(k) || {nombre: e ? e.nombre : p.nombre, dni: e ? e.dni : (p.dni||''), sistema: ret.sistema==='AFP' ? 'AFP '+ret.afp : 'ONP',
+        salud: e ? (e.salud||'EsSalud') : 'EsSalud', supuesto: ret.supuesto, base:0, dias:0, afp:0, onp:0};
+      P.base += ret.base; P.dias += p.dias||0;
+      if(ret.sistema==='AFP') P.afp += ret.total; else P.onp += ret.total;
+      M.porPersona.set(k, P);
+    });
+  });
+  return Object.values(meses).sort((a,b)=>a.mes.localeCompare(b.mes)).map(M=>{
+    const t = {AFP:0, ONP:0, EsSalud:0, SIS:0};
+    M.porPersona.forEach(P=>{
+      P.base = apR2(P.base); P.afp = apR2(P.afp); P.onp = apR2(P.onp);
+      if(/SIS/i.test(P.salud)){ P.essalud = 0; P.sis = c.sisMensual; }
+      else { P.sis = 0; P.essalud = apR2(Math.max(P.base, c.rmv*Math.min(1, P.dias/30))*c.essalud/100); }
+      t.AFP += P.afp; t.ONP += P.onp; t.EsSalud += P.essalud; t.SIS += P.sis;
+    });
+    AP_CONCEPTOS.forEach(k=>t[k] = apR2(t[k]));
+    const pagado = {}; AP_CONCEPTOS.forEach(k=>pagado[k] = apR2(aportesPagos.filter(x=>x.periodo===M.mes && x.concepto===k).reduce((s,x)=>s+(x.monto||0),0)));
+    const total = apR2(AP_CONCEPTOS.reduce((s,k)=>s+t[k],0)), totalPagado = apR2(AP_CONCEPTOS.reduce((s,k)=>s+pagado[k],0));
+    return {...M, ...t, total, pagado, totalPagado, pendiente: apR2(total - totalPagado)};
+  });
+}
+function apNombreMes(mes){ return DOCS_MESES[+mes.slice(5,7)-1].replace(/^./, x=>x.toUpperCase())+' '+mes.slice(0,4); }
+function renderAportes(){
+  const cont = document.getElementById('aportesContenido');
+  if(!cont) return;
+  const sel = document.getElementById('aportesAnio');
+  const anios = [...new Set([...planillasSemanales.map(s=>s.semanaFin.slice(0,4)), hoyISO().slice(0,4)])].sort().reverse();
+  const anio = anios.includes(sel.value) ? sel.value : anios[0];
+  sel.innerHTML = anios.map(a=>`<option value="${a}">${a}</option>`).join(''); sel.value = anio;
+  const meses = apCalcularAnio(anio), c = apCfg();
+  if(!meses.length){ cont.innerHTML = `<div class="empty">Sube la planilla semanal para calcular cuánto corresponde pagar de AFP, ONP y EsSalud.</div>`; return; }
+  const T = {AFP:0, ONP:0, EsSalud:0, SIS:0, total:0, pagado:0};
+  meses.forEach(m=>{ AP_CONCEPTOS.forEach(k=>T[k]+=m[k]); T.total += m.total; T.pagado += m.totalPagado; });
+  Object.keys(T).forEach(k=>T[k] = apR2(T[k]));
+  const ult = meses[meses.length-1], pendiente = apR2(T.total - T.pagado);
+  const supuestos = new Set(); meses.forEach(m=>m.porPersona.forEach(P=>{ if(P.supuesto) supuestos.add(P.nombre); }));
+  const COL = {AFP:'var(--primary)', ONP:'#6b8fa3', EsSalud:'var(--accent)', SIS:'#b9b4a8'};
+  const max = Math.max(1, ...meses.map(m=>Math.max(m.total, m.totalPagado)));
+  const opcMes = meses.map(m=>`<option value="${m.mes}" ${m.mes===ult.mes?'selected':''}>${apNombreMes(m.mes)}</option>`).join('');
+  const pagosAnio = aportesPagos.filter(x=>x.periodo.startsWith(anio)).sort((a,b)=>b.periodo.localeCompare(a.periodo) || (b.fecha||'').localeCompare(a.fecha||''));
+  cont.innerHTML = `
+    <div class="stat-grid" style="margin-bottom:14px;">
+      <div class="stat-card"><div class="num" style="font-size:21px;">${soles(ult.total)}</div><div class="label">A pagar por ${apNombreMes(ult.mes)}<br><span style="font-size:11px;">AFP ${soles(ult.AFP)} · ONP ${soles(ult.ONP)} · EsSalud ${soles(ult.EsSalud)}${ult.SIS?' · SIS '+soles(ult.SIS):''}</span></div></div>
+      <div class="stat-card"><div class="num" style="font-size:21px;">${soles(T.total)}</div><div class="label">Total a pagar en ${anio}<br><span style="font-size:11px;">AFP ${soles(T.AFP)} · ONP ${soles(T.ONP)} · EsSalud ${soles(T.EsSalud)}${T.SIS?' · SIS '+soles(T.SIS):''}</span></div></div>
+      <div class="stat-card"><div class="num" style="font-size:21px;color:var(--success);">${soles(T.pagado)}</div><div class="label">Pagado en ${anio} (registrado)</div></div>
+      <div class="stat-card ${pendiente>1?'warn':''}"><div class="num" style="font-size:21px;${pendiente>1?'color:var(--danger);':''}">${soles(pendiente)}</div><div class="label">Pendiente de pago</div></div>
+    </div>
+    <div style="display:flex;align-items:flex-end;gap:10px;height:190px;border-bottom:1px solid var(--border);padding-top:16px;">
+      ${meses.map(m=>`<div style="flex:1;display:flex;gap:3px;align-items:flex-end;height:100%;min-width:34px;" title="${apNombreMes(m.mes)}: a pagar ${soles(m.total)} · pagado ${soles(m.totalPagado)}">
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;">
+          <div style="font-size:9.5px;text-align:center;color:var(--ink-soft);">${(m.total/1000).toFixed(1)}k</div>
+          ${['SIS','EsSalud','ONP','AFP'].map(k=>m[k] ? `<div style="height:${m[k]/max*150}px;background:${COL[k]};"></div>` : '').join('')}
+        </div>
+        <div style="flex:0.7;display:flex;flex-direction:column;justify-content:flex-end;height:100%;">
+          ${m.totalPagado ? `<div style="font-size:9.5px;text-align:center;color:var(--success);">${(m.totalPagado/1000).toFixed(1)}k</div>` : ''}
+          <div style="height:${Math.max(m.totalPagado/max*150, 2)}px;background:var(--success);opacity:${m.totalPagado?1:0.25};border-radius:2px 2px 0 0;"></div>
+        </div></div>`).join('')}
+    </div>
+    <div style="display:flex;gap:10px;">${meses.map(m=>`<div style="flex:1;min-width:34px;font-size:10.5px;text-align:center;color:var(--ink-soft);">${DOCS_MESES[+m.mes.slice(5,7)-1].slice(0,3)}</div>`).join('')}</div>
+    <p class="hint" style="margin:6px 0 12px;">${AP_CONCEPTOS.filter(k=>T[k]).map(k=>`<span style="display:inline-block;width:10px;height:10px;background:${COL[k]};border-radius:2px;"></span> ${k}`).join(' &nbsp; ')}
+      &nbsp; <span style="display:inline-block;width:10px;height:10px;background:var(--success);border-radius:2px;"></span> Pagado</p>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Mes</th><th>Sem.</th><th>AFP</th><th>ONP</th><th>EsSalud</th><th>SIS</th><th>Total a pagar</th><th>Pagado</th><th>Pendiente</th><th></th></tr></thead>
+      <tbody>${[...meses].reverse().map(m=>`<tr>
+        <td><b>${apNombreMes(m.mes)}</b></td><td class="mono">${m.semanas}</td>
+        ${AP_CONCEPTOS.map(k=>`<td class="mono">${soles(m[k])}${m.pagado[k]?`<div style="font-size:10.5px;color:var(--success);">pagado ${soles(m.pagado[k])}</div>`:''}</td>`).join('')}
+        <td class="mono"><b>${soles(m.total)}</b></td><td class="mono" style="color:var(--success);">${soles(m.totalPagado)}</td>
+        <td class="mono" style="${m.pendiente>1?'color:var(--danger);font-weight:700;':''}">${soles(m.pendiente)}</td>
+        <td><span class="pill ${m.pendiente<=1?'pill-ok':m.totalPagado?'pill-warn':'pill-danger'}">${m.pendiente<=1?'Pagado':m.totalPagado?'Pago parcial':'Sin pago'}</span></td></tr>`).join('')}</tbody>
+      <tfoot><tr style="font-weight:700;"><td>TOTAL ${anio}</td><td></td>${AP_CONCEPTOS.map(k=>`<td class="mono">${soles(T[k])}</td>`).join('')}
+        <td class="mono">${soles(T.total)}</td><td class="mono">${soles(T.pagado)}</td><td class="mono">${soles(pendiente)}</td><td></td></tr></tfoot>
+    </table></div>
+    <div style="margin-top:14px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;">
+      <div style="font-weight:700;font-size:13px;margin-bottom:8px;">Registrar un pago (AFPnet / PLAME)</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="field" style="margin:0;"><label>Periodo</label><select id="apPagoMes">${opcMes}</select></div>
+        <div class="field" style="margin:0;"><label>Concepto</label><select id="apPagoConcepto">${AP_CONCEPTOS.map(k=>`<option>${k}</option>`).join('')}</select></div>
+        <div class="field" style="margin:0;"><label>Monto S/</label><input type="number" step="0.01" id="apPagoMonto" style="width:120px;"></div>
+        <div class="field" style="margin:0;"><label>Fecha de pago</label><input type="date" id="apPagoFecha" value="${hoyISO()}"></div>
+        <div class="field" style="margin:0;"><label>N° operación / constancia</label><input id="apPagoOperacion" style="width:170px;"></div>
+        <button class="btn btn-accent btn-sm" onclick="apRegistrarPago()">Guardar pago</button>
+      </div>
+      ${pagosAnio.length ? `<details style="margin-top:10px;"><summary style="cursor:pointer;font-size:13px;">${pagosAnio.length} pagos registrados en ${anio}</summary>
+        <div class="table-scroll" style="margin-top:6px;"><table><thead><tr><th>Periodo</th><th>Concepto</th><th>Monto</th><th>Fecha</th><th>Operación</th><th></th></tr></thead>
+        <tbody>${pagosAnio.map(x=>`<tr><td>${apNombreMes(x.periodo)}</td><td>${escHtml(x.concepto)}</td><td class="mono">${soles(x.monto)}</td><td>${fmtDate(x.fecha)}</td><td>${escHtml(x.operacion||'')}</td>
+          <td><button class="btn btn-danger btn-sm" onclick="apEliminarPago('${escHtml(x.id)}')">Eliminar</button></td></tr>`).join('')}</tbody></table></div></details>` : ''}
+    </div>
+    <details style="margin-top:10px;"><summary style="cursor:pointer;font-size:13px;">Tasas usadas en el cálculo (edítalas si la SBS o SUNAT las cambian)</summary>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:8px;">
+        ${[['apAfpAporte','AFP aporte %',c.afpAporte],['apAfpPrima','AFP prima seguro %',c.afpPrima],...Object.entries(c.afpFlujo).map(([a,v])=>['apFlujo_'+a,'Comisión flujo '+a+' %',v]),
+          ['apOnp','ONP %',c.onp],['apEssalud','EsSalud %',c.essalud],['apSis','SIS mensual S/',c.sisMensual],['apRmv','RMV S/',c.rmv]]
+          .map(([id,l,v])=>`<div class="field" style="margin:0;"><label>${l}</label><input type="number" step="0.01" id="${id}" value="${v}" style="width:105px;"></div>`).join('')}
+        <button class="btn btn-ghost btn-sm" onclick="apGuardarTasas()">Guardar tasas</button>
+      </div></details>
+    <p class="hint" style="margin:10px 0 0;"><b>AFP y ONP</b> se descuentan del sueldo del trabajador; la empresa los retiene y los paga.
+      <b>EsSalud</b> (9%) y el <b>SIS</b> los paga la empresa. Base: jornales + horas extra + bonos (la cena y el cuarto no se incluyen).
+      Cada semana se cuenta en el mes en que termina. Pendiente = calculado menos los pagos que registres aquí.
+      ${supuestos.size ? `<br>⚠ ${supuestos.size} personas de la planilla no tienen ficha en Personal: se calculó como AFP Integra con comisión mixta.` : ''}</p>`;
+}
+async function apRegistrarPago(){
+  const periodo = document.getElementById('apPagoMes').value, concepto = document.getElementById('apPagoConcepto').value;
+  const monto = parseFloat(document.getElementById('apPagoMonto').value), fecha = document.getElementById('apPagoFecha').value;
+  if(!periodo || !(monto > 0)){ showToast('Indica el periodo y el monto pagado'); return; }
+  aportesPagos.push({id:'ap'+Date.now(), periodo, concepto, monto: apR2(monto), fecha, operacion: document.getElementById('apPagoOperacion').value.trim(), fechaRegistro: hoyISO()});
+  await saveData('aportesPagos', aportesPagos);
+  renderAportes();
+  showToast(`Pago de ${concepto} registrado: ${soles(monto)}`);
+}
+async function apEliminarPago(id){
+  const x = aportesPagos.find(p=>p.id===id);
+  if(!x || !confirm(`¿Eliminar el pago de ${x.concepto} de ${apNombreMes(x.periodo)} por ${soles(x.monto)}?`)) return;
+  aportesPagos = aportesPagos.filter(p=>p.id!==id);
+  await saveData('aportesPagos', aportesPagos);
+  renderAportes();
+}
+async function apGuardarTasas(){
+  const v = id=>parseFloat(document.getElementById(id).value);
+  const nuevo = {afpAporte:v('apAfpAporte'), afpPrima:v('apAfpPrima'), onp:v('apOnp'), essalud:v('apEssalud'), sisMensual:v('apSis'), rmv:v('apRmv'), afpFlujo:{}};
+  Object.keys(APORTES_DEFECTO.afpFlujo).forEach(a=>nuevo.afpFlujo[a] = v('apFlujo_'+a));
+  const malos = Object.entries(nuevo).filter(([k,x])=>k!=='afpFlujo' && !(x>=0)).length + Object.values(nuevo.afpFlujo).filter(x=>!(x>=0)).length;
+  if(malos){ showToast('Revisa las tasas: hay valores vacíos o no válidos'); return; }
+  aportesConfig = nuevo;
+  await saveData('aportesConfig', aportesConfig);
+  renderAportes(); renderBoletasSemanales();
+  showToast('Tasas guardadas');
+}
+function exportarAportesExcel(){
+  const anio = document.getElementById('aportesAnio').value || hoyISO().slice(0,4);
+  const meses = apCalcularAnio(anio);
+  if(!meses.length){ showToast('No hay planillas en ese año'); return; }
+  const resumen = meses.map(m=>({'Mes': apNombreMes(m.mes), 'Semanas': m.semanas, 'AFP': m.AFP, 'ONP': m.ONP, 'EsSalud': m.EsSalud, 'SIS': m.SIS, 'Total a pagar': m.total,
+    'Pagado AFP': m.pagado.AFP, 'Pagado ONP': m.pagado.ONP, 'Pagado EsSalud': m.pagado.EsSalud, 'Pagado SIS': m.pagado.SIS, 'Total pagado': m.totalPagado, 'Pendiente': m.pendiente}));
+  const detalle = [];
+  meses.forEach(m=>[...m.porPersona.values()].sort((a,b)=>a.nombre.localeCompare(b.nombre)).forEach(P=>detalle.push({'Mes': apNombreMes(m.mes), 'Trabajador': P.nombre, 'DNI': P.dni,
+    'Sistema pensión': P.sistema+(P.supuesto?' (supuesto, sin ficha)':''), 'Salud': P.salud, 'Días': apR2(P.dias), 'Base afecta': P.base, 'Retención AFP': P.afp, 'Retención ONP': P.onp, 'EsSalud': P.essalud, 'SIS': P.sis})));
+  const pagos = aportesPagos.filter(x=>x.periodo.startsWith(anio)).map(x=>({'Periodo': apNombreMes(x.periodo), 'Concepto': x.concepto, 'Monto': x.monto, 'Fecha de pago': x.fecha, 'N° operación': x.operacion||''}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumen), 'Resumen mensual');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detalle), 'Detalle por trabajador');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(pagos.length ? pagos : [{'Periodo':'Sin pagos registrados'}]), 'Pagos registrados');
+  XLSX.writeFile(wb, `aportes-afp-onp-essalud-${anio}.xlsx`);
+}
+
+// ---------- Boletas de pago semanales (generadas desde la planilla semanal) ----------
+// Por cada semana se guarda la fecha de pago y la entrega de cada boleta: {semanaId, fechaPago, entregas:{clave:{fecha, firmada}}}.
+let bsSemanaSel = '';
+function bsClave(p){ return p.empId || ('x:'+plsNorm(p.nombre)); }
+function bsControl(semanaId){ return boletasSemanales.find(b=>b.semanaId===semanaId); }
+function bsFechaPago(s){ const c = bsControl(s.id); return (c && c.fechaPago) || s.semanaFin; }
+// Feriados nacionales (fijos, más Jueves y Viernes Santo) para contar días hábiles.
+function feriadosPeru(anio){
+  const a=anio%19, b=Math.floor(anio/100), c=anio%100, d=Math.floor(b/4), e=b%4, f=Math.floor((b+8)/25), g=Math.floor((b-f+1)/3);
+  const h=(19*a+b-d-g+15)%30, i=Math.floor(c/4), k=c%4, l=(32+2*e+2*i-h-k)%7, m=Math.floor((a+11*h+22*l)/451);
+  const pascua = plsIso(((h+l-7*m+114)%31)+1, Math.floor((h+l-7*m+114)/31), anio);
+  const fijos = ['01-01','05-01','06-07','06-29','07-23','07-28','07-29','08-06','08-30','10-08','11-01','12-08','12-09','12-25'].map(x=>anio+'-'+x);
+  return new Set([...fijos, plsSumarDias(pascua,-3), plsSumarDias(pascua,-2)]);
+}
+// La boleta se entrega a más tardar el tercer día hábil siguiente a la fecha de pago (D.S. 001-98-TR, art. 19).
+function bsFechaLimite(fechaPago){
+  let f = fechaPago, n = 0;
+  while(n < 3){
+    f = plsSumarDias(f, 1);
+    const dow = new Date(f+'T12:00:00').getDay();
+    if(dow!==0 && dow!==6 && !feriadosPeru(+f.slice(0,4)).has(f)) n++;
+  }
+  return f;
+}
+// El control empieza en la primera semana con alguna entrega registrada (o en la última semana subida, si aún no hay ninguna):
+// las semanas anteriores no se marcan como vencidas porque no se llevaba este registro.
+function bsInicioControl(){
+  const conRegistro = planillasSemanales.filter(s=>{ const c = bsControl(s.id); return c && c.entregas && Object.keys(c.entregas).length; }).map(s=>s.semanaInicio).sort();
+  if(conRegistro.length) return conRegistro[0];
+  return planillasSemanales.map(s=>s.semanaInicio).sort().pop() || '';
+}
+function bsEstado(s, p){
+  const c = bsControl(s.id);
+  const ent = c && c.entregas ? c.entregas[bsClave(p)] : null;
+  const limite = bsFechaLimite(bsFechaPago(s));
+  if(ent && ent.fecha){
+    const aTiempo = ent.fecha <= limite;
+    return {nivel: aTiempo ? 'ok' : 'warn', texto: (aTiempo ? 'Entregada' : 'Entregada fuera de plazo')+(ent.firmada ? ' y firmada' : ' (sin firma)'), ent, limite};
+  }
+  if(s.semanaInicio < bsInicioControl()) return {nivel:'muted', texto:'Sin registro (anterior al control)', ent:null, limite};
+  if(hoyISO() > limite) return {nivel:'danger', texto:'Pendiente: el plazo venció el '+fmtDate(limite), ent:null, limite};
+  return {nivel:'warn', texto:'Pendiente: entregar hasta el '+fmtDate(limite), ent:null, limite};
+}
+async function bsGuardarControl(semanaId, cambio){
+  let c = bsControl(semanaId);
+  if(!c){ c = {semanaId, fechaPago:'', entregas:{}}; boletasSemanales.push(c); }
+  cambio(c);
+  await saveData('boletasSemanales', boletasSemanales);
+  renderBoletasSemanales();
+}
+function bsSemanaActual(){ return planillasSemanales.find(x=>x.id===bsSemanaSel); }
+function bsCambiarFechaPago(v){ if(bsSemanaSel && v) bsGuardarControl(bsSemanaSel, c=>{ c.fechaPago = v; }); }
+function bsMarcarEntrega(i, fecha){
+  const s = bsSemanaActual(); if(!s) return;
+  const k = bsClave(s.personas[i]);
+  bsGuardarControl(s.id, c=>{ if(fecha) c.entregas[k] = {...(c.entregas[k]||{}), fecha}; else delete c.entregas[k]; });
+}
+function bsMarcarFirmada(i, firmada){
+  const s = bsSemanaActual(); if(!s) return;
+  const k = bsClave(s.personas[i]);
+  bsGuardarControl(s.id, c=>{ c.entregas[k] = {...(c.entregas[k]||{fecha: hoyISO()}), firmada}; });
+}
+function bsMarcarTodas(){
+  const s = bsSemanaActual(); if(!s) return;
+  const f = document.getElementById('bsFechaMasiva').value || hoyISO();
+  const pendientes = s.personas.filter(p=>!bsEstado(s,p).ent);
+  if(!pendientes.length){ showToast('Todas las boletas de esta semana ya están registradas'); return; }
+  if(!confirm(`¿Marcar ${pendientes.length} boletas pendientes como entregadas y firmadas el ${fmtDate(f)}?`)) return;
+  bsGuardarControl(s.id, c=>pendientes.forEach(p=>{ c.entregas[bsClave(p)] = {fecha: f, firmada: true}; }));
+}
+function renderBoletasSemanales(){
+  const cont = document.getElementById('bsPanel');
+  if(!cont) return;
+  const semanas = [...planillasSemanales].sort((a,b)=>b.semanaInicio.localeCompare(a.semanaInicio));
+  if(!semanas.length){ cont.innerHTML = `<div class="empty">Primero sube la planilla de la semana en "Planilla semanal (pagos)". Las boletas se generan desde ahí, con los mismos montos.</div>`; return; }
+  if(!semanas.some(s=>s.id===bsSemanaSel)) bsSemanaSel = semanas[0].id;
+  const s = bsSemanaActual();
+  const fechaPago = bsFechaPago(s), limite = bsFechaLimite(fechaPago);
+  const nombreDe = x=>x.e ? x.e.nombre : x.p.nombre;
+  const lista = s.personas.map((p,i)=>{ const e = employees.find(x=>x.id===p.empId); return {p, i, e, est: bsEstado(s,p), ret: apRetencion(p, e||null)}; }).sort((a,b)=>nombreDe(a).localeCompare(nombreDe(b)));
+  const totRet = apR2(lista.reduce((t,x)=>t+x.ret.total,0)), totNeto = apR2(lista.reduce((t,x)=>t+x.p.neto,0));
+  const entregadas = lista.filter(x=>x.est.ent).length;
+  const firmadas = lista.filter(x=>x.est.ent && x.est.ent.firmada).length;
+  const vencidas = lista.filter(x=>x.est.nivel==='danger').length;
+  // Aviso de las últimas semanas con boletas sin entregar y plazo vencido.
+  const atrasadas = semanas.slice(0,6).map(x=>({s:x, n:x.personas.filter(p=>bsEstado(x,p).nivel==='danger').length})).filter(x=>x.n);
+  const pill = n=>n==='ok' ? 'pill-ok' : n==='danger' ? 'pill-danger' : n==='muted' ? 'pill-muted' : 'pill-warn';
+  const pendientesDe = x=>x.personas.filter(p=>!bsEstado(x,p).ent).length;
+  cont.innerHTML = `
+    <div class="field-row" style="grid-template-columns:2fr 1fr 1fr;">
+      <div class="field"><label>Semana</label><select onchange="bsSemanaSel=this.value; renderBoletasSemanales();">
+        ${semanas.map(x=>{ const n = pendientesDe(x); return `<option value="${escHtml(x.id)}" ${x.id===s.id?'selected':''}>${fmtDate(x.semanaInicio)} – ${fmtDate(x.semanaFin)} · ${x.personas.length} boletas${n?' · '+n+' sin entregar':' · completas'}</option>`; }).join('')}
+      </select></div>
+      <div class="field"><label>Fecha de pago</label><input type="date" value="${escHtml(fechaPago)}" onchange="bsCambiarFechaPago(this.value)"></div>
+      <div class="field"><label>Entregar hasta (3 días hábiles)</label><input type="text" value="${fmtDate(limite)}" disabled></div>
+    </div>
+    ${atrasadas.length ? `<div class="aviso-box danger"><div class="aviso-title">Boletas sin entregar con el plazo vencido</div>
+      <div class="aviso-list">${atrasadas.map(x=>`<span class="aviso-chip" style="cursor:pointer;" onclick="bsSemanaSel='${escHtml(x.s.id)}'; renderBoletasSemanales();">Semana ${fmtDate(x.s.semanaInicio)}: ${x.n}</span>`).join('')}</div></div>` : ''}
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:6px 0 12px;">
+      <span class="pill pill-muted">${lista.length} boletas</span>
+      <span class="pill ${entregadas===lista.length?'pill-ok':'pill-warn'}">${entregadas} entregadas</span>
+      <span class="pill ${firmadas===lista.length?'pill-ok':'pill-warn'}">${firmadas} firmadas</span>
+      ${vencidas ? `<span class="pill pill-danger">${vencidas} fuera de plazo</span>` : ''}
+      <span class="pill pill-muted">Planilla ${soles(totNeto)} · AFP/ONP retenido ${soles(totRet)} · a depositar ${soles(apR2(totNeto-totRet))}</span>
+      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-accent btn-sm" onclick="bsDescargarPdf()">Descargar todas las boletas (PDF)</button>
+        <input type="date" id="bsFechaMasiva" value="${hoyISO()}" style="width:150px;">
+        <button class="btn btn-primary btn-sm" onclick="bsMarcarTodas()">Marcar pendientes como entregadas y firmadas</button>
+      </div>
+    </div>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Trabajador</th><th>Días</th><th>Neto planilla</th><th>AFP / ONP</th><th>Neto a pagar</th><th>Estado</th><th>Entregada el</th><th>Firmada</th><th></th></tr></thead>
+      <tbody>${lista.map(x=>`<tr>
+        <td><b>${escHtml(nombreDe(x))}</b>${!x.e?' <span class="pill pill-warn">no está en Personal</span>':''}<div style="font-size:11px;color:var(--ink-soft);">${escHtml(x.e ? (x.e.dni||'') : (x.p.dni||''))} · ${escHtml(x.e ? (x.e.cargo||'') : (x.p.cargo||''))}</div></td>
+        <td class="mono">${x.p.dias}</td><td class="mono">${soles(x.p.neto)}</td>
+        <td class="mono" style="color:var(--danger);">- ${soles(x.ret.total)}<div style="font-size:10.5px;color:var(--ink-soft);">${x.ret.sistema==='AFP'?'AFP '+escHtml(x.ret.afp):'ONP'}</div></td>
+        <td class="mono"><b>${soles(apR2(x.p.neto - x.ret.total))}</b></td>
+        <td><span class="pill ${pill(x.est.nivel)}">${escHtml(x.est.texto)}</span></td>
+        <td><input type="date" value="${escHtml(x.est.ent ? x.est.ent.fecha : '')}" onchange="bsMarcarEntrega(${x.i}, this.value)" style="width:145px;"></td>
+        <td style="text-align:center;"><input type="checkbox" style="width:auto;" ${x.est.ent && x.est.ent.firmada ? 'checked' : ''} onchange="bsMarcarFirmada(${x.i}, this.checked)"></td>
+        <td><button class="btn btn-ghost btn-sm" onclick="bsDescargarPdf([${x.i}])">PDF</button></td>
+      </tr>`).join('')}</tbody></table></div>
+    <p class="hint" style="margin:10px 0 0;">El control de entregas empieza en la semana del ${fmtDate(bsInicioControl())}; las semanas anteriores figuran "sin registro".
+      Si ya entregaste boletas de semanas anteriores, puedes registrar su fecha de entrega igual.<br>
+      Cada PDF trae dos ejemplares por hoja: uno para el trabajador y otro firmado para tu archivo.
+      <b>Retención de pensión:</b> la boleta descuenta AFP (aporte + prima de seguro, y la comisión si es por flujo) u ONP sobre jornales, horas extra y bonos,
+      según la ficha de cada trabajador. El "neto a pagar" es lo que corresponde depositarle; lo retenido se paga a la AFP/ONP (ver panel de Inicio).
+      Revisa en cada ficha la AFP, el tipo de comisión y el CUSPP.</p>`;
+}
+// Texto seguro para jsPDF (sus fuentes estándar solo traen caracteres Latin-1).
+function pdfTxt(v){
+  return String(v==null ? '' : v).replace(/✓|✔/g,'OK').replace(/[✘✗]/g,'X').replace(/[–—]/g,'-').replace(/[“”]/g,'"').replace(/[‘’]/g,"'")
+    .replace(/→/g,'->').replace(/…/g,'...').replace(/[^\x00-\xFF]/g,'');
+}
+// Dibuja una boleta en media hoja A4 (yBase = 0 arriba, 421 abajo).
+function bsPdfBoleta(doc, s, p, yBase, ejemplar){
+  const emp = window._empresaData || {};
+  const e = employees.find(x=>x.id===p.empId) || {};
+  const X = 36, W = 523, fmt = n=>montoFormato(n);
+  let y = yBase + 30;
+  doc.setTextColor(25); doc.setDrawColor(120); doc.setLineWidth(0.6);
+  doc.setFont('helvetica','bold'); doc.setFontSize(11.5);
+  doc.text('BOLETA DE PAGO DE REMUNERACIONES', X, y);
+  doc.setFontSize(7.5); doc.text(ejemplar, X+W, y, {align:'right'});
+  y += 11; doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+  doc.text('D.S. N.º 001-98-TR  ·  Régimen laboral: Microempresa (REMYPE)  ·  Periodicidad de pago: semanal', X, y);
+  // Empleador
+  y += 8; doc.rect(X, y, W, 30);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
+  doc.text(pdfTxt(emp.razonSocial || 'SERVICIOS INDUSTRIALES GONZALES S.R.L.'), X+6, y+11);
+  doc.text('RUC: '+pdfTxt(emp.ruc || '20445794997'), X+W-6, y+11, {align:'right'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+  doc.text(doc.splitTextToSize('Domicilio: '+pdfTxt(emp.domicilioFiscal || ''), W-12)[0], X+6, y+23);
+  // Periodo y trabajador
+  y += 30;
+  const pension = e.pension==='AFP' ? 'AFP '+(e.afpNombre||'') : (e.pension || '—');
+  const datos = [
+    ['Periodo', `Semana del ${docsFechaCorta(s.semanaInicio)} al ${docsFechaCorta(s.semanaFin)}`, 'Fecha de pago', docsFechaCorta(bsFechaPago(s))],
+    ['Trabajador', e.nombre || p.nombre, 'DNI', e.dni || p.dni || ''],
+    ['Cargo', e.cargo || p.cargo || '', 'Fecha de ingreso', docsFechaCorta(e.fechaIngreso)],
+    ['Sistema pensionario', pension, 'CUSPP', e.cuspp || '—'],
+    ['Seguro de salud', e.salud || '—', 'Días laborados', String(p.dias || 0)]
+  ];
+  doc.rect(X, y, W, datos.length*12+4);
+  datos.forEach((d,i)=>{
+    const yy = y + 11 + i*12;
+    doc.setFont('helvetica','bold'); doc.text(pdfTxt(d[0])+':', X+6, yy); doc.text(pdfTxt(d[2])+':', X+330, yy);
+    doc.setFont('helvetica','normal'); doc.text(doc.splitTextToSize(pdfTxt(d[1]), 230)[0], X+90, yy); doc.text(pdfTxt(d[3]), X+405, yy);
+  });
+  y += datos.length*12 + 4;
+  // Conceptos
+  const ingresos = [];
+  ingresos.push([`Jornales (${p.dias||0} días${p.jornal ? ' x S/ '+fmt(p.jornal) : ''})`, p.pagoSemanal]);
+  if(p.pago25) ingresos.push([`Horas extra 25%${p.horasExtra ? ' ('+p.horasExtra+' h)' : ''}`, p.pago25]);
+  if(p.bonificacion) ingresos.push(['Bonificación', p.bonificacion]);
+  if(p.bonoArco) ingresos.push(['Bono por arco sumergido', p.bonoArco]);
+  if(p.cena) ingresos.push(['Cena (condición de trabajo)', p.cena]);
+  if(p.cuarto) ingresos.push(['Cuarto (condición de trabajo)', p.cuarto]);
+  const descuentos = [];
+  if(p.descuento) descuentos.push(['Descuentos (adelantos / otros)', p.descuento]);
+  // Si la planilla trae un neto distinto a la suma de conceptos, la diferencia se muestra para que la boleta cuadre con lo pagado.
+  const suma = l=>Math.round(l.reduce((t,x)=>t+(x[1]||0),0)*100)/100;
+  const ajuste = Math.round((p.neto - (suma(ingresos) - suma(descuentos)))*100)/100;
+  if(ajuste > 0.009) ingresos.push(['Otros ingresos según planilla', ajuste]);
+  if(ajuste < -0.009) descuentos.push(['Otros descuentos según planilla', -ajuste]);
+  // Retención de pensión (AFP u ONP) sobre la base afecta; el neto de la boleta es el neto de la planilla menos esta retención.
+  const ret = apRetencion(p, p.empId ? (employees.find(x=>x.id===p.empId) || null) : null);
+  ret.lineas.forEach(l=>descuentos.push(l));
+  const neto = apR2(p.neto - ret.total);
+  const cfg = apCfg();
+  const aportes = /SIS/i.test(e.salud||'') ? [[`SIS (aporte mensual S/ ${montoFormato(cfg.sisMensual)})`, null]] : [[`EsSalud ${cfg.essalud}%`, apR2(ret.base*cfg.essalud/100)]];
+  const colW = W/3, filas = Math.max(ingresos.length, descuentos.length, aportes.length, 1);
+  const altoT = 14 + filas*11 + 20;
+  doc.rect(X, y, W, altoT); doc.line(X+colW, y, X+colW, y+altoT); doc.line(X+2*colW, y, X+2*colW, y+altoT);
+  doc.setFillColor(232,236,239); doc.rect(X, y, W, 13, 'FD');
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5);
+  ['INGRESOS','DESCUENTOS','APORTES DEL EMPLEADOR'].forEach((t,i)=>doc.text(t, X+i*colW+6, y+9.5));
+  doc.setFont('helvetica','normal');
+  [ingresos, descuentos, aportes].forEach((lista,i)=>lista.forEach((x,j)=>{
+    const yy = y + 24 + j*11;
+    doc.text(doc.splitTextToSize(pdfTxt(x[0]), colW-60)[0], X+i*colW+6, yy);
+    doc.text(x[1]==null ? '—' : fmt(x[1]), X+(i+1)*colW-6, yy, {align:'right'});
+  }));
+  const yTot = y + altoT - 4;
+  doc.line(X, yTot-10, X+W, yTot-10);
+  doc.setFont('helvetica','bold');
+  doc.text('Total ingresos', X+6, yTot); doc.text(fmt(suma(ingresos)), X+colW-6, yTot, {align:'right'});
+  doc.text('Total descuentos', X+colW+6, yTot); doc.text(fmt(suma(descuentos)), X+2*colW-6, yTot, {align:'right'});
+  doc.text('Total aportes', X+2*colW+6, yTot); doc.text(fmt(suma(aportes.filter(x=>x[1]!=null))), X+W-6, yTot, {align:'right'});
+  y += altoT + 6;
+  // Neto
+  doc.setFillColor(35,61,77); doc.rect(X, y, W, 18, 'F');
+  doc.setTextColor(255); doc.setFontSize(9.5);
+  doc.text('NETO A PAGAR', X+6, y+12.5); doc.text('S/ '+fmt(neto), X+W-6, y+12.5, {align:'right'});
+  doc.setTextColor(25); doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+  y += 28; doc.text('Son: '+pdfTxt(montoEnLetras(neto)), X, y);
+  const banco = e.banco || p.banco, cuenta = e.numeroCuenta || p.cuenta;
+  if(cuenta) doc.text(pdfTxt(`Abonado en: ${banco||''} - Cta. ${cuenta}`), X+W, y, {align:'right'});
+  // Firmas
+  const yF = yBase + 385;
+  addFirmaToPdf(doc, X+40, yF-40, 110, 36, 'firma_rrhh_default');
+  doc.line(X+20, yF, X+200, yF); doc.line(X+W-200, yF, X+W-20, yF);
+  doc.setFont('helvetica','bold');
+  doc.text('EL EMPLEADOR', X+110, yF+9, {align:'center'});
+  doc.text('EL TRABAJADOR - Recibí conforme', X+W-110, yF+9, {align:'center'});
+  doc.setFont('helvetica','normal');
+  doc.text('DNI: ____________   Fecha: ___/___/______', X+W-110, yF+18, {align:'center'});
+}
+function bsDescargarPdf(indices){
+  const s = bsSemanaActual(); if(!s) return;
+  if(!window.jspdf){ showToast('No cargó la librería de PDF. Recarga la página.'); return; }
+  const nombreDe = p=>{ const e = employees.find(x=>x.id===p.empId); return e ? e.nombre : p.nombre; };
+  const lista = (indices || s.personas.map((_,i)=>i)).map(i=>s.personas[i]).sort((a,b)=>nombreDe(a).localeCompare(nombreDe(b)));
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  lista.forEach((p,k)=>{
+    if(k) doc.addPage();
+    bsPdfBoleta(doc, s, p, 0, 'EJEMPLAR DEL TRABAJADOR');
+    doc.setLineDashPattern([4,3], 0); doc.setDrawColor(160); doc.line(18, 421, 577, 421); doc.setLineDashPattern([], 0);
+    bsPdfBoleta(doc, s, p, 421, 'EJEMPLAR DEL EMPLEADOR');
+  });
+  const unico = lista.length===1 ? '-'+plsNorm(nombreDe(lista[0])).replace(/[^A-Z]+/g,'_') : '';
+  doc.save(`boletas-${s.semanaInicio}_${s.semanaFin}${unico}.pdf`);
+}
+
+// ---------- Centro de reportes (Excel y PDF) ----------
+// Cada reporte devuelve {titulo, subtitulo, archivo, columnas:[{t, w, tipo:'m'(soles)|'n'(número)}], filas:[[...]], total:[...]|null}.
+function repRangoActual(){
+  const d = document.getElementById('repDesde').value, h = document.getElementById('repHasta').value;
+  return {desde: d || '0000-01-01', hasta: h || '9999-12-31', texto: `Del ${d ? docsFechaCorta(d) : 'inicio'} al ${h ? docsFechaCorta(h) : docsFechaCorta(hoyISO())}`};
+}
+function repRango(tipo){
+  const hoy = hoyISO(), y = +hoy.slice(0,4), m = +hoy.slice(5,7);
+  let d, h;
+  if(tipo==='mes'){ d = hoy.slice(0,8)+'01'; h = plsSumarDias(plsIso(1, m===12?1:m+1, m===12?y+1:y), -1); }
+  else if(tipo==='mesAnterior'){ const pm = m===1?12:m-1, py = m===1?y-1:y; d = plsIso(1, pm, py); h = plsSumarDias(hoy.slice(0,8)+'01', -1); }
+  else { d = y+'-01-01'; h = y+'-12-31'; }
+  document.getElementById('repDesde').value = d; document.getElementById('repHasta').value = h;
+  renderReportes();
+}
+const repHoy = ()=>'Situación al '+docsFechaCorta(hoyISO());
+const repActivos = ()=>employees.filter(e=>e.estado==='activo').sort((a,b)=>a.nombre.localeCompare(b.nombre));
+const repPension = e=>e.pension==='AFP' ? 'AFP '+(e.afpNombre||'') : (e.pension||'');
+const repR2 = n=>Math.round(n*100)/100;
+function repSemanasEnRango(){ const r = repRangoActual(); return planillasSemanales.filter(s=>s.semanaFin>=r.desde && s.semanaFin<=r.hasta).sort((a,b)=>a.semanaInicio.localeCompare(b.semanaInicio)); }
+const REPORTES = [
+  {id:'personal', titulo:'Padrón de personal activo', icono:'👷', rango:false,
+   desc:'Datos de cada trabajador activo: cargo, ingreso, fin de contrato, jornal, pensión, salud y cuenta bancaria.',
+   fn:()=>{ const L = repActivos(); return {subtitulo: repHoy()+' · '+L.length+' trabajadores', archivo:'padron-personal',
+     columnas:[{t:'Trabajador',w:3},{t:'DNI',w:1.1},{t:'Cargo',w:2},{t:'Área',w:1.3},{t:'Ingreso',w:1.1},{t:'Fin contrato',w:1.1},{t:'Jornal S/',w:1,tipo:'m'},{t:'Pensión',w:1.3},{t:'Salud',w:1},{t:'Banco',w:1.2},{t:'N° cuenta',w:1.8},{t:'Celular',w:1.1}],
+     filas: L.map(e=>[e.nombre, e.dni, e.cargo, e.area, docsFechaCorta(e.fechaIngreso), docsFechaCorta(e.fechaFin), e.sueldoDiario||0, repPension(e), e.salud, e.banco, e.numeroCuenta, e.celular1]), total:null}; }},
+  {id:'planilla', titulo:'Planilla pagada por trabajador', icono:'💵', rango:true,
+   desc:'Lo pagado a cada trabajador en el rango: semanas, días, bruto, horas extra, beneficios, descuentos y neto.',
+   fn:()=>{ const sem = repSemanasEnRango(), acc = new Map();
+     sem.forEach(s=>s.personas.forEach(p=>{ const k = p.empId || 'x:'+plsNorm(p.nombre);
+       const a = acc.get(k) || {p, sem:0, dias:0, bruto:0, he:0, ben:0, dsc:0, neto:0};
+       a.sem++; a.dias += p.dias; a.bruto += p.bruto; a.he += p.pago25; a.ben += p.cena+p.cuarto+p.bonificacion+p.bonoArco; a.dsc += p.descuento; a.neto += p.neto; acc.set(k, a); }));
+     const L = [...acc.values()].map(a=>{ const e = employees.find(x=>x.id===a.p.empId); return [e?e.nombre:a.p.nombre, e?e.dni:a.p.dni, a.sem, repR2(a.dias), repR2(a.bruto), repR2(a.he), repR2(a.ben), repR2(a.dsc), repR2(a.neto)]; }).sort((a,b)=>a[0].localeCompare(b[0]));
+     const t = i=>repR2(L.reduce((s,f)=>s+f[i],0));
+     return {subtitulo: repRangoActual().texto+' · '+sem.length+' semanas', archivo:'planilla-por-trabajador',
+       columnas:[{t:'Trabajador',w:3},{t:'DNI',w:1.1},{t:'Semanas',w:0.8,tipo:'n'},{t:'Días',w:0.8,tipo:'n'},{t:'Bruto',w:1.2,tipo:'m'},{t:'H. extra',w:1.1,tipo:'m'},{t:'Cena/cuarto/bonos',w:1.3,tipo:'m'},{t:'Descuentos',w:1.1,tipo:'m'},{t:'Neto pagado',w:1.2,tipo:'m'}],
+       filas: L, total: L.length ? ['TOTAL', '', '', t(3), t(4), t(5), t(6), t(7), t(8)] : null}; }},
+  {id:'gastos', titulo:'Gasto de planilla por semana', icono:'📈', rango:true,
+   desc:'Cada semana pagada con sus conceptos (jornales, extras, cena, cuarto, bonos, descuentos) y otros gastos.',
+   fn:()=>{ const sem = repSemanasEnRango();
+     const L = sem.map(s=>{ const T = s.totales; return [docsFechaCorta(s.semanaInicio)+' al '+docsFechaCorta(s.semanaFin), T.personas, T.dias, T.pagoSemanal, T.pago25, T.cena, T.cuarto, repR2((T.bonificacion||0)+(T.bonoArco||0)), T.descuento, T.netoPersonal, T.otros, T.total]; });
+     const t = i=>repR2(L.reduce((s,f)=>s+(f[i]||0),0));
+     return {subtitulo: repRangoActual().texto+' · '+sem.length+' semanas', archivo:'gasto-planilla-semanal',
+       columnas:[{t:'Semana',w:2.2},{t:'Personas',w:0.8,tipo:'n'},{t:'Días-hombre',w:0.9,tipo:'n'},{t:'Jornales',w:1.1,tipo:'m'},{t:'H. extra',w:1,tipo:'m'},{t:'Cena',w:0.9,tipo:'m'},{t:'Cuarto',w:0.9,tipo:'m'},{t:'Bonos',w:0.9,tipo:'m'},{t:'Descuentos',w:1,tipo:'m'},{t:'Pago personal',w:1.2,tipo:'m'},{t:'Otros gastos',w:1,tipo:'m'},{t:'Total',w:1.2,tipo:'m'}],
+       filas: L, total: L.length ? ['TOTAL', '', t(2), t(3), t(4), t(5), t(6), t(7), t(8), t(9), t(10), t(11)] : null}; }},
+  {id:'aportes', titulo:'Aportes AFP, ONP y EsSalud', icono:'🏛️', rango:true,
+   desc:'Por mes: retenciones de AFP y ONP, aporte de EsSalud y SIS, lo pagado y lo pendiente.',
+   fn:()=>{ const r = repRangoActual(), d = r.desde.slice(0,7), h = r.hasta.slice(0,7);
+     const anios = [...new Set(planillasSemanales.map(s=>s.semanaFin.slice(0,4)))].filter(a=>a>=r.desde.slice(0,4) && a<=r.hasta.slice(0,4)).sort();
+     const L = anios.flatMap(a=>apCalcularAnio(a)).filter(m=>m.mes>=d && m.mes<=h).map(m=>[apNombreMes(m.mes), m.semanas, m.AFP, m.ONP, m.EsSalud, m.SIS, m.total, m.totalPagado, m.pendiente]);
+     const t = i=>apR2(L.reduce((s,f)=>s+f[i],0));
+     return {subtitulo: r.texto+' · '+L.length+' meses', archivo:'aportes-afp-onp-essalud',
+       columnas:[{t:'Mes',w:1.6},{t:'Semanas',w:0.8,tipo:'n'},{t:'AFP',w:1.1,tipo:'m'},{t:'ONP',w:1,tipo:'m'},{t:'EsSalud',w:1.1,tipo:'m'},{t:'SIS',w:0.9,tipo:'m'},{t:'Total a pagar',w:1.2,tipo:'m'},{t:'Pagado',w:1.1,tipo:'m'},{t:'Pendiente',w:1.1,tipo:'m'}],
+       filas: L, total: L.length ? ['TOTAL', '', t(2), t(3), t(4), t(5), t(6), t(7), t(8)] : null}; }},
+  {id:'vencimientos', titulo:'Vencimientos y pendientes', icono:'⏰', rango:false, horizonte:true,
+   desc:'Contratos, EMO, SCTR, Vida Ley e inducción vencidos, sin registro o por vencer en los próximos días.',
+   fn:()=>{ const H = parseInt((document.getElementById('repHorizonte')||{}).value) || 30, L = [];
+     repActivos().forEach(e=>{
+       const ind = induccionesSeguridad.filter(r=>r.empId===e.id);
+       const indVence = ind.some(r=>!r.vence) ? 'sin_vencimiento' : ind.map(r=>r.vence).sort().pop();
+       [['Contrato', e.fechaFin], ['EMO', e.fechaEmo], ['SCTR', e.vigenciaSctr], ['Vida Ley', e.vigenciaVidaLey], ['Inducción de seguridad', indVence]].forEach(([doc, f])=>{
+         if(f==='sin_vencimiento') return;
+         const d = daysUntil(f);
+         if(f && d > H) return;
+         L.push({d, fila:[e.nombre, e.dni, e.cargo, doc, docsFechaCorta(f), d===null ? '' : d, !f ? 'Sin registro' : d<0 ? `Vencido hace ${-d} día(s)` : d===0 ? 'Vence hoy' : `Vence en ${d} día(s)`]});
+       });
+     });
+     L.sort((a,b)=>(a.d===null?1e9:a.d)-(b.d===null?1e9:b.d) || a.fila[0].localeCompare(b.fila[0]));
+     return {subtitulo: repHoy()+` · vencidos, sin registro y por vencer en ${H} días`, archivo:'vencimientos',
+       columnas:[{t:'Trabajador',w:3},{t:'DNI',w:1.1},{t:'Cargo',w:2},{t:'Documento',w:1.6},{t:'Vence',w:1.1},{t:'Días',w:0.7,tipo:'n'},{t:'Situación',w:2}],
+       filas: L.map(x=>x.fila), total:null}; }},
+  {id:'epp', titulo:'EPP entregado', icono:'🦺', rango:true,
+   desc:'Cada entrega de EPP en el rango: trabajador, artículo, talla, cantidad, vencimiento y firma.',
+   fn:()=>{ const r = repRangoActual(), items = new Map(inventoryItems.map(i=>[i.id,i]));
+     const L = eppAsignaciones.filter(a=>a.fecha>=r.desde && a.fecha<=r.hasta).sort((a,b)=>a.fecha.localeCompare(b.fecha)).map(a=>{
+       const e = employees.find(x=>x.id===a.empId) || {}, it = items.get(a.itemId) || {};
+       return [docsFechaCorta(a.fecha), e.nombre||'(eliminado)', e.dni||'', it.codigo||'', it.nombre||'(artículo eliminado)', a.talla||'', a.cantidad||1, docsFechaCorta(a.fechaVencimiento), a.firmaTrabajador?'Sí':'No', a.devolucion?'Devuelto':'En poder', a.responsableEntrega||'']; });
+     return {subtitulo: r.texto+' · '+L.length+' entregas', archivo:'epp-entregado',
+       columnas:[{t:'Fecha',w:1},{t:'Trabajador',w:2.6},{t:'DNI',w:1},{t:'Código',w:0.8},{t:'Artículo',w:2.6},{t:'Talla',w:0.7},{t:'Cant.',w:0.6,tipo:'n'},{t:'Vence',w:1},{t:'Firmó',w:0.6},{t:'Estado',w:0.9},{t:'Entregó',w:1.6}],
+       filas: L, total: L.length ? ['TOTAL','','','','','',L.reduce((s,f)=>s+(+f[6]||0),0),'','','',''] : null}; }},
+  {id:'matriz', titulo:'Matriz de cumplimiento SUNAFIL', icono:'⚖️', rango:false,
+   desc:'Por trabajador: contrato, contrato firmado, EMO, SCTR, Vida Ley, inducción, EPP, T-Registro y cuenta, con % de cumplimiento.',
+   fn:()=>{ const L = repActivos().map(e=>{ const items = checklistLegajo(e);
+       return [e.nombre, e.dni, ...MATRIZ_COLUMNAS.map(([k])=>{ const i = items.find(x=>x.key===k); return i ? i.corto : ''; }), Math.round(items.filter(i=>i.ok).length/items.length*100)+'%']; });
+     return {subtitulo: repHoy()+' · '+L.length+' trabajadores activos', archivo:'matriz-sunafil',
+       columnas:[{t:'Trabajador',w:2.6},{t:'DNI',w:1},...MATRIZ_COLUMNAS.map(([,l])=>({t:l,w:1})),{t:'Cumpl.',w:0.7,tipo:'n'}],
+       filas: L, total:null}; }},
+  {id:'cesados', titulo:'Trabajadores cesados', icono:'🚪', rango:true,
+   desc:'Ceses del rango con motivo, tiempo de servicio, liquidación, certificado de trabajo y baja en T-Registro.',
+   fn:()=>{ const r = repRangoActual();
+     const L = cesesRegistro.filter(c=>c.fechaCese>=r.desde && c.fechaCese<=r.hasta).sort((a,b)=>a.fechaCese.localeCompare(b.fechaCese)).map(c=>[
+       c.nombre, c.dni, c.cargo, docsFechaCorta(c.fechaIngreso), docsFechaCorta(c.fechaCese), tiempoServicio(c.fechaIngreso, c.fechaCese), c.motivo, c.recontratable,
+       c.liqMonto==null ? '' : c.liqMonto, docsFechaCorta(c.liqFecha) || 'Pendiente', docsFechaCorta(c.certificadoFecha) || 'Pendiente', docsFechaCorta(c.tregistroFecha) || 'Pendiente']);
+     return {subtitulo: r.texto+' · '+L.length+' ceses', archivo:'trabajadores-cesados',
+       columnas:[{t:'Trabajador',w:2.6},{t:'DNI',w:1},{t:'Cargo',w:1.6},{t:'Ingreso',w:1},{t:'Cese',w:1},{t:'Tiempo',w:1},{t:'Motivo',w:1.8},{t:'Recontratable',w:1},{t:'Liquidación S/',w:1,tipo:'m'},{t:'Liq. pagada',w:1},{t:'Certificado',w:1},{t:'Baja T-Registro',w:1}],
+       filas: L, total:null}; }},
+  {id:'boletas', titulo:'Control de entrega de boletas', icono:'🧾', rango:true,
+   desc:'Boletas semanales del rango: neto, fecha de pago, plazo de entrega, si se entregó a tiempo y si está firmada.',
+   fn:()=>{ const sem = repSemanasEnRango(), L = [];
+     sem.forEach(s=>s.personas.forEach(p=>{ const e = employees.find(x=>x.id===p.empId), est = bsEstado(s,p);
+       L.push([docsFechaCorta(s.semanaInicio)+' al '+docsFechaCorta(s.semanaFin), e?e.nombre:p.nombre, e?e.dni:p.dni, apNetoConRetencion(p),docsFechaCorta(bsFechaPago(s)), docsFechaCorta(est.limite),
+         est.ent ? docsFechaCorta(est.ent.fecha) : '', est.ent && est.ent.firmada ? 'Sí' : 'No', est.texto]); }));
+     return {subtitulo: repRangoActual().texto+' · '+L.length+' boletas', archivo:'control-boletas',
+       columnas:[{t:'Semana',w:1.9},{t:'Trabajador',w:2.6},{t:'DNI',w:1},{t:'Neto S/',w:1,tipo:'m'},{t:'Fecha pago',w:1},{t:'Entregar hasta',w:1},{t:'Entregada',w:1},{t:'Firmada',w:0.7},{t:'Estado',w:2.4}],
+       filas: L, total:null}; }}
+];
+function repGenerar(id){
+  const def = REPORTES.find(r=>r.id===id);
+  return {titulo: def.titulo, ...def.fn()};
+}
+function renderReportes(){
+  const cont = document.getElementById('repLista');
+  if(!cont) return;
+  if(!document.getElementById('repDesde').value && !document.getElementById('repHasta').value){
+    const hoy = hoyISO();
+    document.getElementById('repDesde').value = hoy.slice(0,8)+'01';
+    document.getElementById('repHasta').value = hoy;
+  }
+  const horizonte = (document.getElementById('repHorizonte')||{}).value || '30';
+  cont.innerHTML = REPORTES.map(def=>{
+    let n = 0;
+    try{ n = def.fn().filas.length; }catch(err){ console.error('Reporte '+def.id, err); }
+    return `<div class="panel" style="margin:0;display:flex;flex-direction:column;">
+      <div style="padding:14px 16px;flex:1;">
+        <div style="font-size:15px;font-weight:700;">${def.icono} ${escHtml(def.titulo)} ${def.rango?'<span title="Usa el rango de fechas">📅</span>':''}</div>
+        <p class="hint" style="margin:6px 0 8px;">${escHtml(def.desc)}</p>
+        ${def.horizonte ? `<label style="font-size:12px;">Por vencer en los próximos
+          <select id="repHorizonte" onchange="renderReportes()" style="width:auto;display:inline-block;">${[15,30,60,90].map(x=>`<option ${String(x)===horizonte?'selected':''}>${x}</option>`).join('')}</select> días</label>` : ''}
+        <div style="font-size:12.5px;color:var(--ink-soft);margin-top:6px;">${n} ${n===1?'registro':'registros'}</div>
+      </div>
+      <div style="display:flex;gap:8px;padding:10px 16px;border-top:1px solid var(--border);">
+        <button class="btn btn-primary btn-sm" onclick="repExcel('${def.id}')" ${n?'':'disabled'}>Excel</button>
+        <button class="btn btn-accent btn-sm" onclick="repPdf('${def.id}')" ${n?'':'disabled'}>PDF</button>
+      </div></div>`;
+  }).join('');
+}
+function repExcel(id){
+  const r = repGenerar(id);
+  if(!r.filas.length){ showToast('No hay datos para este reporte en el rango elegido'); return; }
+  const emp = window._empresaData || {};
+  const aoa = [[r.titulo], [(emp.razonSocial||'')+(emp.ruc ? ' — RUC '+emp.ruc : '')], [r.subtitulo], [], r.columnas.map(c=>c.t), ...r.filas.map(f=>f.map(v=>v==null?'':v))];
+  if(r.total) aoa.push(r.total);
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = r.columnas.map((c,i)=>({wch: Math.min(48, Math.max(c.t.length, ...aoa.slice(5).map(f=>String(f[i]==null?'':f[i]).length)) + 2)}));
+  r.columnas.forEach((c,i)=>{ if(c.tipo!=='m') return;
+    for(let fila=5; fila<aoa.length; fila++){ const cel = ws[XLSX.utils.encode_cell({r:fila, c:i})]; if(cel && cel.t==='n') cel.z = '#,##0.00'; } });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, r.titulo.slice(0,31));
+  XLSX.writeFile(wb, `${r.archivo}-${hoyISO()}.xlsx`);
+}
+function repPdf(id){
+  const r = repGenerar(id);
+  if(!r.filas.length){ showToast('No hay datos para este reporte en el rango elegido'); return; }
+  repPdfDatos(r);
+}
+// Genera un PDF horizontal con tabla a partir de {titulo, subtitulo, archivo, columnas, filas, total, pie?}.
+function repPdfDatos(r){
+  if(!window.jspdf){ showToast('No cargó la librería de PDF. Recarga la página.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4', orientation:'landscape'});
+  const PW = 842, PH = 595, M = 28, AW = PW - 2*M, emp = window._empresaData || {};
+  const fs = r.columnas.length > 10 ? 7 : 8, lh = fs + 1.6;
+  const sumW = r.columnas.reduce((s,c)=>s+(c.w||1),0);
+  const anchos = r.columnas.map(c=>(c.w||1)/sumW*AW);
+  const celda = (v,c)=>v==null || v==='' ? '' : c.tipo==='m' && typeof v==='number' ? montoFormato(v) : pdfTxt(v);
+  let y = 0;
+  // Semáforo en el texto de las celdas de estado: rojo = vencido / sin registro, ámbar = por vencer / pendiente.
+  const colorDe = t=>/^(Falta subir|Faltan|Vence |Pendiente)/.test(t) ? [176,110,20]
+    : /^(Vencido|Sin registro|Sin contrato|Sin entrega|Falta$)/.test(t) ? [190,40,40] : null;
+  const escribirFila = (lineas, alto, colorear)=>{
+    let x = M;
+    lineas.forEach((l,i)=>{
+      const der = !!r.columnas[i].tipo, col = colorear ? colorDe(l.join(' ')) : null;
+      if(col) doc.setTextColor(...col);
+      doc.text(l, der ? x+anchos[i]-3 : x+3, y+fs+2, {align: der ? 'right' : 'left'});
+      if(col) doc.setTextColor(30);
+      x += anchos[i];
+    });
+    y += alto;
+  };
+  const cabeceraTabla = ()=>{
+    doc.setFont('helvetica','bold'); doc.setFontSize(fs);
+    const lineas = r.columnas.map((c,i)=>doc.splitTextToSize(pdfTxt(c.t), anchos[i]-6));
+    const alto = Math.max(...lineas.map(l=>l.length))*lh + 6;
+    doc.setFillColor(35,61,77); doc.rect(M, y, AW, alto, 'F'); doc.setTextColor(255);
+    escribirFila(lineas, alto); doc.setTextColor(30);
+  };
+  const encabezado = ()=>{
+    addLogoToPdf(doc, PW-M-42, 16, 42);
+    doc.setTextColor(30); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+    doc.text(pdfTxt(r.titulo), M, 34);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(90);
+    doc.text(pdfTxt((emp.razonSocial||'')+(emp.ruc ? '  ·  RUC '+emp.ruc : '')), M, 48);
+    doc.text(pdfTxt(r.subtitulo), M, 60);
+    y = 72; cabeceraTabla();
+  };
+  const fila = (valores, idx, negrita)=>{
+    doc.setFont('helvetica', negrita ? 'bold' : 'normal'); doc.setFontSize(fs);
+    const lineas = r.columnas.map((c,i)=>doc.splitTextToSize(celda(valores[i], c), anchos[i]-6));
+    const alto = Math.max(1, ...lineas.map(l=>l.length))*lh + 5;
+    if(y + alto > PH - 30){ doc.addPage(); encabezado(); doc.setFont('helvetica', negrita ? 'bold' : 'normal'); doc.setFontSize(fs); }
+    if(negrita){ doc.setFillColor(222,230,235); doc.rect(M, y, AW, alto, 'F'); }
+    else if(idx % 2){ doc.setFillColor(245,246,248); doc.rect(M, y, AW, alto, 'F'); }
+    escribirFila(lineas, alto, !negrita);
+  };
+  encabezado();
+  r.filas.forEach((f,i)=>fila(f, i, false));
+  if(r.total) fila(r.total, 0, true);
+  if(r.pie){
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(60);
+    const lineas = doc.splitTextToSize(pdfTxt(r.pie), AW);
+    if(y + lineas.length*10 + 70 > PH - 30){ doc.addPage(); encabezado(); }
+    doc.text(lineas, M, y + 16); y += 16 + lineas.length*10;
+    if(r.firmas){
+      const yF = y + 50; doc.setDrawColor(120);
+      r.firmas.forEach((f,i)=>{ const x = M + 40 + i*300; doc.line(x, yF, x+200, yF); doc.setFont('helvetica','bold'); doc.text(pdfTxt(f), x+100, yF+11, {align:'center'}); });
+    }
+  }
+  const total = doc.getNumberOfPages(), ahora = new Date();
+  for(let i=1; i<=total; i++){
+    doc.setPage(i); doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(120);
+    doc.text(`Generado el ${docsFechaCorta(hoyISO())} ${String(ahora.getHours()).padStart(2,'0')}:${String(ahora.getMinutes()).padStart(2,'0')} · SERVING RRHH`, M, PH-14);
+    doc.text(`Página ${i} de ${total}`, PW-M, PH-14, {align:'right'});
+  }
+  doc.save(`${r.archivo}-${hoyISO()}.pdf`);
+}
+
+// ---------- Vacaciones (microempresa: 15 días calendario por año completo de servicios) ----------
+const VAC_DIAS_ANIO = 15;
+// Meses y días entre dos fechas, contando ambos días (igual criterio que tiempoServicio).
+function mesesYDias(ini, fin){
+  if(!ini || !fin || fin < ini) return {meses:0, dias:0};
+  const [y1,m1,d1] = ini.split('-').map(Number), [yf,mf,df] = fin.split('-').map(Number);
+  const sig = new Date(yf, mf-1, df+1);
+  let meses = (sig.getFullYear()-y1)*12 + (sig.getMonth()+1-m1), dias = sig.getDate()-d1;
+  if(dias < 0){ meses--; dias += new Date(sig.getFullYear(), sig.getMonth(), 0).getDate(); }
+  return {meses, dias};
+}
+function tiempoServicioLargo(ini, fin){
+  const t = mesesYDias(ini, fin), a = Math.floor(t.meses/12), m = t.meses%12;
+  const p = (n,s,pl)=>n ? n+' '+(n===1?s:pl) : '';
+  return [p(a,'año','años'), p(m,'mes','meses'), p(t.dias,'día','días')].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' y $1') || '0 días';
+}
+// Saldo de vacaciones a una fecha de corte. Los días gozados se descuentan del periodo más antiguo.
+// Cada periodo se gana al cumplir el año y debe gozarse dentro del año siguiente; si no, corresponde indemnización vacacional.
+function vacEstado(e, corte){
+  corte = corte || hoyISO();
+  if(!e || !e.fechaIngreso || e.fechaIngreso > corte) return null;
+  const registros = vacacionesRegistro.filter(r=>r.empId===e.id).sort((a,b)=>a.desde.localeCompare(b.desde));
+  const gozados = registros.reduce((s,r)=>s+(r.dias||0),0);
+  const periodos = [];
+  for(let k=1; k<80; k++){
+    const cumple = sumarMeses(e.fechaIngreso, 12*k);
+    if(cumple > plsSumarDias(corte, 1)) break;
+    periodos.push({k, desde: sumarMeses(e.fechaIngreso, 12*(k-1)), cumple, vence: sumarMeses(e.fechaIngreso, 12*(k+1)), dias: VAC_DIAS_ANIO});
+  }
+  let resto = gozados;
+  periodos.forEach(p=>{ p.gozados = Math.min(p.dias, resto); resto -= p.gozados; p.pendiente = p.dias - p.gozados; p.vencido = p.pendiente > 0 && corte >= p.vence; });
+  const inicioTrunco = periodos.length ? periodos[periodos.length-1].cumple : e.fechaIngreso;
+  const t = mesesYDias(inicioTrunco, corte);
+  const truncoBruto = apR2(VAC_DIAS_ANIO*t.meses/12 + VAC_DIAS_ANIO*t.dias/360);
+  const adelantados = resto; // días gozados antes de ganarlos: se descuentan del record trunco
+  const porVencer = periodos.filter(p=>p.pendiente>0 && !p.vencido).sort((a,b)=>a.vence.localeCompare(b.vence))[0] || null;
+  return {
+    registros, periodos, gozados, adelantados,
+    ganados: periodos.length*VAC_DIAS_ANIO,
+    pendientes: periodos.reduce((s,p)=>s+p.pendiente,0),
+    vencidos: periodos.filter(p=>p.vencido).reduce((s,p)=>s+p.pendiente,0),
+    truncoMeses: t.meses, truncoDiasCalendario: t.dias,
+    trunco: apR2(Math.max(0, truncoBruto - adelantados)),
+    proximoDerecho: sumarMeses(e.fechaIngreso, 12*(periodos.length+1)),
+    porVencer
+  };
+}
+function vacPoblarEmpleados(){
+  const sel = document.getElementById('vacEmpleado');
+  if(!sel) return;
+  const v = sel.value;
+  sel.innerHTML = `<option value="">— Selecciona —</option>` + repActivos().map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.nombre)} — ${escHtml(e.dni||'')}</option>`).join('');
+  sel.value = v;
+}
+function vacCalcularDias(){
+  const d = document.getElementById('vacDesde').value, h = document.getElementById('vacHasta').value;
+  if(d && h && h >= d) document.getElementById('vacDias').value = Math.round((new Date(h+'T12:00:00') - new Date(d+'T12:00:00'))/86400000) + 1;
+}
+function vacMostrarSaldo(){
+  const e = employees.find(x=>x.id===document.getElementById('vacEmpleado').value);
+  const cont = document.getElementById('vacSaldo');
+  if(!e){ cont.textContent = ''; return; }
+  const v = vacEstado(e);
+  cont.innerHTML = !v ? '⚠ Este trabajador no tiene fecha de ingreso en su ficha: complétala para calcular sus vacaciones.'
+    : `Saldo de <b>${escHtml(e.nombre)}</b>: ${v.pendientes} días pendientes de periodos completos · ${v.trunco} días acumulados del año en curso (record trunco) · próximo derecho completo el ${fmtDate(v.proximoDerecho)}.`;
+}
+async function guardarVacaciones(){
+  const empId = document.getElementById('vacEmpleado').value, desde = document.getElementById('vacDesde').value, hasta = document.getElementById('vacHasta').value;
+  const dias = parseInt(document.getElementById('vacDias').value);
+  const e = employees.find(x=>x.id===empId);
+  if(!e || !desde || !hasta || hasta < desde || !(dias > 0)){ showToast('Completa trabajador, fechas y días'); return; }
+  const v = vacEstado(e);
+  if(v && dias > v.pendientes && !confirm(`${e.nombre} tiene ${v.pendientes} días pendientes de periodos completos. Los ${dias - v.pendientes} días restantes se registrarán como adelanto de vacaciones (se descuentan del año en curso). ¿Continuar?`)) return;
+  vacacionesRegistro.push({id:'vac'+Date.now(), empId, desde, hasta, dias, notas: document.getElementById('vacNotas').value.trim(), fechaRegistro: hoyISO()});
+  await saveData('vacacionesRegistro', vacacionesRegistro);
+  ['vacDesde','vacHasta','vacDias','vacNotas'].forEach(id=>document.getElementById(id).value = '');
+  renderVacaciones(); vacMostrarSaldo();
+  showToast('Vacaciones registradas');
+}
+async function eliminarVacacion(id){
+  const r = vacacionesRegistro.find(x=>x.id===id);
+  if(!r || !confirm(`¿Eliminar el registro de vacaciones del ${fmtDate(r.desde)} al ${fmtDate(r.hasta)}?`)) return;
+  vacacionesRegistro = vacacionesRegistro.filter(x=>x.id!==id);
+  await saveData('vacacionesRegistro', vacacionesRegistro);
+  renderVacaciones();
+}
+function renderVacaciones(){
+  const statsEl = document.getElementById('vacStats');
+  if(!statsEl) return;
+  vacPoblarEmpleados();
+  const q = (document.getElementById('vacBuscar').value||'').trim().toLowerCase();
+  const filas = repActivos().map(e=>({e, v: vacEstado(e)}));
+  const sinIngreso = filas.filter(x=>!x.v), conPend = filas.filter(x=>x.v && x.v.pendientes>0);
+  const vencidos = filas.filter(x=>x.v && x.v.vencidos>0);
+  const porVencer = filas.filter(x=>x.v && x.v.porVencer && daysUntil(x.v.porVencer.vence) <= 60);
+  const cumplen = filas.filter(x=>x.v && daysUntil(x.v.proximoDerecho) <= 30);
+  statsEl.innerHTML = `
+    <div class="stat-card"><div class="num">${conPend.length}</div><div class="label">Con vacaciones pendientes</div></div>
+    <div class="stat-card ${porVencer.length?'warn':''}"><div class="num">${porVencer.length}</div><div class="label">Deben salir en los próximos 60 días</div></div>
+    <div class="stat-card ${vencidos.length?'warn':''}"><div class="num" style="${vencidos.length?'color:var(--danger);':''}">${vencidos.length}</div><div class="label">Con periodo vencido (indemnización)</div></div>
+    <div class="stat-card ${sinIngreso.length?'warn':''}"><div class="num">${sinIngreso.length}</div><div class="label">Sin fecha de ingreso</div></div>`;
+  let aviso = '';
+  if(vencidos.length) aviso += `<div class="aviso-box danger"><div class="aviso-title">Vacaciones no gozadas dentro del plazo: corresponde pagar indemnización vacacional</div>
+    <div class="aviso-list">${vencidos.map(x=>`<span class="aviso-chip">${escHtml(x.e.nombre)}: ${x.v.vencidos} días</span>`).join('')}</div></div>`;
+  if(porVencer.length) aviso += `<div class="aviso-box warn"><div class="aviso-title">Programa sus vacaciones antes de que venza el plazo</div>
+    <div class="aviso-list">${porVencer.map(x=>`<span class="aviso-chip">${escHtml(x.e.nombre)}: ${x.v.porVencer.pendiente} días, vence ${fmtDate(x.v.porVencer.vence)}</span>`).join('')}</div></div>`;
+  if(sinIngreso.length) aviso += `<div class="aviso-box warn"><div class="aviso-title">Completa la fecha de ingreso en la ficha para calcular sus vacaciones</div>
+    <div class="aviso-list">${sinIngreso.map(x=>`<span class="aviso-chip" style="cursor:pointer;" onclick="openEmployeeModal('${escHtml(x.e.id)}')">${escHtml(x.e.nombre)}</span>`).join('')}</div></div>`;
+  document.getElementById('vacAviso').innerHTML = aviso;
+  const lista = filas.filter(x=>!q || x.e.nombre.toLowerCase().includes(q) || String(x.e.dni||'').includes(q));
+  document.getElementById('vacTabla').innerHTML = lista.length ? `<div class="table-scroll"><table>
+    <thead><tr><th>Trabajador</th><th>Ingreso</th><th>Ganados</th><th>Gozados</th><th>Pendientes</th><th>Año en curso</th><th>Próximo derecho</th><th>Estado</th></tr></thead>
+    <tbody>${lista.map(({e,v})=>{
+      if(!v) return `<tr><td><b>${escHtml(e.nombre)}</b></td><td colspan="7"><span class="pill pill-warn">Sin fecha de ingreso</span></td></tr>`;
+      const estado = v.vencidos ? `<span class="pill pill-danger">${v.vencidos} días vencidos</span>`
+        : v.porVencer && daysUntil(v.porVencer.vence) <= 60 ? `<span class="pill pill-warn">Gozar antes del ${fmtDate(v.porVencer.vence)}</span>`
+        : v.pendientes ? `<span class="pill pill-warn">${v.pendientes} días por gozar</span>` : `<span class="pill pill-ok">Al día</span>`;
+      return `<tr><td><b>${escHtml(e.nombre)}</b><div style="font-size:11px;color:var(--ink-soft);">${escHtml(e.cargo||'')}</div>
+          ${v.registros.length ? `<details style="font-size:11.5px;"><summary style="cursor:pointer;">${v.registros.length} registro(s)</summary>${v.registros.map(r=>`<div>${fmtDate(r.desde)} – ${fmtDate(r.hasta)} · ${r.dias} d ${r.notas?'· '+escHtml(r.notas):''} <a href="#" style="color:var(--danger);" onclick="eliminarVacacion('${escHtml(r.id)}');return false;">eliminar</a></div>`).join('')}</details>` : ''}</td>
+        <td>${fmtDate(e.fechaIngreso)}<div style="font-size:11px;color:var(--ink-soft);">${tiempoServicio(e.fechaIngreso, hoyISO())}</div></td>
+        <td class="mono">${v.ganados}</td><td class="mono">${v.gozados}</td><td class="mono"><b>${v.pendientes}</b></td>
+        <td class="mono">${v.trunco} d<div style="font-size:10.5px;color:var(--ink-soft);">${v.truncoMeses} m ${v.truncoDiasCalendario} d de record</div></td>
+        <td>${fmtDate(v.proximoDerecho)}</td><td>${estado}</td></tr>`; }).join('')}</tbody></table></div>`
+    : `<div class="empty">Sin trabajadores para mostrar.</div>`;
+  vacMostrarSaldo();
+}
+function exportarVacacionesExcel(){
+  const filas = repActivos().map(e=>{ const v = vacEstado(e); return {'Trabajador': e.nombre, 'DNI': e.dni, 'Cargo': e.cargo, 'Fecha de ingreso': e.fechaIngreso||'',
+    'Días ganados': v?v.ganados:'', 'Días gozados': v?v.gozados:'', 'Días pendientes': v?v.pendientes:'', 'Días vencidos': v?v.vencidos:'',
+    'Días año en curso (trunco)': v?v.trunco:'', 'Próximo derecho': v?v.proximoDerecho:'', 'Observación': v?'':'Sin fecha de ingreso'}; });
+  const regs = vacacionesRegistro.map(r=>{ const e = employees.find(x=>x.id===r.empId)||{}; return {'Trabajador': e.nombre||'', 'DNI': e.dni||'', 'Desde': r.desde, 'Hasta': r.hasta, 'Días': r.dias, 'Observaciones': r.notas||''}; });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filas), 'Saldo');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(regs.length ? regs : [{'Trabajador':'Sin registros'}]), 'Registros');
+  XLSX.writeFile(wb, `vacaciones-${hoyISO()}.xlsx`);
+}
+
+// ---------- Liquidación de beneficios sociales (microempresa: sin CTS ni gratificaciones) ----------
+function liqLeerEntradas(){
+  const n = id=>parseFloat(document.getElementById(id).value) || 0;
+  return {remMensual: n('liqRemMensual'), diasPend: n('liqDiasPend'), otrosConcepto: document.getElementById('liqOtrosConcepto').value.trim(), otrosMonto: n('liqOtrosMonto'),
+    prestamos: n('liqPrestamos'), descConcepto: document.getElementById('liqDescConcepto').value.trim(), descMonto: n('liqDescMonto'), indemnizacion: document.getElementById('liqIndemnizacion').checked};
+}
+// Devuelve los conceptos de la liquidación. "afecto" = sujeto a AFP/ONP y EsSalud.
+function liqCalcular(c, ent){
+  const e = employees.find(x=>x.id===c.empId) || null;
+  const emp = e || {id: c.empId, fechaIngreso: c.fechaIngreso};
+  const remDia = apR2(ent.remMensual/30);
+  const servicio = mesesYDias(c.fechaIngreso, c.fechaCese);
+  const v = c.fechaIngreso ? vacEstado({...emp, fechaIngreso: c.fechaIngreso}, c.fechaCese) : null;
+  const ingresos = [], descuentos = [], avisos = [];
+  if(!c.fechaIngreso) avisos.push('No hay fecha de ingreso: no se pueden calcular las vacaciones. Complétala en la ficha y vuelve a abrir la liquidación.');
+  if(ent.diasPend) ingresos.push({t:`Remuneraciones pendientes (${ent.diasPend} días)`, m: apR2(ent.diasPend*((e && e.sueldoDiario) || remDia)), afecto:true});
+  if(v){
+    if(servicio.meses >= 1 && v.trunco > 0) ingresos.push({t:`Vacaciones truncas (${v.truncoMeses} meses y ${v.truncoDiasCalendario} días de record = ${v.trunco} días)`, m: apR2(v.trunco*remDia), afecto:true});
+    else if(servicio.meses < 1) avisos.push('Menos de un mes de servicios: no corresponden vacaciones truncas.');
+    if(v.pendientes) ingresos.push({t:`Vacaciones no gozadas (${v.pendientes} días)`, m: apR2(v.pendientes*remDia), afecto:true});
+    if(v.vencidos) ingresos.push({t:`Indemnización vacacional (${v.vencidos} días)`, m: apR2(v.vencidos*remDia), afecto:false});
+  }
+  if(ent.indemnizacion){
+    const anios = servicio.meses/12 + servicio.dias/360;
+    ingresos.push({t:`Indemnización por despido arbitrario (10 rem. diarias x ${anios.toFixed(2)} años)`, m: apR2(Math.min(10*remDia*anios, 90*remDia)), afecto:false});
+  }
+  if(ent.otrosMonto) ingresos.push({t: ent.otrosConcepto || 'Otros ingresos', m: apR2(ent.otrosMonto), afecto:false});
+  const baseAfecta = apR2(ingresos.filter(i=>i.afecto).reduce((s,i)=>s+i.m,0));
+  const ret = apRetencion({pagoSemanal: baseAfecta}, e);
+  ret.lineas.forEach(l=>{ if(l[1]) descuentos.push({t:l[0], m:l[1]}); });
+  if(ent.prestamos) descuentos.push({t:'Adelantos / préstamos pendientes', m: apR2(ent.prestamos)});
+  if(ent.descMonto) descuentos.push({t: ent.descConcepto || 'Otros descuentos', m: apR2(ent.descMonto)});
+  const totI = apR2(ingresos.reduce((s,i)=>s+i.m,0)), totD = apR2(descuentos.reduce((s,i)=>s+i.m,0));
+  const cfg = apCfg();
+  const aporte = e && /SIS/i.test(e.salud||'') ? null : apR2(baseAfecta*cfg.essalud/100);
+  return {e, v, servicio, ingresos, descuentos, totI, totD, neto: apR2(totI - totD), baseAfecta, aporte, avisos, remDia, ent};
+}
+function abrirLiquidacion(ceseId){
+  const c = cesesRegistro.find(x=>x.id===ceseId);
+  if(!c) return;
+  const e = employees.find(x=>x.id===c.empId);
+  if(e && !c.fechaIngreso && e.fechaIngreso) c.fechaIngreso = e.fechaIngreso;
+  document.getElementById('liqCeseId').value = c.id;
+  document.getElementById('liqTitulo').textContent = 'Liquidación — ' + c.nombre;
+  const d = c.liqDetalle && c.liqDetalle.ent;
+  const prestamoPend = apR2(prestamos.filter(p=>p.empId===c.empId && ['Préstamo','Adelanto','Descuento EPP'].includes(p.tipo)).reduce((s,p)=>s+saldoPrestamo(p),0));
+  document.getElementById('liqRemMensual').value = d ? d.remMensual : apR2(((e && e.sueldoDiario) || 0)*30);
+  document.getElementById('liqDiasPend').value = d ? d.diasPend : 0;
+  document.getElementById('liqOtrosConcepto').value = d ? d.otrosConcepto : '';
+  document.getElementById('liqOtrosMonto').value = d ? d.otrosMonto : 0;
+  document.getElementById('liqPrestamos').value = d ? d.prestamos : prestamoPend;
+  document.getElementById('liqDescConcepto').value = d ? d.descConcepto : (c.eppPendientes ? 'EPP no devuelto' : '');
+  document.getElementById('liqDescMonto').value = d ? d.descMonto : 0;
+  document.getElementById('liqIndemnizacion').checked = d ? d.indemnizacion : c.motivo==='Despido';
+  liqRecalcular();
+  document.getElementById('liqModalOverlay').classList.add('active');
+}
+function liqRecalcular(){
+  const c = cesesRegistro.find(x=>x.id===document.getElementById('liqCeseId').value);
+  if(!c) return;
+  const L = liqCalcular(c, liqLeerEntradas());
+  document.getElementById('liqAviso').innerHTML = `<p class="hint" style="margin:0 0 10px;">Ingreso ${fmtDate(c.fechaIngreso)} · cese ${fmtDate(c.fechaCese)} · ${tiempoServicioLargo(c.fechaIngreso, c.fechaCese)} · motivo: ${escHtml(c.motivo||'')}.
+    Remuneración computable = jornal x 30; si recibió horas extra en forma regular (3 de los últimos 6 meses), súmale su promedio.</p>`
+    + (L.avisos.length ? `<div class="aviso-box warn"><div class="aviso-title">${L.avisos.map(escHtml).join('<br>')}</div></div>` : '');
+  const filas = (lista, signo)=>lista.map(i=>`<tr><td>${escHtml(i.t)}${i.afecto===false?' <span style="font-size:11px;color:var(--ink-soft);">(no afecto)</span>':''}</td><td class="mono" style="text-align:right;">${signo}${soles(i.m)}</td></tr>`).join('');
+  document.getElementById('liqResumen').innerHTML = `<table><tbody>
+    <tr><th colspan="2">Ingresos</th></tr>${filas(L.ingresos,'') || '<tr><td colspan="2" class="hint">Sin conceptos</td></tr>'}
+    <tr style="font-weight:700;"><td>Total ingresos</td><td class="mono" style="text-align:right;">${soles(L.totI)}</td></tr>
+    <tr><th colspan="2">Descuentos</th></tr>${filas(L.descuentos,'- ') || '<tr><td colspan="2" class="hint">Sin descuentos</td></tr>'}
+    <tr style="font-weight:700;"><td>Total descuentos</td><td class="mono" style="text-align:right;">- ${soles(L.totD)}</td></tr>
+    <tr style="font-weight:700;font-size:15px;background:var(--primary-light);"><td>NETO A PAGAR</td><td class="mono" style="text-align:right;">${soles(L.neto)}</td></tr>
+    ${L.aporte!=null ? `<tr><td class="hint">Aporte del empleador: EsSalud ${apCfg().essalud}% sobre ${soles(L.baseAfecta)}</td><td class="mono hint" style="text-align:right;">${soles(L.aporte)}</td></tr>` : ''}
+  </tbody></table>`;
+}
+async function liqGuardarEnCese(){
+  const c = cesesRegistro.find(x=>x.id===document.getElementById('liqCeseId').value);
+  if(!c) return;
+  const ent = liqLeerEntradas(), L = liqCalcular(c, ent);
+  c.liqMonto = L.neto; c.liqDetalle = {ent, neto: L.neto, calculado: hoyISO()};
+  await saveData('cesesRegistro', cesesRegistro);
+  renderCesados();
+  showToast(`Liquidación de ${soles(L.neto)} guardada en el cese. Cuando la pagues, registra la fecha de pago en "Editar".`);
+}
+function liqDescargarPdf(){
+  const c = cesesRegistro.find(x=>x.id===document.getElementById('liqCeseId').value);
+  if(!c || !window.jspdf) return;
+  const L = liqCalcular(c, liqLeerEntradas()), emp = window._empresaData || {}, e = L.e || {};
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const X = 50, W = 495, fmt = n=>montoFormato(n);
+  addLogoToPdf(doc, X+W-44, 18, 44);
+  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(25);
+  doc.text('LIQUIDACIÓN DE BENEFICIOS SOCIALES', X, 60);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+  doc.text(pdfTxt((emp.razonSocial||'')+'  ·  RUC '+(emp.ruc||'')+'  ·  Régimen laboral: Microempresa (REMYPE)'), X, 74);
+  let y = 92;
+  const datos = [['Trabajador', c.nombre], ['DNI', c.dni||''], ['Cargo', c.cargo||''], ['Fecha de ingreso', docsFechaCorta(c.fechaIngreso)], ['Fecha de cese', docsFechaCorta(c.fechaCese)],
+    ['Tiempo de servicios', tiempoServicioLargo(c.fechaIngreso, c.fechaCese)], ['Motivo de cese', c.motivo||''], ['Sistema pensionario', e.pension==='ONP' ? 'ONP' : 'AFP '+(e.afpNombre||'')],
+    ['Remuneración computable', 'S/ '+fmt(L.ent.remMensual)+' mensual (S/ '+fmt(L.remDia)+' diario)']];
+  doc.setDrawColor(120); doc.rect(X, y, W, datos.length*13+6);
+  datos.forEach((d,i)=>{ doc.setFont('helvetica','bold'); doc.text(pdfTxt(d[0])+':', X+8, y+14+i*13); doc.setFont('helvetica','normal'); doc.text(pdfTxt(d[1]), X+140, y+14+i*13); });
+  y += datos.length*13 + 22;
+  const bloque = (titulo, lista, total, signo)=>{
+    doc.setFillColor(232,236,239); doc.rect(X, y, W, 15, 'F');
+    doc.setFont('helvetica','bold'); doc.text(titulo, X+8, y+10.5); y += 15;
+    doc.setFont('helvetica','normal');
+    (lista.length ? lista : [{t:'—', m:null}]).forEach(i=>{ y += 13; doc.text(doc.splitTextToSize(pdfTxt(i.t), W-110)[0], X+8, y); if(i.m!=null) doc.text(signo+fmt(i.m), X+W-8, y, {align:'right'}); });
+    y += 6; doc.line(X, y, X+W, y); y += 12;
+    doc.setFont('helvetica','bold'); doc.text('Total '+titulo.toLowerCase(), X+8, y); doc.text(signo+fmt(total), X+W-8, y, {align:'right'}); y += 16;
+  };
+  bloque('INGRESOS', L.ingresos, L.totI, '');
+  bloque('DESCUENTOS', L.descuentos, L.totD, '- ');
+  doc.setFillColor(35,61,77); doc.rect(X, y, W, 20, 'F'); doc.setTextColor(255); doc.setFontSize(10.5);
+  doc.text('NETO A PAGAR', X+8, y+14); doc.text('S/ '+fmt(L.neto), X+W-8, y+14, {align:'right'});
+  doc.setTextColor(25); doc.setFontSize(8.5); doc.setFont('helvetica','normal'); y += 34;
+  doc.text('Son: '+pdfTxt(montoEnLetras(L.neto)), X, y); y += 14;
+  if(L.aporte!=null){ doc.text(pdfTxt(`Aporte del empleador (no se descuenta al trabajador): EsSalud ${apCfg().essalud}% = S/ ${fmt(L.aporte)}`), X, y); y += 14; }
+  doc.text(doc.splitTextToSize(pdfTxt('Régimen de microempresa: no corresponde CTS ni gratificaciones. El trabajador declara recibir conforme el monto indicado, que cancela los beneficios sociales detallados, sin perjuicio de los derechos que la ley le reconoce.'), W), X, y);
+  const yF = 760;
+  doc.line(X+10, yF, X+210, yF); doc.line(X+W-210, yF, X+W-10, yF);
+  doc.setFont('helvetica','bold'); doc.text('EL EMPLEADOR', X+110, yF+12, {align:'center'}); doc.text('EL TRABAJADOR', X+W-110, yF+12, {align:'center'});
+  doc.setFont('helvetica','normal'); doc.text(pdfTxt(c.nombre), X+W-110, yF+23, {align:'center'}); doc.text('DNI '+pdfTxt(c.dni||''), X+W-110, yF+33, {align:'center'});
+  doc.text(pdfTxt(emp.representanteNombre||''), X+110, yF+23, {align:'center'});
+  doc.text(`Lima, ${docsFechaLarga(hoyISO())}`, X, yF-60);
+  doc.save(`liquidacion-${plsNorm(c.nombre).replace(/[^A-Z]+/g,'_')}.pdf`);
+}
+
+// ---------- Certificado de trabajo (D.S. 001-96-TR, art. 2: tiempo de servicios y labor desempeñada) ----------
+async function generarCertificadoTrabajo(ceseId){
+  const c = cesesRegistro.find(x=>x.id===ceseId);
+  if(!c || !window.jspdf) return;
+  const e = employees.find(x=>x.id===c.empId) || {};
+  const ingreso = c.fechaIngreso || e.fechaIngreso;
+  if(!ingreso){ showToast('Falta la fecha de ingreso del trabajador: complétala en su ficha'); return; }
+  const conducta = confirm('¿El trabajador pidió que el certificado incluya una mención a su buen desempeño?\n\n(Por ley, la conducta o el rendimiento solo se incluyen si el trabajador lo solicita.)');
+  const emp = window._empresaData || {}, fem = /^F/i.test(e.sexo||'');
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const X = 70, W = 455;
+  addLogoToPdf(doc, X+W-60, 40, 60);
+  doc.setTextColor(25); doc.setFont('helvetica','bold'); doc.setFontSize(16);
+  doc.text('CERTIFICADO DE TRABAJO', 297.5, 150, {align:'center'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(11);
+  const rep = emp.representanteNombre ? `, debidamente representada por su ${(emp.representanteCargo||'Gerente General').toLowerCase()}, ${emp.representanteNombre}, identificado con DNI N.º ${emp.representanteDni||''}` : '';
+  const parrafos = [
+    `${emp.razonSocial||''}, con RUC N.º ${emp.ruc||''}, con domicilio en ${emp.domicilioFiscal||''}${rep},`,
+    'CERTIFICA:',
+    `Que ${fem?'la señora':'el señor'} ${c.nombre}, ${fem?'identificada':'identificado'} con DNI N.º ${c.dni||''}, ha laborado en nuestra empresa desde el ${docsFechaLarga(ingreso)} hasta el ${docsFechaLarga(c.fechaCese)}, desempeñando el cargo de ${(c.cargo||e.cargo||'').toUpperCase()}${e.area ? ', en el área de '+e.area : ''}, acumulando un tiempo de servicios de ${tiempoServicioLargo(ingreso, c.fechaCese)}.`,
+    conducta ? `Durante su permanencia en la empresa demostró responsabilidad, puntualidad y buen desempeño en las labores encomendadas.` : '',
+    `Se expide el presente certificado a solicitud ${fem?'de la interesada':'del interesado'}, para los fines que estime convenientes.`
+  ].filter(Boolean);
+  let y = 200;
+  parrafos.forEach(p=>{
+    if(p==='CERTIFICA:'){ doc.setFont('helvetica','bold'); doc.text(p, X, y); doc.setFont('helvetica','normal'); y += 26; return; }
+    const lineas = doc.splitTextToSize(pdfTxt(p), W);
+    doc.text(lineas, X, y, {align:'justify', maxWidth: W}); y += lineas.length*16 + 14;
+  });
+  doc.text(`Lima, ${docsFechaLarga(hoyISO())}`, X+W, y+20, {align:'right'});
+  const yF = Math.max(y + 140, 640);
+  addFirmaToPdf(doc, 297.5-60, yF-50, 120, 45, 'firma_rrhh_default');
+  doc.line(297.5-110, yF, 297.5+110, yF);
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text(pdfTxt(emp.representanteNombre || 'Representante legal'), 297.5, yF+14, {align:'center'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text(pdfTxt((emp.representanteCargo||'Gerente General')+(emp.representanteDni?' · DNI '+emp.representanteDni:'')), 297.5, yF+27, {align:'center'});
+  doc.text(pdfTxt(emp.razonSocial||''), 297.5, yF+39, {align:'center'});
+  doc.save(`certificado-trabajo-${plsNorm(c.nombre).replace(/[^A-Z]+/g,'_')}.pdf`);
+  if(!c.certificadoFecha && confirm('¿Registrar hoy como fecha de entrega del certificado de trabajo?')){
+    c.certificadoFecha = hoyISO();
+    await saveData('cesesRegistro', cesesRegistro);
+    renderCesados();
+  }
+}
+
+// ---------- Horas extra (registro de sobretiempo y comparación con la planilla) ----------
+function heCalcularHoras(){
+  const i = document.getElementById('heInicio').value, f = document.getElementById('heFin').value;
+  if(!i || !f) return;
+  const min = t=>{ const [h,m] = t.split(':').map(Number); return h*60+m; };
+  let d = min(f) - min(i); if(d <= 0) d += 1440; // pasa la medianoche
+  document.getElementById('heHoras').value = Math.round(d/15)/4;
+}
+function heSeleccionar(v){ document.querySelectorAll('#heTrabajadores input').forEach(cb=>cb.checked = v); }
+async function guardarHorasExtra(){
+  const fecha = document.getElementById('heFecha').value, horas = parseFloat(document.getElementById('heHoras').value);
+  const ids = [...document.querySelectorAll('#heTrabajadores input:checked')].map(cb=>cb.value);
+  if(!fecha || !(horas > 0)){ showToast('Indica la fecha y las horas'); return; }
+  if(!ids.length){ showToast('Marca al menos un trabajador'); return; }
+  const base = {fecha, inicio: document.getElementById('heInicio').value, fin: document.getElementById('heFin').value, horas,
+    motivo: document.getElementById('heMotivo').value.trim(), autoriza: document.getElementById('heAutoriza').value.trim(), fechaRegistro: hoyISO()};
+  ids.forEach((empId,i)=>horasExtraRegistro.push({...base, id:'he'+Date.now()+'_'+i, empId}));
+  await saveData('horasExtraRegistro', horasExtraRegistro);
+  ['heInicio','heFin','heHoras','heMotivo'].forEach(id=>document.getElementById(id).value = '');
+  heSeleccionar(false);
+  renderHorasExtra();
+  showToast(`${ids.length} registro(s) de horas extra guardados`);
+}
+async function eliminarHoraExtra(id){
+  if(!confirm('¿Eliminar este registro de horas extra?')) return;
+  horasExtraRegistro = horasExtraRegistro.filter(x=>x.id!==id);
+  await saveData('horasExtraRegistro', horasExtraRegistro);
+  renderHorasExtra();
+}
+// Pago de un día: las 2 primeras horas con 25% y las siguientes con 35% sobre el valor hora (jornal / 8).
+function heMontoDia(horas, jornal){ const vh = (jornal||0)/8; return apR2(Math.min(horas,2)*vh*1.25 + Math.max(0,horas-2)*vh*1.35); }
+// Semanas para elegir: las de la planilla y la semana actual (jueves a miércoles, como la planilla).
+function heSemanas(){
+  const L = [...planillasSemanales].sort((a,b)=>b.semanaInicio.localeCompare(a.semanaInicio)).map(s=>({ini:s.semanaInicio, fin:s.semanaFin, s}));
+  const hoy = hoyISO(), dow = new Date(hoy+'T12:00:00').getDay();
+  const ini = plsSumarDias(hoy, -((dow - 4 + 7) % 7));
+  if(!L.some(x=>x.ini<=hoy && x.fin>=hoy)) L.unshift({ini, fin: plsSumarDias(ini, 6), s:null});
+  return L;
+}
+function renderHorasExtra(){
+  const statsEl = document.getElementById('heStats');
+  if(!statsEl) return;
+  if(!document.getElementById('heFecha').value) document.getElementById('heFecha').value = hoyISO();
+  const marcados = new Set([...document.querySelectorAll('#heTrabajadores input:checked')].map(cb=>cb.value));
+  document.getElementById('heTrabajadores').innerHTML = repActivos().map(e=>`<label style="display:flex;gap:6px;align-items:center;font-size:12.5px;margin:0;"><input type="checkbox" style="width:auto;" value="${escHtml(e.id)}" ${marcados.has(e.id)?'checked':''}> ${escHtml(e.nombre)}</label>`).join('');
+  const sel = document.getElementById('heSemana'), semanas = heSemanas();
+  const actual = sel.value;
+  sel.innerHTML = semanas.map(x=>`<option value="${x.ini}|${x.fin}">${fmtDate(x.ini)} – ${fmtDate(x.fin)}${x.s?'':' (en curso)'}</option>`).join('');
+  sel.value = semanas.some(x=>x.ini+'|'+x.fin===actual) ? actual : semanas[0].ini+'|'+semanas[0].fin;
+  const [ini, fin] = sel.value.split('|');
+  const sem = semanas.find(x=>x.ini===ini);
+  const regs = horasExtraRegistro.filter(r=>r.fecha>=ini && r.fecha<=fin);
+  const filas = new Map();
+  const nombreDe = id=>{ const e = employees.find(x=>x.id===id); return e ? e.nombre : '(eliminado)'; };
+  regs.forEach(r=>{ const f = filas.get(r.empId) || {empId:r.empId, nombre:nombreDe(r.empId), regs:[], plsHoras:0, plsPago:0}; f.regs.push(r); filas.set(r.empId, f); });
+  if(sem && sem.s) sem.s.personas.filter(p=>p.horasExtra || p.pago25).forEach(p=>{
+    const k = p.empId || 'x:'+plsNorm(p.nombre);
+    const f = filas.get(k) || {empId:p.empId, nombre: p.empId ? nombreDe(p.empId) : p.nombre, regs:[], plsHoras:0, plsPago:0};
+    f.plsHoras += p.horasExtra||0; f.plsPago += p.pago25||0; filas.set(k, f);
+  });
+  let sinRespaldo = 0, horasReg = 0, montoReg = 0;
+  const lista = [...filas.values()].sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(f=>{
+    const e = employees.find(x=>x.id===f.empId);
+    const porDia = {}; f.regs.forEach(r=>porDia[r.fecha] = (porDia[r.fecha]||0) + r.horas);
+    const horas = apR2(f.regs.reduce((s,r)=>s+r.horas,0));
+    const monto = apR2(Object.values(porDia).reduce((s,h)=>s+heMontoDia(h, e && e.sueldoDiario),0));
+    horasReg += horas; montoReg += monto;
+    const obs = [];
+    if(f.plsHoras > horas + 0.01){ obs.push(`<span class="pill pill-danger">${apR2(f.plsHoras-horas)} h pagadas sin registro</span>`); sinRespaldo++; }
+    if(horas > f.plsHoras + 0.01 && sem && sem.s) obs.push(`<span class="pill pill-warn">${apR2(horas-f.plsHoras)} h registradas no pagadas</span>`);
+    Object.entries(porDia).filter(([,h])=>h>2).forEach(([d,h])=>obs.push(`<span class="pill pill-warn">${fmtDate(d)}: ${h} h, desde la 3.ª hora corresponde 35%</span>`));
+    return `<tr><td><b>${escHtml(f.nombre)}</b>${f.regs.map(r=>`<div style="font-size:11px;color:var(--ink-soft);">${fmtDate(r.fecha)} ${escHtml(r.inicio||'')}${r.fin?'–'+escHtml(r.fin):''} · ${r.horas} h ${r.motivo?'· '+escHtml(r.motivo):''} <a href="#" style="color:var(--danger);" onclick="eliminarHoraExtra('${escHtml(r.id)}');return false;">x</a></div>`).join('')}</td>
+      <td class="mono">${horas||'—'}</td><td class="mono">${monto?soles(monto):'—'}</td>
+      <td class="mono">${sem && sem.s ? (f.plsHoras||'—') : '<span class="hint">sin planilla</span>'}</td><td class="mono">${f.plsPago?soles(f.plsPago):'—'}</td>
+      <td>${obs.join(' ') || (horas ? '<span class="pill pill-ok">Conforme</span>' : '')}</td></tr>`;
+  });
+  const mes = hoyISO().slice(0,7);
+  statsEl.innerHTML = `
+    <div class="stat-card"><div class="num">${apR2(horasReg)}</div><div class="label">Horas registradas en la semana</div></div>
+    <div class="stat-card"><div class="num" style="font-size:22px;">${soles(montoReg)}</div><div class="label">Pago estimado según registro</div></div>
+    <div class="stat-card ${sinRespaldo?'warn':''}"><div class="num" style="${sinRespaldo?'color:var(--danger);':''}">${sinRespaldo}</div><div class="label">Pagadas en planilla sin registro</div></div>
+    <div class="stat-card"><div class="num">${apR2(horasExtraRegistro.filter(r=>r.fecha.startsWith(mes)).reduce((s,r)=>s+r.horas,0))}</div><div class="label">Horas registradas este mes</div></div>`;
+  document.getElementById('heTabla').innerHTML = lista.length ? `<div class="table-scroll"><table>
+    <thead><tr><th>Trabajador</th><th>Horas registradas</th><th>Pago según registro</th><th>Horas en planilla</th><th>Pagado en planilla</th><th>Observación</th></tr></thead>
+    <tbody>${lista.join('')}</tbody></table></div>
+    <p class="hint" style="padding:0 18px 12px;">"Pagadas sin registro" significa que la planilla pagó horas extra que no tienen respaldo firmado: ante una inspección no podrás probar cuándo se trabajaron ni que fueron voluntarias.</p>`
+    : `<div class="empty">No hay horas extra registradas ni pagadas en esta semana.</div>`;
+}
+function heDescargarFormato(){
+  const [ini, fin] = document.getElementById('heSemana').value.split('|');
+  const regs = horasExtraRegistro.filter(r=>r.fecha>=ini && r.fecha<=fin).sort((a,b)=>a.fecha.localeCompare(b.fecha) || a.empId.localeCompare(b.empId));
+  const emp = id=>employees.find(x=>x.id===id) || {};
+  // Sin registros: formato en blanco con los trabajadores activos, para llenar a mano.
+  const filas = regs.length
+    ? regs.map(r=>[docsFechaCorta(r.fecha), emp(r.empId).nombre||'', emp(r.empId).dni||'', r.inicio||'', r.fin||'', r.horas, r.motivo||'', r.autoriza||'', ''])
+    : repActivos().map(e=>['', e.nombre, e.dni, '', '', '', '', '', '']);
+  repPdfDatos({titulo:'Registro de trabajo en sobretiempo (horas extra)', subtitulo:`Semana del ${docsFechaCorta(ini)} al ${docsFechaCorta(fin)}${regs.length?'':' · formato para llenar'}`,
+    archivo:`registro-horas-extra-${ini}`,
+    columnas:[{t:'Fecha',w:0.9},{t:'Trabajador',w:2.4},{t:'DNI',w:0.9},{t:'Inicio',w:0.6},{t:'Término',w:0.6},{t:'Horas',w:0.6,tipo:'n'},{t:'Labor / motivo',w:2},{t:'Autorizó',w:1.3},{t:'Firma del trabajador',w:1.7}],
+    filas, total:null,
+    pie:'Los trabajadores que firman declaran que realizaron el trabajo en sobretiempo de forma voluntaria y con autorización previa. Pago: primeras dos horas del día con sobretasa de 25% y las siguientes con 35% (D.S. 007-2002-TR y D.S. 008-2002-TR).',
+    firmas:['Supervisor / jefe inmediato','Recursos Humanos']});
+}
+
 // ---------- Trabajadores cesados ----------
 // Cada cese guarda una copia de nombre/DNI/cargo/ingreso para que el historial no dependa de la ficha del trabajador.
-function hoyISO(){ return new Date().toISOString().slice(0,10); }
+function hoyISO(){ const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); } // fecha local (PerÃº), no UTC
 function diasDesde(fechaISO){ const d = daysUntil(fechaISO); return d===null ? null : -d; }
 function tiempoServicio(ini, fin){
   if(!ini || !fin || fin < ini) return '—';
@@ -9168,6 +10414,8 @@ function renderCesados(){
       <td>${cesePasoPill(c.certificadoFecha, c.fechaCese, 2)}</td>
       <td>${recon[c.recontratable] || '—'}</td>
       <td class="actions-cell">
+        <button class="btn btn-accent btn-sm" onclick="abrirLiquidacion('${escHtml(c.id)}')">Liquidación</button>
+        <button class="btn btn-primary btn-sm" onclick="generarCertificadoTrabajo('${escHtml(c.id)}')">Certificado</button>
         <button class="btn btn-ghost btn-sm" onclick="editarCese('${escHtml(c.id)}')">Editar</button>
         ${c.fileData ? `<button class="btn btn-ghost btn-sm" onclick="downloadCeseFile('${escHtml(c.id)}')">Documento</button>` : ''}
         <button class="btn btn-danger btn-sm" onclick="anularCese('${escHtml(c.id)}')">Anular</button>
@@ -9196,7 +10444,7 @@ function induccionVigente(r){
   return !r.vence || daysUntil(r.vence) >= 0;
 }
 function trabajadoresVigentesInduccion(){
-  const hoy = new Date().toISOString().slice(0,10);
+  const hoy = hoyISO();
   return employees.filter(e=>e.estado==='activo' && !(e.fechaFin && e.fechaFin < hoy))
     .sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
 }
@@ -9238,7 +10486,7 @@ async function saveInduccion(){
       expositor: document.getElementById('induccionExpositor').value.trim(),
       horas: parseFloat(document.getElementById('induccionHoras').value) || null,
       notas: document.getElementById('induccionNotas').value.trim(),
-      fechaRegistro: new Date().toISOString().slice(0,10)
+      fechaRegistro: hoyISO()
     };
     empIds.forEach((empId, i)=>{
       // La constancia se guarda una sola vez (en el primer registro de la sesión) para no duplicar espacio.
@@ -9455,7 +10703,7 @@ async function saveSeguro(){
       inicio, fin,
       notas: document.getElementById('seguroNotas').value.trim(),
       fileData: fileData||null, fileName: fileName||null,
-      fechaRegistro: new Date().toISOString().slice(0,10)
+      fechaRegistro: hoyISO()
     });
     await saveData('segurosEmpresa', segurosEmpresa);
     ['seguroNumeroPoliza','seguroInicio','seguroFin','seguroNotas','seguroAseguradoraOtro'].forEach(id=>document.getElementById(id).value='');
