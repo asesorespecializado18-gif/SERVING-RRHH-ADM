@@ -251,6 +251,11 @@ tr:hover td{background:#FAF9F6;}
         </div>
       </div>
 
+      <div class="panel" id="pendientesPanel">
+        <div class="panel-head"><h3>📋 Mis pendientes de hoy</h3><span id="pendientesResumen" class="hint" style="margin:0;"></span></div>
+        <div id="pendientesHoy" style="padding:6px 18px 14px;"></div>
+      </div>
+
       <div class="stat-grid" id="dashStats"></div>
 
       <div id="respaldoAviso"></div>
@@ -1228,6 +1233,39 @@ tr:hover td{background:#FAF9F6;}
         <button class="tab-sub-btn" data-epp-tab="ficha" onclick="switchEppTab('ficha')">Ficha por trabajador</button>
         <button class="tab-sub-btn" data-epp-tab="kits" onclick="switchEppTab('kits')">Kits por puesto</button>
         <button class="tab-sub-btn" data-epp-tab="formato" onclick="switchEppTab('formato')">Formato físico semanal</button>
+        <button class="tab-sub-btn" data-epp-tab="compras" onclick="switchEppTab('compras')">Lista de compras</button>
+        <button class="tab-sub-btn" data-epp-tab="rm050" onclick="switchEppTab('rm050')">Registro R.M. 050</button>
+      </div>
+
+      <!-- LISTA DE COMPRAS -->
+      <div id="eppComprasBlock" style="display:none;">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Lista de compras de EPP por talla</h3>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-primary btn-sm" onclick="repExcel('compras')">Excel</button>
+              <button class="btn btn-accent btn-sm" onclick="repPdf('compras')">PDF para el proveedor</button>
+            </div>
+          </div>
+          <div id="eppComprasContenido" style="padding:14px 18px;"></div>
+        </div>
+      </div>
+
+      <!-- REGISTRO R.M. 050-2013-TR -->
+      <div id="eppRm050Block" style="display:none;">
+        <div class="panel">
+          <div class="panel-head"><h3>Registro de equipos de seguridad o emergencia (R.M. 050-2013-TR)</h3></div>
+          <div style="padding:16px 18px;">
+            <p class="hint" style="margin:0 0 10px;">Formato oficial que pide SUNAFIL. Se llena solo con las entregas de EPP del periodo; imprímelo, hazlo firmar y archívalo.</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+              <div class="field" style="margin:0;"><label>Desde</label><input type="date" id="rm050Desde"></div>
+              <div class="field" style="margin:0;"><label>Hasta</label><input type="date" id="rm050Hasta"></div>
+              <div class="field" style="margin:0;"><label>Responsable del registro</label><input id="rm050Responsable" placeholder="Nombre y cargo"></div>
+              <button class="btn btn-accent btn-sm" onclick="descargarRegistroRm050()">Descargar registro (PDF)</button>
+            </div>
+            <div id="rm050Resumen" class="hint" style="margin-top:10px;"></div>
+          </div>
+        </div>
       </div>
 
       <!-- ASIGNACION EPP -->
@@ -1391,6 +1429,19 @@ tr:hover td{background:#FAF9F6;}
 
       <div class="stat-grid" id="segurosStats"></div>
       <div id="segurosAviso"></div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Subir constancia SCTR (PDF de la aseguradora)</h3></div>
+        <div style="padding:16px 18px;">
+          <p class="hint" style="margin:0 0 10px;">Sube el PDF de la constancia (Sanitas / Protecta u otra). El sistema lee la vigencia y los DNI, actualiza a cada trabajador y te avisa quién falta, quién sobra y si hay un DNI mal escrito.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+            <div class="field" style="margin:0;"><label>Póliza</label>
+              <select id="sctrPdfGrupo"><option value="obreros">Personal obrero</option><option value="administrativos">Personal administrativo</option></select></div>
+            <div class="field" style="margin:0;"><label>Constancia (PDF)</label><input type="file" id="sctrPdfArchivo" accept=".pdf" onchange="leerConstanciaSctr(this.files[0])"></div>
+          </div>
+          <div id="sctrPdfResultado" style="margin-top:12px;"></div>
+        </div>
+      </div>
 
       <div class="panel">
         <div class="panel-head"><h3>Cobertura por trabajador — SCTR y Vida Ley (actualización masiva)</h3></div>
@@ -2226,6 +2277,28 @@ tr:hover td{background:#FAF9F6;}
 </div>
 
 <!-- MODAL DOCUMENTOS DEL TRABAJADOR (contrato, adendas, legajo) -->
+<div class="modal-overlay" id="entregaEppModalOverlay">
+  <div class="modal" style="max-width:860px;">
+    <h3 id="entregaEppTitulo">Entregar EPP</h3>
+    <input type="hidden" id="entregaEppEmpId">
+    <div id="entregaEppInfo" class="hint" style="margin:0 0 10px;"></div>
+    <div class="field-row" style="grid-template-columns:1fr 2fr 1fr;">
+      <div class="field"><label>Fecha de entrega</label><input type="date" id="entregaEppFecha"></div>
+      <div class="field"><label>Entregado por</label><input id="entregaEppResponsable" placeholder="Nombre de quien entrega"></div>
+      <div class="field"><label>Firma digital</label><select id="entregaEppFirma"></select></div>
+    </div>
+    <div id="entregaEppLineas"></div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">
+      <select id="entregaEppAgregar" style="max-width:420px;"></select>
+      <button class="btn btn-ghost btn-sm" onclick="entregaEppAgregarLinea()">+ Agregar otro EPP</button>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap;">
+      <button class="btn btn-ghost" onclick="document.getElementById('entregaEppModalOverlay').classList.remove('active')">Cancelar</button>
+      <button class="btn btn-accent" onclick="confirmarEntregaEpp()">Entregar y generar constancia</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="liqModalOverlay">
   <div class="modal" style="max-width:760px;">
     <h3 id="liqTitulo">Liquidación de beneficios sociales</h3>
@@ -2658,6 +2731,7 @@ function switchView(name){
   document.getElementById('view-'+name).classList.add('active');
   document.querySelector('.nav-item[data-view="'+name+'"]').classList.add('active');
   if(name==='reportes') renderReportes();
+  if(name==='dashboard') renderPendientes();
   if(name==='boletaspago') renderBoletasSemanales();
 }
 
@@ -2742,6 +2816,7 @@ function renderAll(){
   renderAportes();
   renderVacaciones();
   renderHorasExtra();
+  renderPendientes();
   renderPlanillaBancaria();
   renderLegajoSunafil();
   renderDocumentosSunafil();
@@ -5428,6 +5503,8 @@ function renderPapelera(){
 function downloadBoleta(id){
   const b = workerDocs.find(x=>x.id===id);
   if(!b) return;
+  // Las constancias de EPP nuevas no guardan el PDF: se vuelven a generar idénticas desde la entrega.
+  if(!b.fileData && b.entregaId){ generarConstanciaEppPdf(b.entregaId); return; }
   const a = document.createElement('a');
   a.href = b.fileData; a.download = b.fileName;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
@@ -7511,7 +7588,11 @@ function switchEppTab(tab){
   document.getElementById('eppFichaBlock').style.display = tab==='ficha' ? 'block':'none';
   if(tab==='ficha') renderFichaEpp();
   document.getElementById('eppFormatoBlock').style.display = tab==='formato' ? 'block':'none';
+  document.getElementById('eppComprasBlock').style.display = tab==='compras' ? 'block':'none';
+  document.getElementById('eppRm050Block').style.display = tab==='rm050' ? 'block':'none';
   if(tab==='kits') renderKitsEpp();
+  if(tab==='compras') renderListaCompras();
+  if(tab==='rm050') renderRm050();
 }
 
 // ---------- Kits de EPP por puesto y reposición ----------
@@ -7670,7 +7751,7 @@ function renderFichaEpp(){
   const historial = eppAsignaciones.filter(a=>a.empId===e.id).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
   const tallas = [e.tallaCamisa?'Camisa '+e.tallaCamisa:'', e.tallaPantalon?'Pantalón '+e.tallaPantalon:'', e.tallaCalzado?'Calzado '+e.tallaCalzado:''].filter(Boolean).join(' · ');
   const acciones = a=>e.estado==='activo' ? `
-      <button class="btn btn-ghost btn-sm" onclick="reponerEpp('${escHtml(a.id)}','Cambio por deterioro')">Cambio por deterioro</button>
+      <button class="btn btn-ghost btn-sm" onclick="abrirEntregaEpp('${escHtml(e.id)}','${escHtml(a.itemId)}')">Reponer</button>
       <button class="btn btn-ghost btn-sm" onclick="registrarDevolucionEpp('${escHtml(a.id)}')">Devolución</button>` :
       `<button class="btn btn-ghost btn-sm" onclick="registrarDevolucionEpp('${escHtml(a.id)}')">Registrar devolución</button>`;
   cont.innerHTML = `
@@ -7682,8 +7763,10 @@ function renderFichaEpp(){
     ${e.estado==='activo' && kit ? (faltan.length
       ? `<div class="aviso-box warn" style="margin:0 0 12px;"><div class="aviso-title">Le falta del kit "${escHtml(kit.nombre)}" (${faltan.length})</div>
           <div class="aviso-list">${faltan.map(x=>`<span class="aviso-chip">${nombreItem(x)} ×${x.cantidad}</span>`).join('')}</div>
-          <button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="entregarFaltantesKit('${escHtml(e.id)}')">Entregar lo que falta</button></div>`
+          <button class="btn btn-accent btn-sm" style="margin-top:8px;" onclick="abrirEntregaEpp('${escHtml(e.id)}')">Entregar lo que falta (rápido)</button></div>`
       : `<div class="aviso-box" style="margin:0 0 12px;background:var(--success-light);"><div class="aviso-title" style="color:var(--success);">✓ Tiene vigente todo el EPP de su kit</div></div>`) : ''}
+    ${e.estado==='activo' ? `<div style="margin:0 0 12px;"><button class="btn btn-primary btn-sm" onclick="abrirEntregaEpp('${escHtml(e.id)}', null, true)">Entregar EPP</button>
+      ${eppAsignaciones.some(a=>a.empId===e.id) ? `<button class="btn btn-ghost btn-sm" onclick="constanciaUltimaEntregaEpp('${escHtml(e.id)}')">Constancia de la última entrega</button>` : ''}</div>` : ''}
     ${e.estado!=='activo' && enPoder.length ? `<div class="aviso-box danger" style="margin:0 0 12px;"><div class="aviso-title">Trabajador cesado con ${enPoder.length} EPP sin devolver</div></div>` : ''}
     <h4 style="margin:6px 0 8px;">EPP en su poder (${enPoder.length})</h4>
     ${enPoder.length ? `<div class="table-scroll"><table>
@@ -8145,7 +8228,8 @@ function descargarFormatoAnualEppPdf(){
   showToast('Formato anual de EPP descargado');
 }
 
-async function generarConstanciaEppPdf(entregaId){
+// Versión anterior (guardaba el PDF completo en la nube). Se conserva solo como referencia; ya no se usa.
+async function generarConstanciaEppPdfAnterior(entregaId){
   const items = eppAsignaciones.filter(a=>(a.entregaId||a.id)===entregaId);
   if(!items.length) return;
   const a0 = items[0];
@@ -9612,6 +9696,16 @@ const REPORTES = [
      return {subtitulo: r.texto+' · '+L.length+' entregas', archivo:'epp-entregado',
        columnas:[{t:'Fecha',w:1},{t:'Trabajador',w:2.6},{t:'DNI',w:1},{t:'Código',w:0.8},{t:'Artículo',w:2.6},{t:'Talla',w:0.7},{t:'Cant.',w:0.6,tipo:'n'},{t:'Vence',w:1},{t:'Firmó',w:0.6},{t:'Estado',w:0.9},{t:'Entregó',w:1.6}],
        filas: L, total: L.length ? ['TOTAL','','','','','',L.reduce((s,f)=>s+(+f[6]||0),0),'','','',''] : null}; }},
+  {id:'compras', titulo:'Lista de compras de EPP', icono:'🛒', rango:false,
+   desc:'Qué EPP comprar y en qué talla, según los kits por puesto, lo vencido o por vencer y el stock mínimo.',
+   fn:()=>{ const L = eppListaCompras();
+     const filas = L.map(f=>[f.it.codigo||'', f.it.nombre, f.talla||'', f.quienes.join(', '), f.cant, f.stock, f.comprar, f.precio!=null ? f.precio : '', f.precio!=null ? apR2(f.precio*f.comprar) : '']);
+     return {subtitulo: repHoy()+' · según kits, EPP vencido o por vencer (30 días) y stock mínimo', archivo:'lista-compras-epp',
+       columnas:[{t:'Código',w:0.8},{t:'Artículo',w:2.8},{t:'Talla',w:0.6},{t:'Para quién',w:2.6},{t:'Necesitan',w:0.8,tipo:'n'},{t:'En stock',w:0.7,tipo:'n'},{t:'Comprar',w:0.7,tipo:'n'},{t:'Precio ref. S/',w:0.9,tipo:'m'},{t:'Subtotal S/',w:0.9,tipo:'m'}],
+       filas, total: filas.length ? ['TOTAL','','','','','',L.reduce((s,f)=>s+f.comprar,0),'',apR2(L.reduce((s,f)=>s+(f.precio ? f.precio*f.comprar : 0),0))] : null}; }},
+  {id:'rm050', titulo:'Registro R.M. 050 – Equipos de seguridad', icono:'📒', rango:true,
+   desc:'Formato oficial "Registro de equipos de seguridad o emergencia" con las entregas de EPP del rango, para firmar.',
+   fn:()=>{ const r = repRangoActual(); return rm050Datos(r.desde, r.hasta); }},
   {id:'matriz', titulo:'Matriz de cumplimiento SUNAFIL', icono:'⚖️', rango:false,
    desc:'Por trabajador: contrato, contrato firmado, EMO, SCTR, Vida Ley, inducción, EPP, T-Registro y cuenta, con % de cumplimiento.',
    fn:()=>{ const L = repActivos().map(e=>{ const items = checklistLegajo(e);
@@ -9726,7 +9820,16 @@ function repPdfDatos(r){
     doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(90);
     doc.text(pdfTxt((emp.razonSocial||'')+(emp.ruc ? '  ·  RUC '+emp.ruc : '')), M, 48);
     doc.text(pdfTxt(r.subtitulo), M, 60);
-    y = 72; cabeceraTabla();
+    y = 72;
+    // Bloque opcional de datos (p. ej. datos del empleador en el registro de la R.M. 050-2013-TR), en recuadro.
+    if(r.cabecera && r.cabecera.length){
+      doc.setFontSize(8.5); doc.setTextColor(30);
+      const alto = r.cabecera.length*12 + 8;
+      doc.setDrawColor(150); doc.rect(M, y, AW, alto);
+      r.cabecera.forEach((l,i)=>{ doc.setFont('helvetica', i===0 ? 'bold' : 'normal'); doc.text(pdfTxt(l), M+6, y+13+i*12); });
+      y += alto + 8;
+    }
+    cabeceraTabla();
   };
   const fila = (valores, idx, negrita)=>{
     doc.setFont('helvetica', negrita ? 'bold' : 'normal'); doc.setFontSize(fs);
@@ -9743,10 +9846,10 @@ function repPdfDatos(r){
   if(r.pie){
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(60);
     const lineas = doc.splitTextToSize(pdfTxt(r.pie), AW);
-    if(y + lineas.length*10 + 70 > PH - 30){ doc.addPage(); encabezado(); }
+    if(y + lineas.length*10 + (r.firmas ? 95 : 20) > PH - 30){ doc.addPage(); encabezado(); }
     doc.text(lineas, M, y + 16); y += 16 + lineas.length*10;
     if(r.firmas){
-      const yF = y + 50; doc.setDrawColor(120);
+      const yF = Math.min(y + 50, PH - 45); doc.setDrawColor(120);
       r.firmas.forEach((f,i)=>{ const x = M + 40 + i*300; doc.line(x, yF, x+200, yF); doc.setFont('helvetica','bold'); doc.text(pdfTxt(f), x+100, yF+11, {align:'center'}); });
     }
   }
@@ -10172,6 +10275,499 @@ function heDescargarFormato(){
     filas, total:null,
     pie:'Los trabajadores que firman declaran que realizaron el trabajo en sobretiempo de forma voluntaria y con autorización previa. Pago: primeras dos horas del día con sobretasa de 25% y las siguientes con 35% (D.S. 007-2002-TR y D.S. 008-2002-TR).',
     firmas:['Supervisor / jefe inmediato','Recursos Humanos']});
+}
+
+// ---------- Constancia de entrega de EPP: diseño claro, con huella y número correlativo ----------
+function eppGrupoEntrega(entregaId){ return eppAsignaciones.filter(a=>(a.entregaId||a.id)===entregaId); }
+function constanciaUltimaEntregaEpp(empId){
+  const u = eppAsignaciones.filter(a=>a.empId===empId).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'') || (b.id||'').localeCompare(a.id||''))[0];
+  if(u) generarConstanciaEppPdf(u.entregaId || u.id);
+}
+// Número correlativo por año (EPP-2026-0001). Se asigna una sola vez por entrega.
+function eppNumeroConstancia(items){
+  if(items[0].numeroConstancia) return {numero: items[0].numeroConstancia, nuevo:false};
+  const anio = (items[0].fecha || hoyISO()).slice(0,4), pref = 'EPP-'+anio+'-';
+  const max = eppAsignaciones.map(a=>a.numeroConstancia||'').filter(n=>n.startsWith(pref)).reduce((m,n)=>Math.max(m, parseInt(n.slice(pref.length))||0), 0);
+  const numero = pref + String(max+1).padStart(4,'0');
+  items.forEach(a=>a.numeroConstancia = numero);
+  return {numero, nuevo:true};
+}
+async function generarConstanciaEppPdf(entregaId){
+  const items = eppGrupoEntrega(entregaId);
+  if(!items.length){ showToast('No se encontró la entrega de EPP'); return; }
+  const a0 = items[0], e = employees.find(x=>x.id===a0.empId);
+  if(!e){ showToast('El colaborador ya no existe'); return; }
+  if(!window.jspdf){ showToast('No cargó la librería de PDF. Recarga la página.'); return; }
+  const {numero, nuevo} = eppNumeroConstancia(items);
+  const emp = window._empresaData || {};
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const X = 40, W = 515;
+  // Encabezado
+  addLogoToPdf(doc, X, 26, 48);
+  doc.setTextColor(25); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.text('CONSTANCIA DE ENTREGA DE', X+58, 44); doc.text('EQUIPOS DE PROTECCIÓN PERSONAL (EPP)', X+58, 60);
+  doc.setDrawColor(35,61,77); doc.setLineWidth(1.2); doc.rect(X+W-128, 26, 128, 46);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.text('N.º de constancia', X+W-64, 38, {align:'center'});
+  doc.setFont('helvetica','bold'); doc.setFontSize(12.5); doc.text(numero, X+W-64, 54, {align:'center'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.text('Fecha: '+docsFechaCorta(a0.fecha), X+W-64, 66, {align:'center'});
+  doc.setFontSize(8.5); doc.setTextColor(80);
+  doc.text(pdfTxt(`${emp.razonSocial||''}  ·  RUC ${emp.ruc||''}  ·  Ley 29783 de Seguridad y Salud en el Trabajo y D.S. 005-2012-TR`), X, 88);
+  doc.setTextColor(25);
+  // Datos del trabajador
+  let y = 96;
+  const datos = [['Trabajador', e.nombre], ['DNI', e.dni||''], ['Cargo', e.cargo||''], ['Área', e.area||''], ['Lugar de trabajo', e.lugarPrestacion || DOCS_DEFECTO.lugar], ['Fecha de ingreso', docsFechaCorta(e.fechaIngreso) || '—']];
+  doc.setLineWidth(0.6); doc.setDrawColor(130); doc.rect(X, y, W, 3*17+8);
+  datos.forEach((d,i)=>{
+    const xx = X + 8 + (i%2)*(W/2), yy = y + 17 + Math.floor(i/2)*17;
+    doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.text(d[0]+':', xx, yy);
+    doc.setFont('helvetica','normal'); doc.text(doc.splitTextToSize(pdfTxt(d[1]), W/2-100)[0] || '', xx+88, yy);
+  });
+  y += 3*17 + 8 + 16;
+  // Tabla de EPP
+  const cols = [{t:'N.º',w:26,c:true},{t:'Código',w:54},{t:'Descripción del EPP',w:205},{t:'Talla',w:40,c:true},{t:'Cant.',w:36,c:true},{t:'Tipo',w:70,c:true},{t:'Reposición',w:84,c:true}];
+  const cabecera = ()=>{
+    doc.setFillColor(35,61,77); doc.rect(X, y, W, 20, 'F');
+    doc.setTextColor(255); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+    let x = X; cols.forEach(c=>{ doc.text(c.t, c.c ? x+c.w/2 : x+5, y+13.5, c.c ? {align:'center'} : undefined); x += c.w; });
+    doc.setTextColor(25); y += 20;
+  };
+  cabecera();
+  items.forEach((a,i)=>{
+    const it = inventoryItems.find(x=>x.id===a.itemId);
+    const tipo = a.tipoEntrega || (a.motivoReposicion ? 'Reposición' : 'Nuevo');
+    const desc = (it ? it.nombre : '(artículo eliminado)') + (a.motivoReposicion ? ' — motivo: '+a.motivoReposicion : '');
+    doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+    const lineas = doc.splitTextToSize(pdfTxt(desc), cols[2].w-10);
+    const alto = Math.max(1, lineas.length)*11.5 + 9;
+    if(y + alto > 600){ doc.addPage(); y = 50; cabecera(); doc.setFont('helvetica','normal'); doc.setFontSize(9.5); }
+    const valores = [String(i+1), (it && it.codigo) || a.codigo || '', lineas, a.talla || '—', String(a.cantidad||1), tipo, docsFechaCorta(a.fechaReposicion || a.fechaVencimiento) || '—'];
+    let x = X;
+    cols.forEach((c,k)=>{ doc.rect(x, y, c.w, alto); doc.text(valores[k], c.c ? x+c.w/2 : x+5, y+14, c.c ? {align:'center'} : undefined); x += c.w; });
+    y += alto;
+  });
+  y += 18;
+  // Declaraciones con casillas
+  if(y > 640){ doc.addPage(); y = 60; }
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.text('DECLARACIÓN DEL TRABAJADOR (marque con una X)', X, y); y += 6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+  ['Recibí los EPP detallados, en buen estado y de mi talla.',
+   'Recibí instrucción sobre su uso correcto, cuidado, limpieza y limitaciones.',
+   'Me comprometo a usarlos durante toda la jornada, conservarlos y devolverlos cuando se repongan o al término de mi vínculo laboral.',
+   'Comunicaré de inmediato a mi jefe cualquier daño, desgaste o pérdida de los EPP.'].forEach(t=>{
+    y += 15; doc.rect(X, y-9, 10, 10);
+    const l = doc.splitTextToSize(pdfTxt(t), W-20); doc.text(l, X+17, y); y += (l.length-1)*11.5;
+  });
+  // Firmas y huella
+  let yF = Math.max(y + 85, 700);
+  if(yF > 775){ doc.addPage(); yF = 160; }
+  doc.setDrawColor(60); doc.setLineWidth(0.8);
+  doc.line(X, yF, X+175, yF);
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text('Firma del trabajador', X+87, yF+12, {align:'center'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+  doc.text(doc.splitTextToSize(pdfTxt(e.nombre), 175)[0], X+87, yF+23, {align:'center'}); doc.text('DNI '+pdfTxt(e.dni||''), X+87, yF+33, {align:'center'});
+  doc.rect(X+188, yF-72, 62, 78);
+  doc.setFontSize(7); doc.text('Huella digital', X+219, yF+16, {align:'center'}); doc.text('(índice derecho)', X+219, yF+24, {align:'center'});
+  addFirmaToPdf(doc, X+W-150, yF-50, 105, 46, a0.firmaId);
+  doc.line(X+W-195, yF, X+W, yF);
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text('Entregado por', X+W-97, yF+12, {align:'center'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.text(pdfTxt(a0.responsableEntrega || emp.representanteNombre || ''), X+W-97, yF+23, {align:'center'});
+  doc.text('Responsable de almacén / SST', X+W-97, yF+33, {align:'center'});
+  doc.setFontSize(7.5); doc.setTextColor(120);
+  doc.text(pdfTxt(`Constancia ${numero} · generada por SERVING RRHH el ${docsFechaCorta(hoyISO())} · Conservar en el legajo del trabajador (R.M. 050-2013-TR).`), X, 822);
+  doc.save(`constancia-epp-${numero}-${plsNorm(e.nombre).replace(/[^A-Z]+/g,'_')}.pdf`);
+  // Se guarda solo la referencia (no el PDF): la constancia se vuelve a generar idéntica cuando se necesite.
+  let cambio = nuevo;
+  if(!workerDocs.some(d=>d.categoria==='constancia_epp' && d.entregaId===entregaId)){
+    workerDocs.push({id:'p'+Date.now(), empId:a0.empId, categoria:'constancia_epp', periodo:'', vigencia:null, entregaId, numeroConstancia:numero,
+      fileName:`constancia-epp-${numero}.pdf`, fileType:'application/pdf', fileData:null, fecha: hoyISO(),
+      historial:[{accion:'Generada', fecha: hoyISO(), detalle:`Constancia ${numero} (se regenera desde la entrega de EPP)`}]});
+    await saveData('workerDocs', workerDocs);
+  }
+  if(cambio) await saveData('eppAsignaciones', eppAsignaciones);
+}
+
+// ---------- Entrega rápida de EPP (desde la ficha del trabajador) ----------
+let entregaEppLineas = [];
+const EPP_MOTIVOS_REPOSICION = ['Desgaste por uso','Deterioro o rotura','Pérdida','Cambio de talla','Vencimiento de vida útil'];
+function abrirEntregaEpp(empId, itemIdReponer){
+  const e = employees.find(x=>x.id===empId);
+  if(!e) return;
+  const kit = kitSugeridoPara(e);
+  const vigentes = new Set(eppEnPoder(empId).filter(a=>!(daysUntil(a.fechaVencimiento)<0)).map(a=>a.itemId));
+  const linea = (itemId, cantidad, marcado)=>{
+    const it = inventoryItems.find(i=>i.id===itemId);
+    if(!it) return null;
+    const rep = eppAsignaciones.some(a=>a.empId===empId && a.itemId===itemId);
+    return {itemId, cantidad: cantidad||1, marcado, talla: it.manejaTallas ? tallaSugeridaParaItem(it, e) : '', tipo: rep ? 'Reposición' : 'Nuevo', motivo: rep ? 'Desgaste por uso' : ''};
+  };
+  entregaEppLineas = (itemIdReponer ? [linea(itemIdReponer, 1, true)] : kit ? kit.items.map(x=>linea(x.itemId, x.cantidad, !vigentes.has(x.itemId))) : []).filter(Boolean);
+  document.getElementById('entregaEppEmpId').value = empId;
+  document.getElementById('entregaEppTitulo').textContent = (itemIdReponer ? 'Reponer EPP — ' : 'Entregar EPP — ') + e.nombre;
+  const tallas = [e.tallaCamisa?'camisa '+e.tallaCamisa:'', e.tallaPantalon?'pantalón '+e.tallaPantalon:'', e.tallaCalzado?'calzado '+e.tallaCalzado:''].filter(Boolean).join(' · ');
+  document.getElementById('entregaEppInfo').innerHTML = `${escHtml(e.cargo||'')} · Kit: <b>${kit ? escHtml(kit.nombre) : 'sin kit'}</b> · Tallas: ${tallas ? escHtml(tallas) : '<span style="color:var(--danger);">sin tallas en su ficha</span>'}. Lo que ya tiene vigente aparece sin marcar.`;
+  document.getElementById('entregaEppFecha').value = hoyISO();
+  let resp = ''; try{ resp = localStorage.getItem('eppResponsableEntrega') || ''; }catch(_){}
+  document.getElementById('entregaEppResponsable').value = resp;
+  document.getElementById('entregaEppFirma').innerHTML = `<option value="">Sin firma</option>` + firmasDigitales.map(f=>`<option value="${escHtml(f.id)}">${escHtml(f.nombre)}</option>`).join('');
+  document.getElementById('entregaEppFirma').value = firmasDigitales.length ? firmasDigitales[0].id : '';
+  renderEntregaEppLineas();
+  document.getElementById('entregaEppModalOverlay').classList.add('active');
+}
+function eppStockDisponible(it, talla){ return it.manejaTallas ? (parseFloat((it.stockPorTalla||{})[talla])||0) : (parseFloat(it.stock)||0); }
+function renderEntregaEppLineas(){
+  const cont = document.getElementById('entregaEppLineas');
+  const usados = new Set(entregaEppLineas.map(l=>l.itemId));
+  document.getElementById('entregaEppAgregar').innerHTML = `<option value="">— Elegir otro EPP —</option>` + inventoryItems
+    .filter(it=>/EPP|Uniforme/.test(it.categoria||'') && !usados.has(it.id)).sort((a,b)=>(a.codigo||'').localeCompare(b.codigo||'','es',{numeric:true}))
+    .map(it=>`<option value="${escHtml(it.id)}">${escHtml((it.codigo?it.codigo+' ':'')+it.nombre)} (stock ${it.stock})</option>`).join('');
+  if(!entregaEppLineas.length){ cont.innerHTML = '<div class="empty">Elige el EPP a entregar en la lista de abajo.</div>'; return; }
+  cont.innerHTML = `<div class="table-scroll"><table>
+    <thead><tr><th></th><th>EPP</th><th>Talla</th><th>Cant.</th><th>Stock</th><th>Tipo</th></tr></thead>
+    <tbody>${entregaEppLineas.map((l,i)=>{
+      const it = inventoryItems.find(x=>x.id===l.itemId) || {};
+      const disp = eppStockDisponible(it, l.talla), falta = l.marcado && (it.manejaTallas ? !l.talla : false);
+      const talla = it.manejaTallas
+        ? `<select onchange="entregaEppLineas[${i}].talla=this.value; renderEntregaEppLineas();" style="width:95px;${falta?'border-color:var(--danger);':''}"><option value="">—</option>${Object.entries(it.stockPorTalla||{}).map(([t,c])=>`<option value="${escHtml(t)}" ${t===l.talla?'selected':''}>${escHtml(t)} (${c})</option>`).join('')}</select>`
+        : '<span class="hint">—</span>';
+      const stock = l.marcado && disp < l.cantidad ? `<span class="pill pill-danger">Sin stock (${disp})</span>` : `<span class="pill pill-ok">Hay ${disp}</span>`;
+      return `<tr style="${l.marcado?'':'opacity:0.55;'}">
+        <td><input type="checkbox" style="width:auto;" ${l.marcado?'checked':''} onchange="entregaEppLineas[${i}].marcado=this.checked; renderEntregaEppLineas();"></td>
+        <td style="font-size:12.5px;"><b class="mono" style="color:var(--primary);">${escHtml(it.codigo||'')}</b> ${escHtml(it.nombre||'(eliminado)')}</td>
+        <td>${talla}</td>
+        <td><input type="number" min="1" value="${l.cantidad}" style="width:60px;" onchange="entregaEppLineas[${i}].cantidad=parseFloat(this.value)||1; renderEntregaEppLineas();"></td>
+        <td>${stock}</td>
+        <td><select onchange="entregaEppLineas[${i}].tipo=this.value; if(this.value==='Reposición' && !entregaEppLineas[${i}].motivo) entregaEppLineas[${i}].motivo='Desgaste por uso'; renderEntregaEppLineas();" style="width:110px;">
+            <option ${l.tipo==='Nuevo'?'selected':''}>Nuevo</option><option ${l.tipo==='Reposición'?'selected':''}>Reposición</option></select>
+          ${l.tipo==='Reposición' ? `<select onchange="entregaEppLineas[${i}].motivo=this.value" style="width:150px;margin-top:4px;">${EPP_MOTIVOS_REPOSICION.map(m=>`<option ${m===l.motivo?'selected':''}>${m}</option>`).join('')}</select>` : ''}</td>
+      </tr>`; }).join('')}</tbody></table></div>`;
+}
+function entregaEppAgregarLinea(){
+  const id = document.getElementById('entregaEppAgregar').value;
+  const it = inventoryItems.find(x=>x.id===id);
+  if(!it) return;
+  const e = employees.find(x=>x.id===document.getElementById('entregaEppEmpId').value);
+  const rep = e && eppAsignaciones.some(a=>a.empId===e.id && a.itemId===id);
+  entregaEppLineas.push({itemId:id, cantidad:1, marcado:true, talla: it.manejaTallas ? tallaSugeridaParaItem(it, e) : '', tipo: rep?'Reposición':'Nuevo', motivo: rep?'Desgaste por uso':''});
+  renderEntregaEppLineas();
+}
+async function confirmarEntregaEpp(){
+  const empId = document.getElementById('entregaEppEmpId').value, e = employees.find(x=>x.id===empId);
+  const fecha = document.getElementById('entregaEppFecha').value, responsable = document.getElementById('entregaEppResponsable').value.trim();
+  const firmaId = document.getElementById('entregaEppFirma').value;
+  const sel = entregaEppLineas.filter(l=>l.marcado);
+  if(!e || !fecha){ showToast('Indica la fecha de entrega'); return; }
+  if(!sel.length){ showToast('Marca al menos un EPP'); return; }
+  const sinTalla = sel.filter(l=>{ const it = inventoryItems.find(x=>x.id===l.itemId); return it && it.manejaTallas && !l.talla; });
+  if(sinTalla.length){ showToast('Elige la talla de: '+sinTalla.map(l=>inventoryItems.find(x=>x.id===l.itemId).nombre).join(', ')); return; }
+  const sinStock = sel.filter(l=>{ const it = inventoryItems.find(x=>x.id===l.itemId); return it && eppStockDisponible(it, l.talla) < l.cantidad; });
+  if(sinStock.length && !confirm(`No hay stock suficiente de:\n${sinStock.map(l=>'• '+inventoryItems.find(x=>x.id===l.itemId).nombre+(l.talla?' talla '+l.talla:'')).join('\n')}\n\nEl stock quedará en negativo. ¿Registrar la entrega de todas formas?`)) return;
+  const entregaId = 'ent'+Date.now();
+  sel.forEach((l,k)=>{
+    const it = inventoryItems.find(x=>x.id===l.itemId);
+    if(!it) return;
+    const cantidad = l.cantidad||1, vida = parseInt(it.vidaUtilDias) || 90, venc = plsSumarDias(fecha, vida);
+    if(it.manejaTallas){ it.stockPorTalla[l.talla] = (parseFloat(it.stockPorTalla[l.talla])||0) - cantidad; it.stock = Object.values(it.stockPorTalla).reduce((s,v)=>s+(parseFloat(v)||0),0); }
+    else it.stock = (parseFloat(it.stock)||0) - cantidad;
+    inventoryMovements.push({id:'mv'+Date.now()+'_'+k, itemId:it.id, tipo:'salida', cantidad, fecha, entregadoA:e.nombre,
+      motivo: l.tipo==='Reposición' ? 'Reposición de EPP ('+l.motivo+')' : 'Asignación de EPP', responsable, saldoResultante:it.stock, talla: it.manejaTallas ? l.talla : ''});
+    eppAsignaciones.push({id:'eppa'+Date.now()+'_'+k, entregaId, empId, itemId:it.id, cantidad, fecha, vidaUtilDias:vida, fechaVencimiento:venc, fechaReposicion:venc,
+      estado: l.tipo==='Reposición' ? 'Reposición' : 'Nuevo', tipoEntrega:l.tipo, motivoReposicion: l.tipo==='Reposición' ? l.motivo : '',
+      responsableEntrega:responsable, firmaTrabajador:false, talla: it.manejaTallas ? l.talla : '', firmaId, codigo: it.codigo||'', notas:''});
+  });
+  try{ localStorage.setItem('eppResponsableEntrega', responsable); }catch(_){}
+  await saveData('inventoryItems', inventoryItems); await saveData('inventoryMovements', inventoryMovements); await saveData('eppAsignaciones', eppAsignaciones);
+  document.getElementById('entregaEppModalOverlay').classList.remove('active');
+  renderAll();
+  await generarConstanciaEppPdf(entregaId);
+  showToast(sel.some(l=>l.motivo==='Pérdida') ? 'Entrega registrada. Si la pérdida corresponde a descuento, regístralo en Préstamos ("Descuento EPP").' : 'Entrega registrada y constancia descargada');
+}
+
+// ---------- Lista de compras de EPP por talla ----------
+// Demanda: EPP del kit que cada trabajador activo no tiene, tiene vencido o le vence en 30 días; más reposición del stock mínimo.
+function eppListaCompras(){
+  const dem = new Map();
+  const corto = n=>{ const p = String(n||'').split(/\s+/); return p[0]+' '+(p[2]||''); };
+  repActivos().forEach(e=>{
+    const kit = kitSugeridoPara(e);
+    if(!kit) return;
+    const enPoder = new Map(eppEnPoder(e.id).map(a=>[a.itemId, a]));
+    kit.items.forEach(x=>{
+      const it = inventoryItems.find(i=>i.id===x.itemId);
+      if(!it) return;
+      const a = enPoder.get(it.id), d = a ? daysUntil(a.fechaVencimiento) : null;
+      if(a && !(d!==null && d<=30)) return;
+      const talla = it.manejaTallas ? (tallaSugeridaParaItem(it, e) || '(sin talla)') : '';
+      const k = it.id+'|'+talla;
+      const r = dem.get(k) || {it, talla, cant:0, quienes:[]};
+      r.cant += x.cantidad||1; r.quienes.push(corto(e.nombre)); dem.set(k, r);
+    });
+  });
+  const precio = it=>{ const m = inventoryMovements.filter(m=>m.itemId===it.id && m.tipo==='entrada' && m.costoUnitario).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''))[0]; return m ? m.costoUnitario : null; };
+  const filas = [...dem.values()].map(r=>{
+    const stock = Math.max(0, r.talla==='(sin talla)' ? 0 : eppStockDisponible(r.it, r.talla));
+    const minimo = r.it.manejaTallas ? 0 : (parseFloat(r.it.stockMinimo)||0);
+    return {...r, stock, comprar: Math.max(0, r.cant + minimo - stock), precio: precio(r.it)};
+  });
+  inventoryItems.filter(it=>!it.manejaTallas && /EPP/.test(it.categoria||'') && it.stockMinimo && (parseFloat(it.stock)||0) < it.stockMinimo && !filas.some(f=>f.it.id===it.id)).forEach(it=>{
+    filas.push({it, talla:'', cant:0, quienes:['(stock mínimo '+it.stockMinimo+')'], stock: Math.max(0, parseFloat(it.stock)||0), comprar: it.stockMinimo - Math.max(0, parseFloat(it.stock)||0), precio: precio(it)});
+  });
+  return filas.filter(f=>f.comprar>0).sort((a,b)=>(a.it.codigo||'').localeCompare(b.it.codigo||'','es',{numeric:true}) || String(a.talla).localeCompare(String(b.talla),'es',{numeric:true}));
+}
+function renderListaCompras(){
+  const cont = document.getElementById('eppComprasContenido');
+  if(!cont) return;
+  const L = eppListaCompras();
+  const total = L.reduce((s,f)=>s+(f.precio ? f.precio*f.comprar : 0), 0);
+  const sinTalla = L.filter(f=>f.talla==='(sin talla)');
+  cont.innerHTML = L.length ? `
+    ${sinTalla.length ? `<div class="aviso-box warn"><div class="aviso-title">Hay trabajadores sin talla registrada: completa su ficha para saber qué talla comprar</div><div class="aviso-list">${[...new Set(sinTalla.flatMap(f=>f.quienes))].map(n=>`<span class="aviso-chip">${escHtml(n)}</span>`).join('')}</div></div>` : ''}
+    <div class="table-scroll"><table>
+      <thead><tr><th>Código</th><th>Artículo</th><th>Talla</th><th>Para quién</th><th>Necesitan</th><th>En stock</th><th>Comprar</th><th>Precio ref.</th><th>Subtotal</th></tr></thead>
+      <tbody>${L.map(f=>`<tr><td class="mono"><b>${escHtml(f.it.codigo||'')}</b></td><td>${escHtml(f.it.nombre)}</td><td>${escHtml(f.talla||'—')}</td>
+        <td style="font-size:11.5px;">${escHtml(f.quienes.join(', '))}</td><td class="mono">${f.cant}</td><td class="mono">${f.stock}</td><td class="mono"><b>${f.comprar}</b></td>
+        <td class="mono">${f.precio!=null ? soles(f.precio) : '—'}</td><td class="mono">${f.precio!=null ? soles(f.precio*f.comprar) : '—'}</td></tr>`).join('')}</tbody>
+      <tfoot><tr style="font-weight:700;"><td colspan="6">TOTAL</td><td class="mono">${L.reduce((s,f)=>s+f.comprar,0)}</td><td></td><td class="mono">${soles(total)}</td></tr></tfoot>
+    </table></div>
+    <p class="hint" style="margin:10px 0 0;">Se calcula con los kits por puesto, el EPP vencido o que vence en 30 días, las tallas de cada ficha y el stock mínimo. El precio es el de la última compra registrada (referencial).</p>`
+    : '<div class="empty">✅ No hace falta comprar EPP: todos tienen su kit vigente y el stock cubre el mínimo.</div>';
+}
+
+// ---------- Registro de equipos de seguridad o emergencia (R.M. 050-2013-TR) ----------
+function rm050Datos(desde, hasta, responsable){
+  const grupos = new Map();
+  eppAsignaciones.filter(a=>a.fecha>=desde && a.fecha<=hasta).forEach(a=>{ const k = a.entregaId||a.id; if(!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(a); });
+  const filas = [...grupos.values()].sort((x,y)=>x[0].fecha.localeCompare(y[0].fecha)).map((g,i)=>{
+    const e = employees.find(x=>x.id===g[0].empId) || {};
+    const epp = g.map(a=>{ const it = inventoryItems.find(x=>x.id===a.itemId); return (it ? it.nombre : '(artículo eliminado)') + (a.talla ? ' T'+a.talla : '') + ((a.cantidad||1)>1 ? ' x'+a.cantidad : ''); }).join('; ');
+    const renov = g.map(a=>a.fechaReposicion || a.fechaVencimiento).filter(Boolean).sort()[0];
+    return [i+1, e.nombre||'', e.dni||'', e.area||'', epp, docsFechaCorta(g[0].fecha), docsFechaCorta(renov), ''];
+  });
+  const emp = window._empresaData || {};
+  return {titulo:'REGISTRO DE EQUIPOS DE SEGURIDAD O EMERGENCIA', subtitulo:`R.M. N.º 050-2013-TR · Periodo: del ${docsFechaCorta(desde)} al ${docsFechaCorta(hasta)}`, archivo:'registro-rm050-equipos-seguridad',
+    cabecera:['DATOS DEL EMPLEADOR', `Razón social: ${emp.razonSocial||''}      RUC: ${emp.ruc||''}`, `Domicilio: ${emp.domicilioFiscal||''}`,
+      `Actividad económica: Construcción de buques y estructuras flotantes      N.º de trabajadores en el centro laboral: ${repActivos().length}`,
+      'Tipo de equipo entregado:   [ X ] Equipo de protección personal      [   ] Equipo de emergencia'],
+    columnas:[{t:'N.º',w:0.4,tipo:'n'},{t:'Nombres y apellidos',w:2.2},{t:'DNI',w:0.9},{t:'Área',w:0.9},{t:'Equipo(s) de protección entregado(s)',w:4.2},{t:'Fecha de entrega',w:0.95},{t:'Fecha de renovación',w:0.95},{t:'Firma del trabajador',w:1.5}],
+    filas, total:null, pie:`Responsable del registro: ${responsable || '________________________________________'}          Fecha: ${docsFechaCorta(hoyISO())}`, firmas:['Firma del responsable del registro']};
+}
+function renderRm050(){
+  const d = document.getElementById('rm050Desde'), h = document.getElementById('rm050Hasta');
+  if(!d.value) d.value = hoyISO().slice(0,8)+'01';
+  if(!h.value) h.value = hoyISO();
+  const n = rm050Datos(d.value, h.value).filas.length;
+  document.getElementById('rm050Resumen').textContent = `${n} entrega(s) de EPP en el periodo elegido.`;
+  d.onchange = h.onchange = renderRm050;
+}
+function descargarRegistroRm050(){
+  const r = rm050Datos(document.getElementById('rm050Desde').value, document.getElementById('rm050Hasta').value, document.getElementById('rm050Responsable').value.trim());
+  if(!r.filas.length){ showToast('No hay entregas de EPP en ese periodo'); return; }
+  repPdfDatos(r);
+}
+
+// ---------- SCTR: lectura del PDF de la constancia y cruce con el personal ----------
+// Dos pólizas: personal obrero y administrativo. El grupo se toma de la última constancia en que figuró el trabajador o, si no, de su área.
+const SCTR_GRUPOS = {obreros:'Personal obrero', administrativos:'Personal administrativo'};
+function sctrGrupo(e){ return e.polizaSctr || (e.area==='Administración' ? 'administrativos' : 'obreros'); }
+let sctrPdfLectura = null;
+// Se carga también el "worker" como script normal: así pdf.js lee el PDF en la misma página (sin Web Worker),
+// lo que evita bloqueos por políticas del navegador. Las constancias son de 1-2 páginas, no afecta la velocidad.
+async function cargarPdfJs(){
+  if(window.pdfjsLib && window.pdfjsWorker) return window.pdfjsLib;
+  const cargar = src=>new Promise((ok, mal)=>{ const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = ()=>mal(new Error('No se pudo cargar el lector de PDF')); document.head.appendChild(s); });
+  const base = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  if(!window.pdfjsLib) await cargar(base+'pdf.min.js');
+  if(!window.pdfjsWorker) await cargar(base+'pdf.worker.min.js');
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = base+'pdf.worker.min.js';
+  return window.pdfjsLib;
+}
+// Texto del PDF en líneas (agrupando por altura en la página).
+async function pdfALineas(datos){
+  const lib = await cargarPdfJs();
+  const pdf = await lib.getDocument({data: datos}).promise;
+  const lineas = [];
+  for(let p=1; p<=pdf.numPages; p++){
+    const tc = await (await pdf.getPage(p)).getTextContent();
+    const filas = new Map();
+    tc.items.forEach(it=>{ if(!it.str || !it.str.trim()) return; const y = Math.round(it.transform[5]/4); if(!filas.has(y)) filas.set(y, []); filas.get(y).push({x: it.transform[4], s: it.str}); });
+    [...filas.entries()].sort((a,b)=>b[0]-a[0]).forEach(([,arr])=>lineas.push(arr.sort((a,b)=>a.x-b.x).map(o=>o.s).join(' ').replace(/\s+/g,' ').trim()));
+  }
+  return lineas;
+}
+function parsearConstanciaSctr(lineas){
+  const texto = lineas.join('\n');
+  const iso = s=>{ const m = String(s||'').match(/(\d{2})\/(\d{2})\/(\d{4})/); return m ? `${m[3]}-${m[2]}-${m[1]}` : ''; };
+  const mv = texto.match(/VIGENCIA\s*:?\s*(\d{2}\/\d{2}\/\d{4})[^\n]*?\bal\s*(\d{2}\/\d{2}\/\d{4})/i);
+  const aseguradoras = [['Sanitas Perú S.A. EPS',/sanitas/i],['Protecta Security',/protecta/i],['Rímac',/r[ií]mac/i],['La Positiva',/positiva/i],['Pacífico',/pac[ií]fico/i],['Mapfre',/mapfre/i]].filter(([,re])=>re.test(texto)).map(([n])=>n);
+  const personas = [], vistos = new Set();
+  const re = /(?:^|\s)\d{1,3}\s+([A-ZÁÉÍÓÚÑÜ][A-ZÁÉÍÓÚÑÜ' .-]+?)\s+(?:DNI|CE|C\.E\.|PAS)\s*-?\s*(\d{8,12})/g;
+  const recorrer = s=>{ re.lastIndex = 0; let m; while((m = re.exec(s))){ if(!vistos.has(m[2])){ vistos.add(m[2]); personas.push({nombre: m[1].replace(/\s+/g,' ').trim(), dni: m[2]}); } } };
+  lineas.forEach(recorrer);
+  if(!personas.length) recorrer(lineas.join(' '));
+  return {inicio: mv ? iso(mv[1]) : '', fin: mv ? iso(mv[2]) : '',
+    salud: (texto.match(/Salud\s*N[°º.]?\s*:?\s*(\d+)/i)||[])[1] || '', pension: (texto.match(/Pensi[oó]n\s*N[°º.]?\s*:?\s*(\d+)/i)||[])[1] || '',
+    sede: ((texto.match(/Sede\s*:\s*([^\n]+)/i)||[])[1] || '').trim(), ruc: (texto.match(/RUC\s*:?\s*(\d{11})/)||[])[1] || '',
+    aseguradora: aseguradoras.join(' / '), personas};
+}
+async function leerConstanciaSctr(file){
+  const cont = document.getElementById('sctrPdfResultado');
+  if(!file) return;
+  cont.innerHTML = '<p class="hint">Leyendo el PDF…</p>';
+  try{
+    const buf = await file.arrayBuffer();
+    const datos = parsearConstanciaSctr(await pdfALineas(new Uint8Array(buf.slice(0))));
+    if(!datos.personas.length) throw new Error('No se encontraron asegurados con DNI en el PDF');
+    const fileData = file.size <= 1024*1024 ? await new Promise(r=>{ const fr = new FileReader(); fr.onload = ()=>r(fr.result); fr.readAsDataURL(file); }) : null;
+    sctrPdfLectura = {...datos, grupo: document.getElementById('sctrPdfGrupo').value, fileName: file.name, fileData};
+    renderLecturaSctr();
+  }catch(err){
+    console.error(err);
+    cont.innerHTML = `<div class="aviso-box danger"><div class="aviso-title">No se pudo leer la constancia: ${escHtml(err.message||'')}. Verifica que sea el PDF original de la aseguradora (no una foto o escaneo) o usa la actualización masiva de abajo.</div></div>`;
+  }
+}
+function cruzarConstanciaSctr(L){
+  const dniN = d=>String(d||'').replace(/\D/g,'').padStart(8,'0');
+  const toks = s=>plsNorm(s).replace(/[^A-Z ]/g,' ').split(' ').filter(Boolean);
+  // Por nombre solo si coinciden TODAS las palabras (evita confundir hermanos con apellidos y un nombre en común)
+  // y si esa persona no figura ya con su propio DNI en la constancia.
+  const dnisPdf = new Set(L.personas.map(p=>dniN(p.dni)));
+  const porNombre = p=>{ const t = toks(p.nombre); return employees.find(e=>{ const u = toks(e.nombre); return u.length>=3 && u.length===t.length && u.every(x=>t.includes(x)) && !dnisPdf.has(dniN(e.dni)); }) || null; };
+  const ok = [], dniDistinto = [], sobran = [];
+  L.personas.forEach(p=>{
+    const e = employees.find(x=>dniN(x.dni)===dniN(p.dni));
+    if(e){ (e.estado==='activo' ? ok : sobran).push(e.estado==='activo' ? {p, e} : {p, e, motivo:'Cesado (inactivo en Personal)'}); return; }
+    const n = porNombre(p);
+    if(n && n.estado==='activo'){ dniDistinto.push({p, e:n}); return; }
+    sobran.push({p, e:n, motivo: n ? 'Cesado (inactivo en Personal)' : 'No está en Personal'});
+  });
+  const cubiertos = new Set([...ok, ...dniDistinto].map(x=>x.e.id));
+  const faltan = employees.filter(e=>e.estado==='activo' && sctrGrupo(e)===L.grupo && !cubiertos.has(e.id) && !(e.vigenciaSctr && L.fin && e.vigenciaSctr >= L.fin));
+  const otroGrupo = [...ok, ...dniDistinto].filter(x=>sctrGrupo(x.e)!==L.grupo);
+  return {ok, dniDistinto, sobran, faltan, otroGrupo};
+}
+function renderLecturaSctr(){
+  const L = sctrPdfLectura, cont = document.getElementById('sctrPdfResultado');
+  if(!L){ cont.innerHTML = ''; return; }
+  L.grupo = document.getElementById('sctrPdfGrupo').value;
+  const C = cruzarConstanciaSctr(L), emp = window._empresaData || {};
+  const lista = (arr, f)=>arr.map(f).map(t=>`<span class="aviso-chip">${t}</span>`).join('');
+  const rucMal = L.ruc && emp.ruc && L.ruc !== emp.ruc;
+  cont.innerHTML = `
+    <div style="padding:12px 14px;border:1px solid var(--border);border-radius:8px;background:var(--primary-light);">
+      <div style="font-weight:700;">${escHtml(L.aseguradora || 'Aseguradora no identificada')} · Póliza de ${escHtml(SCTR_GRUPOS[L.grupo].toLowerCase())}</div>
+      <div style="font-size:12.5px;margin-top:4px;">${L.salud?'Salud N.º '+escHtml(L.salud)+' · ':''}${L.pension?'Pensión N.º '+escHtml(L.pension)+' · ':''}${L.sede?'Sede '+escHtml(L.sede)+' · ':''}<b>${L.personas.length} asegurados</b> en el PDF</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:8px;">
+        <div class="field" style="margin:0;"><label>Vigencia desde</label><input type="date" id="sctrLecInicio" value="${escHtml(L.inicio)}"></div>
+        <div class="field" style="margin:0;"><label>hasta</label><input type="date" id="sctrLecFin" value="${escHtml(L.fin)}"></div>
+      </div>
+    </div>
+    ${rucMal ? `<div class="aviso-box danger"><div class="aviso-title">El RUC de la constancia (${escHtml(L.ruc)}) no es el de tu empresa (${escHtml(emp.ruc)}). Revisa que sea el documento correcto.</div></div>` : ''}
+    <div class="aviso-box" style="background:var(--success-light);"><div class="aviso-title" style="color:var(--success);">✅ Se actualizarán ${C.ok.length + C.dniDistinto.length} trabajadores</div>
+      <details><summary style="cursor:pointer;font-size:12.5px;">Ver lista</summary><div class="aviso-list">${lista([...C.ok, ...C.dniDistinto], x=>escHtml(x.e.nombre))}</div></details></div>
+    ${C.dniDistinto.length ? `<div class="aviso-box warn"><div class="aviso-title">⚠ DNI distinto entre la constancia y Personal: pide a la aseguradora que lo corrija</div>
+      <div class="aviso-list">${lista(C.dniDistinto, x=>`${escHtml(x.e.nombre)}: constancia ${escHtml(x.p.dni)} · Personal ${escHtml(x.e.dni)}`)}</div></div>` : ''}
+    ${C.faltan.length ? `<div class="aviso-box danger"><div class="aviso-title">🔴 Faltan en la póliza (${escHtml(SCTR_GRUPOS[L.grupo].toLowerCase())} activo sin SCTR para este periodo): pide su inclusión</div>
+      <div class="aviso-list">${lista(C.faltan, e=>escHtml(e.nombre)+' · '+escHtml(e.cargo||''))}</div></div>` : ''}
+    ${C.sobran.length ? `<div class="aviso-box warn"><div class="aviso-title">🟡 Figuran en la constancia pero no trabajan en la empresa: pide su retiro para no pagar de más</div>
+      <div class="aviso-list">${lista(C.sobran, x=>escHtml(x.p.nombre)+' ('+escHtml(x.p.dni)+') · '+escHtml(x.motivo))}</div></div>` : ''}
+    ${C.otroGrupo.length ? `<p class="hint">ℹ ${C.otroGrupo.length} trabajador(es) figuraban en la otra póliza; quedarán registrados en la de ${escHtml(SCTR_GRUPOS[L.grupo].toLowerCase())}: ${C.otroGrupo.map(x=>escHtml(x.e.nombre)).join(', ')}.</p>` : ''}
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="btn btn-accent btn-sm" onclick="aplicarConstanciaSctr()">Aplicar: actualizar ${C.ok.length + C.dniDistinto.length} trabajadores</button>
+      <button class="btn btn-ghost btn-sm" onclick="sctrPdfLectura=null; document.getElementById('sctrPdfArchivo').value=''; renderLecturaSctr();">Cancelar</button>
+    </div>`;
+  document.getElementById('sctrPdfGrupo').onchange = renderLecturaSctr;
+}
+async function aplicarConstanciaSctr(){
+  const L = sctrPdfLectura;
+  if(!L) return;
+  const inicio = document.getElementById('sctrLecInicio').value, fin = document.getElementById('sctrLecFin').value;
+  if(!inicio || !fin || fin < inicio){ showToast('Revisa las fechas de vigencia'); return; }
+  L.fin = fin;
+  const C = cruzarConstanciaSctr(L), lista = [...C.ok, ...C.dniDistinto];
+  if(!confirm(`Se registrará el SCTR (${SCTR_GRUPOS[L.grupo]}) del ${fmtDate(inicio)} al ${fmtDate(fin)} para ${lista.length} trabajadores. ¿Continuar?`)) return;
+  lista.forEach(({e})=>{ e.vigenciaSctrInicio = inicio; e.vigenciaSctr = fin; e.polizaSctr = L.grupo; });
+  const notas = [`Constancia SCTR (${SCTR_GRUPOS[L.grupo].toLowerCase()}) leída del PDF${L.sede ? ' · sede '+L.sede : ''} · ${L.personas.length} asegurados, ${lista.length} en Personal.`];
+  if(C.sobran.length) notas.push('No trabajan / no están en Personal (pedir retiro): '+C.sobran.map(x=>x.p.nombre+' ('+x.p.dni+')').join(', ')+'.');
+  if(C.dniDistinto.length) notas.push('DNI distinto en la constancia: '+C.dniDistinto.map(x=>x.e.nombre+' (constancia '+x.p.dni+', Personal '+x.e.dni+')').join(', ')+'.');
+  if(C.faltan.length) notas.push('Faltan en la póliza: '+C.faltan.map(e=>e.nombre).join(', ')+'.');
+  segurosEmpresa.push({id:'seg'+Date.now(), tipo:'SCTR Salud y Pensión', grupo:L.grupo, aseguradora: L.aseguradora || '—',
+    numeroPoliza: [L.salud ? 'Salud '+L.salud : '', L.pension ? 'Pensión '+L.pension : ''].filter(Boolean).join(' / '),
+    inicio, fin, empIds: lista.map(x=>x.e.id), fileData: L.fileData || null, fileName: L.fileName, fechaRegistro: hoyISO(), notas: notas.join(' ')});
+  await saveData('employees', employees);
+  await saveData('segurosEmpresa', segurosEmpresa);
+  sctrPdfLectura = null; document.getElementById('sctrPdfArchivo').value = '';
+  renderAll();
+  document.getElementById('sctrPdfResultado').innerHTML = `<div class="aviso-box" style="background:var(--success-light);"><div class="aviso-title" style="color:var(--success);">✅ SCTR actualizado para ${lista.length} trabajadores (${fmtDate(inicio)} – ${fmtDate(fin)}).${C.faltan.length ? ' Recuerda pedir la inclusión de '+C.faltan.length+' trabajador(es).' : ''}${C.sobran.length ? ' Pide el retiro de '+C.sobran.length+' persona(s) que ya no trabajan.' : ''}</div></div>`;
+}
+
+// ---------- Mis pendientes de hoy (Inicio) ----------
+function calcularPendientes(){
+  const P = [], hoy = hoyISO(), act = repActivos();
+  const add = (nivel, titulo, personas, accion, onclick)=>{ if(Array.isArray(personas) && !personas.length) return; P.push({nivel, titulo, personas: personas||[], accion, onclick}); };
+  const ult = [...planillasSemanales].sort((a,b)=>b.semanaInicio.localeCompare(a.semanaInicio))[0];
+  if(ult && daysUntil(ult.semanaFin) >= -21){
+    const sinFicha = ult.personas.filter(p=>!p.empId).map(p=>p.nombre);
+    add('danger', `${sinFicha.length} persona(s) cobran en la planilla y no tienen ficha en Personal`, sinFicha, 'Ver planilla', "switchView('planillasem')");
+  }
+  const sinContrato = act.filter(e=>!e.fechaFin || e.fechaFin < hoy);
+  add('danger', `${sinContrato.length} trabajador(es) sin contrato vigente`, sinContrato.map(e=>e.nombre), 'Ver contratos', "switchView('contratos')");
+  const venceContrato = act.filter(e=>e.fechaFin && e.fechaFin >= hoy && daysUntil(e.fechaFin) <= 15);
+  add('warn', `${venceContrato.length} contrato(s) vencen en los próximos 15 días`, venceContrato.map(e=>e.nombre+' ('+fmtDate(e.fechaFin)+')'), 'Renovar', "switchView('contratos')");
+  const sinTreg = act.filter(e=>!e.tRegistroAlta);
+  add('danger', `${sinTreg.length} trabajador(es) sin alta en T-Registro marcada en su ficha`, sinTreg.map(e=>e.nombre), 'Ver legajo', "switchView('legajosunafil')");
+  Object.keys(SCTR_GRUPOS).forEach(g=>{
+    const grupo = act.filter(e=>sctrGrupo(e)===g);
+    const sin = grupo.filter(e=>!e.vigenciaSctr || e.vigenciaSctr < hoy);
+    add(g==='obreros' ? 'danger' : 'warn', `SCTR ${SCTR_GRUPOS[g].toLowerCase()}: ${sin.length} sin cobertura vigente${g==='administrativos' ? ' (obligatorio si van a obra)' : ''}`, sin.map(e=>e.nombre), 'Ir a Seguros', "switchView('seguros')");
+    const fechas = grupo.map(e=>e.vigenciaSctr).filter(f=>f && f >= hoy).sort();
+    if(fechas.length && daysUntil(fechas[0]) <= 10) add('warn', `SCTR ${SCTR_GRUPOS[g].toLowerCase()}: la póliza vence en ${daysUntil(fechas[0])} día(s) (${fmtDate(fechas[0])}), renuévala`, null, 'Ir a Seguros', "switchView('seguros')");
+  });
+  const sinInd = act.filter(e=>sctrGrupo(e)==='obreros' && !tieneInduccionVigente(e.id));
+  add('danger', `${sinInd.length} trabajador(es) de obra sin inducción de seguridad`, sinInd.map(e=>e.nombre), 'Registrar inducción', "switchView('induccion')");
+  const kitInc = act.filter(e=>{ const k = kitSugeridoPara(e); if(!k) return false; const v = new Set(eppEnPoder(e.id).filter(a=>!(daysUntil(a.fechaVencimiento)<0)).map(a=>a.itemId)); return k.items.some(x=>!v.has(x.itemId)); });
+  add('warn', `${kitInc.length} trabajador(es) con el kit de EPP incompleto`, kitInc.map(e=>e.nombre), 'Entregar EPP', "switchView('epp'); switchEppTab('ficha')");
+  if(ult){
+    const est = ult.personas.map(p=>bsEstado(ult, p));
+    const pend = est.filter(x=>!x.ent).length, venc = est.filter(x=>x.nivel==='danger').length;
+    if(pend) add(venc ? 'danger' : 'warn', `${pend} boleta(s) de la semana del ${fmtDate(ult.semanaInicio)} sin entregar${venc ? ' (plazo vencido)' : ' (hasta el '+fmtDate(bsFechaLimite(bsFechaPago(ult)))+')'}`, null, 'Ver boletas', "switchView('boletaspago')");
+    const regs = horasExtraRegistro.filter(r=>r.fecha>=ult.semanaInicio && r.fecha<=ult.semanaFin);
+    const heSinReg = ult.personas.filter(p=>(p.horasExtra||p.pago25) && !regs.some(r=>r.empId===p.empId)).map(p=>p.nombre);
+    add('warn', `${heSinReg.length} trabajador(es) con horas extra pagadas sin registro de sobretiempo`, heSinReg, 'Registrar', "switchView('horasextra')");
+  }
+  const sinEmo = act.filter(e=>!e.fechaEmo || e.fechaEmo < hoy);
+  add('warn', `${sinEmo.length} trabajador(es) con EMO vencido o sin registro`, sinEmo.map(e=>e.nombre), 'Ver EMO', "switchView('emo')");
+  const sinVida = act.filter(e=>!e.vigenciaVidaLey || e.vigenciaVidaLey < hoy);
+  add('warn', `${sinVida.length} trabajador(es) sin Vida Ley vigente`, sinVida.map(e=>e.nombre), 'Ir a Seguros', "switchView('seguros')");
+  const vacVenc = act.filter(e=>{ const v = vacEstado(e); return v && v.vencidos > 0; });
+  add('danger', `${vacVenc.length} trabajador(es) con vacaciones vencidas sin gozar`, vacVenc.map(e=>e.nombre), 'Ver vacaciones', "switchView('vacaciones')");
+  const ceses = cesesRegistro.filter(c=>(!c.liqFecha || !c.tregistroFecha || !c.certificadoFecha) && diasDesde(c.fechaCese) > 2);
+  add('danger', `${ceses.length} cese(s) con liquidación, certificado o baja en T-Registro fuera de plazo`, ceses.map(c=>c.nombre), 'Ver cesados', "switchView('cesados')");
+  const mesAnt = plsSumarDias(hoy.slice(0,8)+'01', -1).slice(0,7);
+  const M = apCalcularAnio(mesAnt.slice(0,4)).find(m=>m.mes===mesAnt);
+  if(M && M.pendiente > 1) add('warn', `Aportes de ${apNombreMes(mesAnt)} (AFP, ONP, EsSalud) sin pago registrado: ${soles(M.pendiente)}`, null, 'Registrar pago', "switchView('dashboard'); document.getElementById('aportesContenido').scrollIntoView({behavior:'smooth'})");
+  const compras = eppListaCompras();
+  if(compras.length) add('info', `EPP por comprar: ${compras.reduce((s,f)=>s+f.comprar,0)} unidades en ${compras.length} artículo(s)`, null, 'Ver lista de compras', "switchView('epp'); switchEppTab('compras')");
+  const orden = {danger:0, warn:1, info:2};
+  return P.sort((a,b)=>orden[a.nivel]-orden[b.nivel]);
+}
+function renderPendientes(){
+  const cont = document.getElementById('pendientesHoy');
+  if(!cont) return;
+  let P = [];
+  try{ P = calcularPendientes(); }catch(err){ console.error('Pendientes', err); }
+  const ic = {danger:'🔴', warn:'🟡', info:'🔵'};
+  const nU = P.filter(p=>p.nivel==='danger').length, nA = P.filter(p=>p.nivel==='warn').length;
+  document.getElementById('pendientesResumen').textContent = P.length ? `${nU} urgentes · ${nA} por atender` : '';
+  cont.innerHTML = P.length ? P.map(p=>`
+    <div style="display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border);">
+      <div style="font-size:14px;line-height:20px;">${ic[p.nivel]}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:13.5px;">${escHtml(p.titulo)}</div>
+        ${p.personas.length ? `<div style="font-size:12px;color:var(--ink-soft);">${escHtml(p.personas.slice(0,6).join(' · '))}${p.personas.length>6 ? `<details style="display:inline;"><summary style="cursor:pointer;display:inline;"> y ${p.personas.length-6} más</summary> ${escHtml(p.personas.slice(6).join(' · '))}</details>` : ''}</div>` : ''}
+      </div>
+      <button class="btn btn-ghost btn-sm" style="white-space:nowrap;" onclick="${p.onclick}">${escHtml(p.accion)} →</button>
+    </div>`).join('')
+    : '<div class="empty">✅ Todo al día. No hay pendientes.</div>';
 }
 
 // ---------- Trabajadores cesados ----------
