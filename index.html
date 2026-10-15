@@ -704,6 +704,7 @@ tr:hover td{background:#FAF9F6;}
         <button class="tab-sub-btn" data-asist-tab="permisos" onclick="switchAsistTab('permisos')">Permisos</button>
         <button class="tab-sub-btn" data-asist-tab="descansos" onclick="switchAsistTab('descansos')">Descansos médicos</button>
         <button class="tab-sub-btn" data-asist-tab="prestamos" onclick="switchAsistTab('prestamos')">Préstamos y adelantos</button>
+        <button class="tab-sub-btn" data-asist-tab="reembolsos" onclick="switchAsistTab('reembolsos')">Reembolsos</button>
         <button class="tab-sub-btn" data-asist-tab="formatomanual" onclick="switchAsistTab('formatomanual')">Formato de asistencia manual</button>
         <button class="tab-sub-btn" data-asist-tab="reportes" onclick="switchAsistTab('reportes')">3-4. Reportes mensuales y nómina</button>
       </div>
@@ -842,39 +843,33 @@ tr:hover td{background:#FAF9F6;}
           <div class="panel-head"><h3>Registrar préstamo o adelanto</h3></div>
           <div style="padding:16px 18px;">
             <div class="field-row">
-              <div class="field"><label>Colaborador</label><select id="prestamoEmployeeSelect"></select></div>
+              <div class="field"><label>Colaborador</label><select id="prestamoEmployeeSelect" onchange="prestamoVistaPrevia()"></select></div>
               <div class="field">
                 <label>Tipo</label>
                 <select id="prestamoTipo" onchange="toggleReembolsoFields()">
                   <option value="Préstamo">Préstamo</option>
                   <option value="Adelanto">Adelanto de sueldo</option>
                   <option value="Descuento EPP">Descuento por pérdida/daño de EPP</option>
-                  <option value="Reembolso EPP">Reembolso por compra de EPP</option>
-                  <option value="Reembolso Otros">Reembolso por otros gastos</option>
                 </select>
               </div>
             </div>
-            <div class="field-row" id="prestamoReembolsoEppField" style="display:none;">
-              <div class="field"><label>Artículo EPP a reembolsar</label><select id="prestamoReembolsoEppItem"></select></div>
-              <div class="field"></div>
+            <div class="field-row">
+              <div class="field"><label>Monto (S/)</label><input type="number" step="0.01" id="prestamoMonto" oninput="prestamoVistaPrevia()"></div>
+              <div class="field"><label>Fecha de entrega del dinero</label><input type="date" id="prestamoFecha" onchange="prestamoVistaPrevia()"></div>
             </div>
             <div class="field-row">
-              <div class="field"><label>Monto (S/)</label><input type="number" step="0.01" id="prestamoMonto"></div>
-              <div class="field"><label>Fecha</label><input type="date" id="prestamoFecha"></div>
+              <div class="field"><label>N° de cuotas semanales</label><input type="number" id="prestamoCuotas" value="1" min="1" max="52" oninput="prestamoVistaPrevia()"></div>
+              <div class="field"><label>Primer descuento (fecha de pago semanal)</label><input type="date" id="prestamoPrimerDescuento" data-auto="1" onchange="this.dataset.auto='0'; prestamoVistaPrevia()"></div>
             </div>
             <div class="field-row">
-              <div class="field"><label>N° de cuotas</label><input type="number" id="prestamoCuotas" value="1" min="1"></div>
-              <div class="field" id="prestamoMotivoField"><label>Motivo (opcional)</label><input id="prestamoMotivo"></div>
-            </div>
-            <div class="field-row" id="prestamoDetalleOtrosField" style="display:none;">
-              <div class="field"><label>Detalle del gasto a reembolsar</label><input id="prestamoDetalleOtros" placeholder="Ej. pasajes, materiales comprados, etc."></div>
+              <div class="field"><label>Forma de entrega</label>
+                <select id="prestamoFormaEntrega"><option>Efectivo</option><option>Transferencia bancaria</option><option>Yape / Plin</option><option>No aplica (descuento)</option></select></div>
               <div class="field"></div>
             </div>
-            <div class="field-row">
-              <div class="field"><label>Firma a usar en la constancia (opcional)</label><select id="prestamoFirmaSelect"><option value="">Sin firma</option></select></div>
-              <div class="field"></div>
-            </div>
-            <button class="btn btn-accent btn-sm" onclick="savePrestamo()">Registrar</button>
+            <div class="field"><label>Motivo / comentario</label><textarea id="prestamoMotivo" rows="2" placeholder="Ej. emergencia familiar, gastos de salud, pérdida del casco entregado el 05/10…"></textarea></div>
+            <div class="hint" id="prestamoPrevia" style="margin:6px 0 12px;"></div>
+            <button class="btn btn-accent btn-sm" onclick="savePrestamo()">Registrar y descargar formato</button>
+            <span class="hint" style="margin-left:8px;">Se genera el convenio con autorización de descuento, cronograma y la firma del gerente, listo para que firme el trabajador.</span>
           </div>
         </div>
         <div class="panel">
@@ -884,6 +879,46 @@ tr:hover td{background:#FAF9F6;}
           </div>
           <div class="stat-grid" id="prestamosResumen" style="padding:16px 18px 0;"></div>
           <div id="prestamosTable"></div>
+        </div>
+      </div>
+
+      <!-- REEMBOLSOS -->
+      <div id="asistReembolsosBlock" style="display:none;">
+        <div class="panel">
+          <div class="panel-head"><h3>Registrar reembolso de gastos</h3></div>
+          <div style="padding:16px 18px;">
+            <div class="field-row">
+              <div class="field"><label>Colaborador</label><select id="reembolsoEmployeeSelect"></select></div>
+              <div class="field"><label>Fecha de la solicitud</label><input type="date" id="reembolsoFecha"></div>
+            </div>
+            <label style="font-weight:600;font-size:13px;">Gastos realizados</label>
+            <div class="table-scroll"><table id="reembolsoLineasTabla">
+              <thead><tr><th style="width:120px;">Fecha</th><th style="width:170px;">Concepto</th><th>Detalle</th><th style="width:150px;">Comprobante</th><th style="width:110px;">N° comprobante</th><th style="width:100px;">Monto S/</th><th></th></tr></thead>
+              <tbody id="reembolsoLineas"></tbody>
+            </table></div>
+            <datalist id="reembolsoDetalleSugerido"></datalist>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0 12px;flex-wrap:wrap;gap:8px;">
+              <button class="btn btn-ghost btn-sm" onclick="reembolsoAgregarLinea()">+ Agregar otro gasto</button>
+              <strong id="reembolsoTotalForm">Total: S/ 0.00</strong>
+            </div>
+            <div class="field"><label>Comentario o detalle</label><textarea id="reembolsoComentario" rows="3" placeholder="Ej. compró 2 pares de guantes en ferretería porque no había stock en almacén; pasajes Callao–Chimbote para trabajo en obra, a pedido del supervisor…"></textarea></div>
+            <div class="field-row">
+              <div class="field"><label>Forma de pago prevista</label>
+                <select id="reembolsoFormaPago"><option>En la boleta semanal</option><option>Efectivo</option><option>Transferencia bancaria</option><option>Yape / Plin</option></select></div>
+              <div class="field"></div>
+            </div>
+            <button class="btn btn-accent btn-sm" onclick="saveReembolso()">Registrar y descargar formato</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Reembolsos registrados</h3>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <select id="reembolsoFiltro" onchange="renderReembolsos()" style="width:auto;"><option value="">Todos</option><option>Pendiente</option><option>Aprobado</option><option>Pagado</option><option>Rechazado</option></select>
+            </div>
+          </div>
+          <div class="stat-grid" id="reembolsosResumen" style="padding:16px 18px 0;"></div>
+          <div id="reembolsosTable"></div>
         </div>
       </div>
 
@@ -1892,13 +1927,32 @@ tr:hover td{background:#FAF9F6;}
         <div class="field"><label>Ciudad</label><input id="empCiudad"></div>
       </div>
       <div class="field-row">
-        <div class="field"><label>Correo 1</label><input type="email" id="empCorreo1"></div>
-        <div class="field"><label>Correo 2 (opcional)</label><input type="email" id="empCorreo2"></div>
+        <div class="field"><label>Celular</label><input id="empCelular1" inputmode="numeric" placeholder="9 dígitos"></div>
+        <div class="field"><label>Correo electrónico</label><input type="email" id="empCorreo1"></div>
       </div>
+      <!-- Segundo celular/correo: ya no se piden; se conservan ocultos para no perder datos antiguos. -->
+      <div style="display:none;"><input type="email" id="empCorreo2"><input id="empCelular2"></div>
       <div class="field-row">
-        <div class="field"><label>Celular 1</label><input id="empCelular1"></div>
-        <div class="field"><label>Celular 2 (opcional)</label><input id="empCelular2"></div>
+        <div class="field">
+          <label>Grado de instrucción</label>
+          <select id="empGradoInstruccion"><option value="">—</option><option>Primaria</option><option>Secundaria</option><option>Técnico</option><option>Universitario</option></select>
+        </div>
+        <div class="field"></div>
       </div>
+      <div class="field"><label>Alergias o condición médica a tener en cuenta (emergencias)</label><input id="empAlergias" placeholder="Ej. alergia a la penicilina, asma, hipertensión. Dejar vacío si no tiene."></div>
+
+      <h3 style="font-size:14px;margin:18px 0 10px;color:var(--ink-soft);">Hijos (derechohabientes)</h3>
+      <div class="field-row">
+        <div class="field">
+          <label>¿Tiene hijos?</label>
+          <select id="empTieneHijos" onchange="toggleHijos()"><option value="no">No</option><option value="si">Sí</option></select>
+        </div>
+        <div class="field" id="empNumHijosField" style="display:none;">
+          <label>¿Cuántos?</label>
+          <select id="empNumHijos" onchange="renderHijosForm()"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select>
+        </div>
+      </div>
+      <div id="empHijosBlock"></div>
     </div>
 
     <!-- TAB: DATOS LABORALES -->
@@ -1919,17 +1973,23 @@ tr:hover td{background:#FAF9F6;}
       </div>
       <p class="hint" id="empSueldoWarn" style="color:var(--danger);margin:-10px 0 12px;"></p>
 
-      <h3 style="font-size:14px;margin:18px 0 10px;color:var(--ink-soft);">Tallas para EPP</h3>
+      <h3 style="font-size:14px;margin:18px 0 10px;color:var(--ink-soft);">Tallas para EPP y uniforme</h3>
       <div class="field-row">
-        <div class="field"><label>Talla de pantalón</label><input id="empTallaPantalon" placeholder="Ej. 32"></div>
-        <div class="field"><label>Talla de camisa / casaca</label><input id="empTallaCamisa" placeholder="Ej. M"></div>
-        <div class="field"><label>Talla de calzado</label><input id="empTallaCalzado" placeholder="Ej. 42"></div>
+        <div class="field"><label>Camisa</label><input id="empTallaCamisa" list="tallasRopaList" placeholder="Ej. M"></div>
+        <div class="field"><label>Pantalón</label><input id="empTallaPantalon" list="tallasPantalonList" placeholder="Ej. 32"></div>
+        <div class="field"><label>Polo</label><input id="empTallaPolo" list="tallasRopaList" placeholder="Ej. M"></div>
       </div>
+      <div class="field-row">
+        <div class="field"><label>Casaca</label><input id="empTallaCasaca" list="tallasRopaList" placeholder="Ej. L"></div>
+        <div class="field"><label>Zapato punta de acero</label><input id="empTallaCalzado" list="tallasCalzadoList" placeholder="Ej. 41"></div>
+        <div class="field"></div>
+      </div>
+      <datalist id="tallasRopaList"><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option></datalist>
+      <datalist id="tallasPantalonList"><option>28</option><option>30</option><option>32</option><option>34</option><option>36</option><option>38</option><option>40</option></datalist>
+      <datalist id="tallasCalzadoList"><option>37</option><option>38</option><option>39</option><option>40</option><option>41</option><option>42</option><option>43</option><option>44</option><option>45</option></datalist>
 
-      <h3 style="font-size:14px;margin:18px 0 10px;color:var(--ink-soft);">Documentos del colaborador</h3>
-      <div id="fichaDocsBlock">
-        <p class="hint">Guarda el colaborador primero para poder subir sus documentos.</p>
-      </div>
+      <h3 style="font-size:14px;margin:18px 0 10px;color:var(--ink-soft);">Documentos del legajo (marca lo que ya tienes firmado o en copia)</h3>
+      <div id="fichaDocsBlock"></div>
 
       <div class="field-row">
         <div class="field"><label>Horario — hora de entrada</label><input type="time" id="empHoraEntrada"></div>
@@ -2004,6 +2064,14 @@ tr:hover td{background:#FAF9F6;}
       </div>
       <div class="field-row">
         <div class="field">
+          <label>¿Desea afiliarse a una EPS (con descuento por planilla)?</label>
+          <select id="empEpsDesea" onchange="toggleEps()"><option value="no">No</option><option value="si">Sí</option></select>
+        </div>
+        <div class="field" id="empEpsNombreField" style="display:none;"><label>EPS / plan elegido</label><input id="empEpsNombre" placeholder="Ej. Pacífico EPS – plan base"></div>
+        <div class="field" id="empEpsDescuentoField" style="display:none;"><label>Descuento mensual autorizado (S/)</label><input type="number" step="0.01" id="empEpsDescuento"></div>
+      </div>
+      <div class="field-row">
+        <div class="field">
           <label>Sistema de pensión</label>
           <select id="empPension" onchange="toggleAfpField()"><option value="AFP">AFP</option><option value="ONP">ONP</option></select>
         </div>
@@ -2067,7 +2135,10 @@ tr:hover td{background:#FAF9F6;}
         <div class="field"><label>Nombre</label><input id="empRefNombre"></div>
         <div class="field"><label>Parentesco</label><input id="empRefParentesco" placeholder="Ej. Madre, esposo(a), hermano(a)"></div>
       </div>
-      <div class="field"><label>Teléfono de referencia</label><input id="empRefTelefono"></div>
+      <div class="field-row">
+        <div class="field"><label>Teléfono de referencia</label><input id="empRefTelefono"></div>
+        <div class="field"><label>Lugar de residencia</label><input id="empRefDireccion" placeholder="Ej. Av. Grau 123, Chimbote, Santa, Áncash"></div>
+      </div>
 
       <div class="field"><label>Notas</label><textarea id="empNotas" style="min-height:60px;font-family:'Inter';"></textarea></div>
     </div>
@@ -2082,6 +2153,29 @@ tr:hover td{background:#FAF9F6;}
   </div>
 </div>
 
+<!-- MODAL ESTADO DE REEMBOLSO -->
+<div class="modal-overlay" id="reembolsoEstadoModalOverlay">
+  <div class="modal" style="max-width:520px;">
+    <h3 id="reembolsoEstadoTitulo">Actualizar reembolso</h3>
+    <p class="hint" id="reembolsoEstadoResumen" style="margin:-6px 0 14px;"></p>
+    <div class="field-row">
+      <div class="field"><label>Estado</label>
+        <select id="reembolsoEstadoNuevo" onchange="reembolsoToggleEstadoCampos()"><option>Pendiente</option><option>Aprobado</option><option>Pagado</option><option>Rechazado</option></select></div>
+      <div class="field" id="reembolsoMontoAprobadoField"><label>Monto aprobado (S/)</label><input type="number" step="0.01" id="reembolsoMontoAprobado"></div>
+    </div>
+    <div class="field-row" id="reembolsoPagoCampos">
+      <div class="field"><label>Fecha de pago</label><input type="date" id="reembolsoPagoFecha"></div>
+      <div class="field"><label>Forma de pago</label>
+        <select id="reembolsoPagoForma"><option>En la boleta semanal</option><option>Efectivo</option><option>Transferencia bancaria</option><option>Yape / Plin</option></select></div>
+    </div>
+    <div class="field"><label>Comentario de RRHH / gerencia</label><textarea id="reembolsoComentarioRrhh" rows="3" placeholder="Ej. aprobado por gerencia; se descuenta S/ 5 porque el ticket no es legible…"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeReembolsoEstadoModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarEstadoReembolso()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL CRONOGRAMA Y PAGOS DE PRESTAMO -->
 <div class="modal-overlay" id="prestamoPagosModalOverlay">
   <div class="modal" style="max-width:640px;">
@@ -2090,7 +2184,7 @@ tr:hover td{background:#FAF9F6;}
     <div id="prestamoPagosContenido" style="max-height:60vh;overflow-y:auto;"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closePrestamoPagosModal()">Cerrar</button>
-      <button class="btn btn-primary" onclick="generarConstanciaPrestamoPdf(prestamoPagosCurrentId)">Descargar constancia y cronograma</button>
+      <button class="btn btn-primary" onclick="generarConstanciaPrestamoPdf(prestamoPagosCurrentId)">Descargar formato y cronograma</button>
     </div>
   </div>
 </div>
@@ -2137,6 +2231,7 @@ tr:hover td{background:#FAF9F6;}
     <div id="fichaContenido" style="max-height:60vh;overflow-y:auto;"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeFichaModal()">Cerrar</button>
+      <button class="btn btn-accent" onclick="downloadEmployeePdf(fichaCurrentId)">Descargar ficha para firmar (PDF)</button>
       <button class="btn btn-primary" onclick="openEmployeeModal(fichaCurrentId); closeFichaModal();">Editar colaborador</button>
     </div>
   </div>
@@ -2609,6 +2704,7 @@ let ultimoRespaldoFecha = null;
 let faltas = [];
 let permisos = [];
 let prestamos = [];
+let reembolsos = [];
 let segurosEmpresa = [];
 let asistenciaManual = [];
 let descansos = [];
@@ -2668,6 +2764,7 @@ async function init(){
   faltas = await loadData('faltas', []);
   permisos = await loadData('permisos', []);
   prestamos = await loadData('prestamos', []);
+  reembolsos = await loadData('reembolsos', []);
   segurosEmpresa = await loadData('segurosEmpresa', []);
   asistenciaManual = await loadData('asistenciaManual', []);
   descansos = await loadData('descansos', []);
@@ -2807,6 +2904,7 @@ function renderAll(){
   renderPermisos();
   renderDescansos();
   renderPrestamos();
+  renderReembolsos();
   renderRegistroDiario();
   renderInventory();
   renderBienestar();
@@ -3135,11 +3233,11 @@ function previewEmpFoto(input){
 }
 
 const EMP_FIELD_IDS = ['empNombre','empDni','empDomicilio','empCiudad','empCorreo1','empCorreo2',
-  'empCelular1','empCelular2','empCargo','empTallaPantalon','empTallaCamisa','empTallaCalzado','empSueldoDiario','empHoraEntrada','empHoraSalida','empFechaNacimiento','empPaisNacimiento','empFechaIngreso','empFechaFin',
+  'empCelular1','empCelular2','empCargo','empTallaPantalon','empTallaCamisa','empTallaCalzado','empTallaPolo','empTallaCasaca','empAlergias','empEpsNombre','empEpsDescuento','empSueldoDiario','empHoraEntrada','empHoraSalida','empFechaNacimiento','empPaisNacimiento','empFechaIngreso','empFechaFin',
   'empProyectoObra','empDuracionContrato','empLugarPrestacion','empDiasHorario','empPeriodoPruebaDuracion','empCiudadFirma',
   'empFechaSalud','empVigenciaSctrInicio','empVigenciaSctr','empVigenciaVidaLeyInicio','empVigenciaVidaLey','empFechaEmoInicio','empFechaEmo',
   'empLicenciaCategoria','empLicenciaNumero','empLicenciaVigencia','empBanco','empNumeroCuenta','empCci',
-  'empRefNombre','empRefParentesco','empRefTelefono','empNotas'];
+  'empRefNombre','empRefParentesco','empRefTelefono','empRefDireccion','empNotas'];
 
 // Remuneración Mínima Vital vigente (D.S. N.° 006-2024-TR, desde el 01/01/2025). Actualizar si el Gobierno la modifica.
 const RMV_VIGENTE = 1130;
@@ -3168,6 +3266,7 @@ function switchEmpTab(tab){
 
 function openEmployeeModal(id){
   switchEmpTab('personal');
+  document.getElementById('empHijosBlock').innerHTML = ''; // evita arrastrar los hijos de la ficha anterior
   document.getElementById('employeeModalOverlay').classList.add('active');
   document.getElementById('empId').value = id||'';
   empFotoData = '';
@@ -3191,6 +3290,16 @@ function openEmployeeModal(id){
     document.getElementById('empTallaPantalon').value = e.tallaPantalon||'';
     document.getElementById('empTallaCamisa').value = e.tallaCamisa||'';
     document.getElementById('empTallaCalzado').value = e.tallaCalzado||'';
+    document.getElementById('empTallaPolo').value = e.tallaPolo||'';
+    document.getElementById('empTallaCasaca').value = e.tallaCasaca||'';
+    document.getElementById('empGradoInstruccion').value = e.gradoInstruccion||'';
+    document.getElementById('empAlergias').value = e.alergias||'';
+    document.getElementById('empEpsDesea').value = e.epsDesea||'no';
+    document.getElementById('empEpsNombre').value = e.epsNombre||'';
+    document.getElementById('empEpsDescuento').value = e.epsDescuento||'';
+    empHijosTemp = (e.hijos||[]).map(h=>({...h}));
+    document.getElementById('empTieneHijos').value = e.tieneHijos || (empHijosTemp.length ? 'si' : 'no');
+    document.getElementById('empNumHijos').value = String(Math.min(10, Math.max(1, empHijosTemp.length || 1)));
     document.getElementById('empArea').value = e.area||'Administración';
     document.getElementById('empSueldoDiario').value = e.sueldoDiario||'';
     document.getElementById('empHoraEntrada').value = e.horaEntrada||'';
@@ -3231,6 +3340,7 @@ function openEmployeeModal(id){
     document.getElementById('empRefNombre').value = e.refNombre||'';
     document.getElementById('empRefParentesco').value = e.refParentesco||'';
     document.getElementById('empRefTelefono').value = e.refTelefono||'';
+    document.getElementById('empRefDireccion').value = e.refDireccion||'';
     document.getElementById('empNotas').value = e.notas||'';
     if(e.fotoData){
       empFotoData = e.fotoData;
@@ -3243,9 +3353,14 @@ function openEmployeeModal(id){
     }
     document.getElementById('empDeleteBtn').style.display = 'inline-flex';
   } else {
-    document.getElementById('fichaDocsBlock').innerHTML = `<p class="hint">Guarda el colaborador primero para poder subir sus documentos.</p>`;
+    renderFichaDocsBlock(null);
     document.getElementById('employeeModalTitle').textContent = 'Nuevo colaborador';
     EMP_FIELD_IDS.forEach(id2=>document.getElementById(id2).value='');
+    document.getElementById('empGradoInstruccion').value = '';
+    document.getElementById('empEpsDesea').value = 'no';
+    document.getElementById('empTieneHijos').value = 'no';
+    document.getElementById('empNumHijos').value = '1';
+    empHijosTemp = [];
     document.getElementById('empTRegistroAlta').checked = false;
     document.getElementById('empEstado').value='activo';
     document.getElementById('empMotivoBaja').value='';
@@ -3271,6 +3386,46 @@ function openEmployeeModal(id){
   toggleAfpField();
   toggleLicenciaFields();
   toggleMotivoBaja();
+  toggleEps();
+  toggleHijos();
+}
+// ---------- Hijos (derechohabientes) y EPS en la ficha ----------
+let empHijosTemp = [];
+function leerHijosForm(){
+  document.querySelectorAll('#empHijosBlock [data-hijo]').forEach(el=>{
+    const i = +el.dataset.hijo, k = el.dataset.campo;
+    empHijosTemp[i] = empHijosTemp[i] || {nombre:'', dni:'', fechaNacimiento:''};
+    empHijosTemp[i][k] = el.value.trim();
+  });
+}
+function renderHijosForm(){
+  leerHijosForm();
+  const cont = document.getElementById('empHijosBlock');
+  if(document.getElementById('empTieneHijos').value!=='si'){ cont.innerHTML = ''; return; }
+  const n = parseInt(document.getElementById('empNumHijos').value) || 1;
+  cont.innerHTML = Array.from({length:n}, (_,i)=>{ const h = empHijosTemp[i] || {};
+    return `<div class="field-row" style="grid-template-columns:auto 2fr 1fr 1fr;align-items:end;">
+      <div style="font-weight:700;font-size:12.5px;color:var(--ink-soft);padding-bottom:12px;">Hijo ${i+1}</div>
+      <div class="field"><label>Nombres y apellidos</label><input data-hijo="${i}" data-campo="nombre" value="${escHtml(h.nombre||'')}"></div>
+      <div class="field"><label>DNI</label><input data-hijo="${i}" data-campo="dni" inputmode="numeric" value="${escHtml(h.dni||'')}"></div>
+      <div class="field"><label>Fecha de nacimiento</label><input type="date" data-hijo="${i}" data-campo="fechaNacimiento" value="${escHtml(h.fechaNacimiento||'')}"></div>
+    </div>`; }).join('');
+}
+function toggleHijos(){
+  const si = document.getElementById('empTieneHijos').value==='si';
+  document.getElementById('empNumHijosField').style.display = si ? '' : 'none';
+  renderHijosForm();
+}
+function hijosDelFormulario(){
+  if(document.getElementById('empTieneHijos').value!=='si') return [];
+  leerHijosForm();
+  const n = parseInt(document.getElementById('empNumHijos').value) || 1;
+  return empHijosTemp.slice(0, n).map(h=>({nombre:(h&&h.nombre)||'', dni:(h&&h.dni)||'', fechaNacimiento:(h&&h.fechaNacimiento)||''}));
+}
+function toggleEps(){
+  const si = document.getElementById('empEpsDesea').value==='si';
+  document.getElementById('empEpsNombreField').style.display = si ? '' : 'none';
+  document.getElementById('empEpsDescuentoField').style.display = si ? '' : 'none';
 }
 function closeEmployeeModal(){ document.getElementById('employeeModalOverlay').classList.remove('active'); }
 
@@ -3297,6 +3452,16 @@ async function saveEmployee(){
     tallaPantalon: document.getElementById('empTallaPantalon').value.trim(),
     tallaCamisa: document.getElementById('empTallaCamisa').value.trim(),
     tallaCalzado: document.getElementById('empTallaCalzado').value.trim(),
+    tallaPolo: document.getElementById('empTallaPolo').value.trim(),
+    tallaCasaca: document.getElementById('empTallaCasaca').value.trim(),
+    gradoInstruccion: document.getElementById('empGradoInstruccion').value,
+    alergias: document.getElementById('empAlergias').value.trim(),
+    tieneHijos: document.getElementById('empTieneHijos').value,
+    hijos: hijosDelFormulario(),
+    epsDesea: document.getElementById('empEpsDesea').value,
+    epsNombre: document.getElementById('empEpsDesea').value==='si' ? document.getElementById('empEpsNombre').value.trim() : '',
+    epsDescuento: document.getElementById('empEpsDesea').value==='si' ? (parseFloat(document.getElementById('empEpsDescuento').value) || 0) : 0,
+    docsFisicos: leerDocsFisicosForm(),
     area: document.getElementById('empArea').value,
     sueldoDiario,
     sueldoMensual: sueldoDiario*30,
@@ -3339,6 +3504,7 @@ async function saveEmployee(){
     refNombre: document.getElementById('empRefNombre').value.trim(),
     refParentesco: document.getElementById('empRefParentesco').value.trim(),
     refTelefono: document.getElementById('empRefTelefono').value.trim(),
+    refDireccion: document.getElementById('empRefDireccion').value.trim(),
     notas: document.getElementById('empNotas').value.trim()
   };
   // Al editar se conservan los campos que no están en el formulario (historial de contratos, CUSPP, cese, etc.).
@@ -3418,10 +3584,128 @@ function poblarSelectFirmas(selectId){
   if(valorActual && firmasDigitales.some(f=>f.id===valorActual)) sel.value = valorActual;
 }
 function refrescarSelectsFirma(){
-  ['eppFirmaSelect','prestamoFirmaSelect','permisoFirmaSelect','descansoFirmaSelect','editorFirmaSelect'].forEach(poblarSelectFirmas);
+  ['eppFirmaSelect','permisoFirmaSelect','descansoFirmaSelect','editorFirmaSelect'].forEach(poblarSelectFirmas);
 }
 
+// ---------- Ficha de datos del trabajador (PDF para firmar: trabajador + sello del gerente) ----------
+function edadEn(fechaNac){ if(!fechaNac) return ''; const t = mesesYDias(fechaNac, hoyISO()); return Math.floor(t.meses/12)+' años'; }
 function downloadEmployeePdf(id){
+  const e = employees.find(x=>x.id===id);
+  if(!e) return;
+  if(!window.jspdf){ showToast('No cargó la librería de PDF. Recarga la página.'); return; }
+  const emp = window._empresaData || {};
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const X = 36, W = 523, PH = 842;
+  let y = 0;
+  const fecha = d=>docsFechaCorta(d) || '';
+  // Encabezado con logo, título y foto
+  addLogoToPdf(doc, X, 26, 46);
+  doc.setTextColor(25); doc.setFont('helvetica','bold'); doc.setFontSize(14);
+  doc.text('FICHA DE DATOS DEL TRABAJADOR', X+56, 46);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(90);
+  doc.text(pdfTxt(`${emp.razonSocial||''}  ·  RUC ${emp.ruc||''}`), X+56, 59);
+  doc.text('Fecha: '+docsFechaCorta(hoyISO()), X+56, 70);
+  doc.setTextColor(25);
+  const fx = X+W-78, fy = 22, fw = 78, fh = 94;
+  doc.setDrawColor(150); doc.setLineWidth(0.6); doc.rect(fx, fy, fw, fh);
+  if(e.fotoData){
+    try{ doc.addImage(e.fotoData, /image\/png/.test(e.fotoData) ? 'PNG' : 'JPEG', fx+1, fy+1, fw-2, fh-2); }catch(err){ console.error('Foto', err); }
+  } else { doc.setFontSize(7.5); doc.setTextColor(140); doc.text('FOTO', fx+fw/2, fy+fh/2, {align:'center'}); doc.setTextColor(25); }
+  y = 122;
+  const nuevaPagina = alto=>{ if(y + alto > PH - 40){ doc.addPage(); y = 44; } };
+  const seccion = t=>{ nuevaPagina(36); doc.setFillColor(35,61,77); doc.rect(X, y, W, 14, 'F'); doc.setTextColor(255); doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text(t, X+6, y+10); doc.setTextColor(25); y += 14; };
+  // Cuadrícula de 2 columnas: [etiqueta, valor] x 2 por fila, con bordes (compacta para que la ficha quepa en una hoja).
+  const ET = 116;
+  const grilla = filas=>{
+    doc.setFontSize(8.6);
+    filas.forEach(par=>{
+      const celdas = par.length===1 ? [[par[0][0], par[0][1], W]] : par.map(c=>[c[0], c[1], W/2]);
+      const alturas = celdas.map(([l,v,w])=>doc.splitTextToSize(pdfTxt(v||'—'), w-ET-8).length);
+      const alto = Math.max(...alturas)*10 + 5;
+      nuevaPagina(alto);
+      let x = X;
+      celdas.forEach(([l,v,w])=>{
+        doc.rect(x, y, w, alto);
+        doc.setFillColor(242,244,246); doc.rect(x, y, ET, alto, 'FD');
+        doc.setFont('helvetica','bold'); doc.text(pdfTxt(l), x+5, y+10.5);
+        doc.setFont('helvetica','normal'); doc.text(doc.splitTextToSize(pdfTxt(v||'—'), w-ET-8), x+ET+5, y+10.5);
+        x += w;
+      });
+      y += alto;
+    });
+    y += 5;
+  };
+  const pension = e.pension==='ONP' ? 'ONP' : ('AFP '+(e.afpNombre||'')+(e.afpComision==='flujo' ? ' (comisión flujo)' : ' (comisión mixta)'));
+  const salud = (e.salud||'EsSalud') + (e.epsDesea==='si' ? ` · desea afiliarse a EPS${e.epsNombre?' ('+e.epsNombre+')':''}${e.epsDescuento?' con descuento por planilla de S/ '+montoFormato(e.epsDescuento)+' mensual':''}` : '');
+  seccion('1. DATOS PERSONALES');
+  grilla([
+    [['Apellidos y nombres', e.nombre]],
+    [['DNI', e.dni], ['Fecha de nacimiento', fecha(e.fechaNacimiento) + (e.fechaNacimiento ? ' ('+edadEn(e.fechaNacimiento)+')' : '')]],
+    [['Sexo', e.sexo==='M'?'Masculino':e.sexo==='F'?'Femenino':''], ['Estado civil', e.estadoCivil]],
+    [['Nacionalidad', e.paisNacimiento||'Perú'], ['Grado de instrucción', e.gradoInstruccion]],
+    [['Domicilio', [e.domicilio, e.ciudad].filter(Boolean).join(', ')]],
+    [['Celular', e.celular1], ['Correo electrónico', e.correo1]]
+  ]);
+  seccion('2. DATOS LABORALES');
+  grilla([
+    [['Cargo', e.cargo], ['Área', e.area]],
+    [['Fecha de ingreso', fecha(e.fechaIngreso)], ['Fin de contrato', fecha(e.fechaFin)]],
+    [['Tipo de contrato', e.tipoContrato], ['Régimen laboral', 'Microempresa (REMYPE)']],
+    [['Jornal diario', e.sueldoDiario ? 'S/ '+montoFormato(e.sueldoDiario) : ''], ['Remuneración mensual', e.sueldoMensual ? 'S/ '+montoFormato(e.sueldoMensual) : '']],
+    [['Banco', e.banco], ['N.º de cuenta', e.numeroCuenta]],
+    [['CCI', e.cci]]
+  ]);
+  seccion('3. SEGURIDAD SOCIAL Y SALUD');
+  grilla([
+    [['Seguro de salud', salud]],
+    [['Sistema de pensión', pension], ['CUSPP', e.cuspp]],
+    [['Alergias / condición médica', e.alergias || 'Ninguna declarada']]
+  ]);
+  seccion('4. TALLAS PARA EPP Y UNIFORME');
+  grilla([
+    [['Camisa', e.tallaCamisa], ['Pantalón', e.tallaPantalon]],
+    [['Polo', e.tallaPolo], ['Casaca', e.tallaCasaca]],
+    [['Zapato punta de acero', e.tallaCalzado]]
+  ]);
+  seccion('5. HIJOS (DERECHOHABIENTES)');
+  const hijos = (e.hijos||[]).filter(h=>h && (h.nombre || h.dni));
+  if(!hijos.length){
+    doc.setFontSize(9); doc.setFont('helvetica','normal'); nuevaPagina(20);
+    doc.rect(X, y, W, 15); doc.text(e.tieneHijos==='si' ? 'Declara tener hijos, pero no registró sus datos.' : 'No declara hijos.', X+6, y+10.5); y += 20;
+  } else {
+    const cols = [['N.º',30],['Nombres y apellidos',283],['DNI',90],['Fecha de nacimiento',120]];
+    nuevaPagina(15); doc.setFillColor(242,244,246); doc.rect(X, y, W, 14, 'FD'); doc.setFont('helvetica','bold'); doc.setFontSize(8.4);
+    let x = X; cols.forEach(([t,w])=>{ doc.text(t, x+5, y+10); x += w; }); y += 14;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.6);
+    hijos.forEach((h,i)=>{ nuevaPagina(14); let xx = X; [String(i+1), pdfTxt(h.nombre), h.dni||'', fecha(h.fechaNacimiento) + (h.fechaNacimiento ? ' ('+edadEn(h.fechaNacimiento)+')' : '')].forEach((v,k)=>{ doc.rect(xx, y, cols[k][1], 14); doc.text(v, xx+5, y+10); xx += cols[k][1]; }); y += 14; });
+    y += 5;
+  }
+  seccion('6. CONTACTO DE EMERGENCIA');
+  grilla([[['Nombre', e.refNombre], ['Parentesco', e.refParentesco]], [['Teléfono', e.refTelefono], ['Lugar de residencia', e.refDireccion]]]);
+  // Declaración jurada y firmas
+  nuevaPagina(150);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.4);
+  const dj = doc.splitTextToSize('DECLARACIÓN JURADA: Declaro bajo juramento que los datos consignados en la presente ficha son verdaderos y me comprometo a comunicar por escrito a la empresa cualquier cambio en ellos. Autorizo a la empresa a usarlos para la gestión de la relación laboral, la planilla, los seguros y la seguridad y salud en el trabajo (Ley 29733, de Protección de Datos Personales).', W);
+  doc.text(dj, X, y+12); y += dj.length*10 + 14;
+  const yF = Math.min(Math.max(y + 82, 720), PH - 50);
+  doc.setDrawColor(60); doc.setLineWidth(0.8);
+  doc.line(X, yF, X+180, yF);
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text('Firma del trabajador', X+90, yF+12, {align:'center'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+  doc.text(doc.splitTextToSize(pdfTxt(e.nombre), 180)[0], X+90, yF+23, {align:'center'}); doc.text('DNI '+pdfTxt(e.dni||''), X+90, yF+33, {align:'center'});
+  doc.rect(X+192, yF-72, 62, 78);
+  doc.setFontSize(7); doc.text('Huella digital', X+223, yF+16, {align:'center'}); doc.text('(índice derecho)', X+223, yF+24, {align:'center'});
+  if(!sellarFirmaGerente(doc, X+W-100, yF, 175)){
+    doc.line(X+W-200, yF, X+W, yF);
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text('Por la empresa', X+W-100, yF+12, {align:'center'});
+  }
+  doc.setFontSize(7.5); doc.setTextColor(120);
+  doc.text(pdfTxt(`Ficha generada por SERVING RRHH el ${docsFechaCorta(hoyISO())} · Archivar firmada en el legajo del trabajador.`), X, PH-18);
+  doc.save(`ficha-datos-${plsNorm(e.nombre).replace(/[^A-Z]+/g,'_')}.pdf`);
+}
+// Versión anterior de la ficha en PDF (sin foto ni firmas). Se conserva solo como referencia.
+function downloadEmployeePdfAnterior(id){
   const e = employees.find(x=>x.id===id);
   if(!e) return;
   const { jsPDF } = window.jspdf;
@@ -3602,17 +3886,23 @@ function openFichaRapida(id){
   const tieneDoc = (cat)=> docs.some(d=>d.categoria===cat);
   const mesActualPeriodo = `${MESES_INV[new Date().getMonth()]} ${new Date().getFullYear()}`;
   const tieneBoletaEsteMes = docs.some(d=>d.categoria==='boleta' && d.periodo===mesActualPeriodo);
-  const checklistItem = (etiqueta, ok, detalle)=>{
-    const pill = ok ? '<span class="pill pill-ok">✅ Completo</span>' : '<span class="pill pill-danger">❌ Falta</span>';
-    return row(`${etiqueta}${detalle?' — '+detalle:''} ${pill}`);
+  // Expediente: un check por documento (marcado = lo tienes firmado o en copia). Con archivo subido queda marcado.
+  const fis = e.docsFisicos || {};
+  const checklistItem = (etiqueta, cat, detalle)=>{
+    const archivo = tieneDoc(cat), ok = archivo || !!fis[cat];
+    return `<label style="display:flex;gap:9px;align-items:center;font-size:12.5px;padding:7px 10px;background:${ok?'var(--success-light)':'#FAF9F6'};border-radius:6px;margin:0;cursor:pointer;">
+      <input type="checkbox" style="width:auto;" ${ok?'checked':''} ${archivo?'disabled title="Tiene archivo subido"':''} onchange="toggleDocFisico('${id}','${cat}', this.checked)">
+      <span style="flex:1;">${etiqueta}${detalle?' — '+detalle:''}</span>
+      <span style="font-size:11px;color:var(--ink-soft);">${archivo ? 'archivo subido' : fis[cat] ? 'recibido '+fmtDate(fis[cat]) : ''}</span></label>`;
   };
-  html += section('Expediente completo', list([
-    checklistItem('Contrato', tieneDoc('contrato'), e.fechaFin?('fin '+fmtDate(e.fechaFin)):''),
-    checklistItem('EMO', tieneDoc('emo'), e.fechaEmo?('vigencia '+fmtDate(e.fechaEmo)):''),
-    checklistItem(`Boleta de ${mesActualPeriodo}`, tieneBoletaEsteMes),
-    checklistItem('Constancia de entrega de Contrato', tieneDoc('constancia_entrega_contrato')),
-    checklistItem('Constancia de entrega de Boletas', tieneDoc('constancia_entrega_boletas')),
-    checklistItem('Constancia de entrega de EPP', tieneDoc('constancia_epp'))
+  html += section('Expediente (marca lo que ya tienes)', list([
+    checklistItem('Ficha de datos firmada', 'ficha_datos'),
+    checklistItem('Copia de DNI', 'dni_foto'),
+    checklistItem('Contrato firmado', 'contrato', e.fechaFin?('fin '+fmtDate(e.fechaFin)):''),
+    checklistItem('Certificado de EMO', 'emo', e.fechaEmo?('vigencia '+fmtDate(e.fechaEmo)):''),
+    checklistItem('Constancia de entrega de contrato', 'constancia_entrega_contrato'),
+    checklistItem('Constancia de entrega de boletas', 'constancia_entrega_boletas'),
+    checklistItem('Constancia de entrega de EPP', 'constancia_epp')
   ]));
 
   html += section('Datos de contacto', list([
@@ -3832,6 +4122,8 @@ function populateEmployeeSelects(){
   document.getElementById('permisoEmployeeSelect').innerHTML = employees.length ? opts : empty;
   document.getElementById('descansoEmployeeSelect').innerHTML = employees.length ? opts : empty;
   document.getElementById('prestamoEmployeeSelect').innerHTML = employees.length ? opts : empty;
+  const activosOrd = employees.filter(e=>e.estado==='activo').sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  document.getElementById('reembolsoEmployeeSelect').innerHTML = activosOrd.length ? activosOrd.map(e=>`<option value="${e.id}">${e.nombre} — ${e.dni}</option>`).join('') : empty;
   document.getElementById('regEmployeeSelect').innerHTML = employees.length ? opts : empty;
   document.getElementById('eventoEmployeeSelect').innerHTML = `<option value="">— No aplica —</option>` + opts;
   document.getElementById('reconEmployeeSelect').innerHTML = employees.length ? opts : empty;
@@ -4040,17 +4332,45 @@ const FICHA_DOCS = [
   {categoria:'sctr', label:'Soporte de SCTR (póliza)', prefix:'fichaSctr'},
   {categoria:'pension', label:'Soporte de Pensión (AFP/ONP)', prefix:'fichaPension'}
 ];
+// Documentos del legajo: se marcan con un check cuando se tienen firmados o en copia física (se guarda la fecha).
+// Si además hay un archivo subido, cuenta como presente y se puede abrir.
+const LEGAJO_DOCS = [
+  ['dni_foto','Copia de DNI'], ['ficha_datos','Ficha de datos del trabajador firmada'], ['contrato','Contrato firmado'],
+  ['constancia_entrega_contrato','Constancia de entrega de contrato'], ['constancia_entrega_boletas','Constancia de entrega de boletas'],
+  ['constancia_epp','Constancia de entrega de EPP'], ['emo','Certificado de EMO (apto)'], ['induccion','Constancia de inducción de seguridad'],
+  ['salud','Soporte de salud (EsSalud / SIS / EPS)'], ['sctr','Constancia de SCTR'], ['pension','Soporte de pensión (AFP / ONP)'],
+  ['autorizacion','Autorizaciones firmadas (descuentos, uso de datos)']
+];
+function docLegajoOk(e, cat){ return !!(e && ((e.docsFisicos||{})[cat] || docActivoPorCategoria(e.id, cat))); }
+let docsFisicosTemp = {};
 function renderFichaDocsBlock(empId){
   const cont = document.getElementById('fichaDocsBlock');
   if(!cont) return;
-  const filas = FICHA_DOCS.map(d=>{
-    const doc = docActivoPorCategoria(empId, d.categoria);
-    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
-      <span style="flex:1;font-weight:500;">${d.label}</span>
-      ${celdaDocGenerico(empId, d.categoria, doc, d.prefix)}
-    </div>`;
-  }).join('');
-  cont.innerHTML = filas;
+  const e = employees.find(x=>x.id===empId) || null;
+  docsFisicosTemp = {...((e && e.docsFisicos) || {})};
+  cont.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:2px 16px;">` + LEGAJO_DOCS.map(([cat, label])=>{
+    const digital = e ? docActivoPorCategoria(e.id, cat) : null, f = docsFisicosTemp[cat];
+    return `<label style="display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);margin:0;cursor:pointer;font-weight:500;">
+      <input type="checkbox" class="docFisicoChk" value="${cat}" style="width:auto;" ${f || digital ? 'checked' : ''}>
+      <span style="flex:1;font-size:13px;">${label}${f ? ` <span style="font-size:11px;color:var(--ink-soft);font-weight:400;">(${fmtDate(f)})</span>` : ''}</span>
+      ${digital ? `<a href="#" onclick="downloadBoleta('${digital.id}');return false;" style="font-size:11.5px;">ver archivo</a>` : ''}
+    </label>`; }).join('') + `</div>`;
+}
+function leerDocsFisicosForm(){
+  const r = {};
+  document.querySelectorAll('#fichaDocsBlock .docFisicoChk').forEach(c=>{ if(c.checked) r[c.value] = docsFisicosTemp[c.value] || hoyISO(); });
+  return r;
+}
+// Check rápido desde la ventana del colaborador (se guarda al instante).
+async function toggleDocFisico(empId, cat, marcado){
+  const e = employees.find(x=>x.id===empId);
+  if(!e) return;
+  e.docsFisicos = e.docsFisicos || {};
+  if(marcado) e.docsFisicos[cat] = e.docsFisicos[cat] || hoyISO(); else delete e.docsFisicos[cat];
+  await saveData('employees', employees);
+  openFichaRapida(empId);
+  renderLegajoSunafil();
+  showToast(marcado ? 'Documento marcado como recibido' : 'Marca quitada');
 }
 function celdaDocGenerico(empId, categoria, doc, inputPrefix){
   const inputId = `${inputPrefix}_${empId}`;
@@ -4402,8 +4722,8 @@ function checklistLegajo(e){
   const c = itemVigencia('contrato', 'Contrato', e.fechaFin, 15);
   if(t){ c.nivel = 'danger'; c.corto = 'Sin contrato'; c.label = `Labora desde el ${fmtDate(t.desde)} con contrato vencido (${fmtDate(e.fechaFin)})`; }
   items.push(c);
-  items.push(docActivoPorCategoria(e.id, 'contrato')
-    ? {key:'contratoDoc', nivel:'ok', corto:'✓', label:'Contrato firmado escaneado'}
+  items.push(docLegajoOk(e, 'contrato')
+    ? {key:'contratoDoc', nivel:'ok', corto:'✓', label:'Contrato firmado en el legajo'}
     : {key:'contratoDoc', nivel:'warn', corto:'Falta subir', label:'No se ha subido el contrato firmado escaneado'});
   items.push(itemVigencia('emo', 'EMO', e.fechaEmo, 30));
   items.push(itemVigencia('sctr', 'SCTR', e.vigenciaSctr, 7));
@@ -5522,6 +5842,8 @@ function downloadBoleta(id){
   if(!b) return;
   // Las constancias de EPP nuevas no guardan el PDF: se vuelven a generar idénticas desde la entrega.
   if(!b.fileData && b.entregaId){ generarConstanciaEppPdf(b.entregaId); return; }
+  if(!b.fileData && b.prestamoId){ generarConstanciaPrestamoPdf(b.prestamoId); return; }
+  if(!b.fileData && b.reembolsoId){ descargarReembolsoPdf(b.reembolsoId); return; }
   const a = document.createElement('a');
   a.href = b.fileData; a.download = b.fileName;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
@@ -5641,6 +5963,9 @@ function switchAsistTab(tab){
   document.getElementById('asistPermisosBlock').style.display = tab==='permisos' ? 'block':'none';
   document.getElementById('asistDescansosBlock').style.display = tab==='descansos' ? 'block':'none';
   document.getElementById('asistPrestamosBlock').style.display = tab==='prestamos' ? 'block':'none';
+  document.getElementById('asistReembolsosBlock').style.display = tab==='reembolsos' ? 'block':'none';
+  if(tab==='prestamos') prestamoVistaPrevia();
+  if(tab==='reembolsos') initReembolsoForm();
   document.getElementById('asistFormatoManualBlock').style.display = tab==='formatomanual' ? 'block':'none';
   document.getElementById('asistReportesBlock').style.display = tab==='reportes' ? 'block':'none';
   if(tab==='reportes') renderReporteMensual();
@@ -5792,7 +6117,7 @@ function calcularFilasReporteMensual(){
       return s + (p.pagos||[]).filter(pg=>pg.fecha.slice(0,4)===currentReporteAnio && pg.fecha.slice(5,7)===mm).reduce((s2,pg)=>s2+pg.monto,0);
     }, 0);
     const descuentoPrestamos = pagosDelMes(TIPOS_DEDUCCION);
-    const reembolsos = pagosDelMes(TIPOS_REEMBOLSO);
+    const reembolsos = pagosDelMes(TIPOS_REEMBOLSO) + reembolsosEnBoletaMes(e.id, currentReporteAnio+'-'+mm);
 
     return {
       nombre: e.nombre, diasAsistidos: regsMes.length, tardanzas: regsMes.filter(r=>r.tardanza).length,
@@ -6032,10 +6357,10 @@ async function generarDocumentoPermisoPdf(id){
 // ---------- Préstamos y adelantos ----------
 function toggleReembolsoFields(){
   const tipo = document.getElementById('prestamoTipo').value;
-  document.getElementById('prestamoReembolsoEppField').style.display = tipo==='Reembolso EPP' ? 'flex' : 'none';
-  document.getElementById('prestamoDetalleOtrosField').style.display = tipo==='Reembolso Otros' ? 'flex' : 'none';
-  document.getElementById('prestamoMotivoField').style.display = tipo==='Reembolso Otros' ? 'none' : 'block';
-  if(tipo==='Reembolso EPP') poblarSelectReembolsoEpp();
+  const forma = document.getElementById('prestamoFormaEntrega');
+  if(tipo==='Descuento EPP') forma.value = 'No aplica (descuento)';
+  else if(forma.value==='No aplica (descuento)') forma.value = 'Efectivo';
+  prestamoVistaPrevia();
 }
 function poblarSelectReembolsoEpp(){
   const sel = document.getElementById('prestamoReembolsoEppItem');
@@ -6045,7 +6370,7 @@ function poblarSelectReembolsoEpp(){
     ? eppItems.map(it=>`<option value="${it.id}">${it.codigo?`[${it.codigo}] `:''}${it.nombre}</option>`).join('')
     : `<option value="">Sin artículos EPP registrados</option>`;
 }
-async function savePrestamo(){
+async function savePrestamoAnterior(){
   const empId = document.getElementById('prestamoEmployeeSelect').value;
   const monto = parseFloat(document.getElementById('prestamoMonto').value);
   const fecha = document.getElementById('prestamoFecha').value;
@@ -6078,6 +6403,7 @@ async function savePrestamo(){
   renderPrestamos();
   showToast('Registrado');
 }
+function savePrestamo(){ return guardarPrestamoFormal(); }
 async function deletePrestamo(id){
   if(!confirm('¿Eliminar este préstamo/adelanto y todos sus pagos registrados?')) return;
   prestamos = prestamos.filter(p=>p.id!==id);
@@ -6171,17 +6497,23 @@ function calcularCronogramaPrestamo(p){
     let fechaStr;
     if(p.fechasCuotas && p.fechasCuotas[i]){
       fechaStr = p.fechasCuotas[i];
+    } else if(p.primerDescuento){
+      fechaStr = plsSumarDias(p.primerDescuento, 7*(i-1));
     } else {
       const fechaCuota = new Date(p.fecha+'T00:00:00');
       fechaCuota.setDate(fechaCuota.getDate() + 7*i);
       fechaStr = fechaCuota.toISOString().slice(0,10);
     }
-    acumuladoPlan += cuotaMonto;
+    // Cuotas redondeadas a céntimos; la última absorbe la diferencia (ej. 100 en 3 = 33.33 + 33.33 + 33.34).
+    const cuotaRed = Math.round(cuotaMonto*100)/100;
+    const montoCuota = i < p.cuotas ? cuotaRed : Math.round((p.monto - cuotaRed*(p.cuotas-1))*100)/100;
+    acumuladoPlan += montoCuota;
     cronograma.push({
       numero: i,
       semana: `Semana ${i}`,
       fecha: fechaStr,
-      monto: cuotaMonto,
+      monto: montoCuota,
+      saldoDespues: Math.max(0, Math.round((p.monto - acumuladoPlan)*100)/100),
       pagada: pagadoTotal >= acumuladoPlan - 0.01
     });
   }
@@ -6263,7 +6595,7 @@ async function pagarCuotaPrestamo(numeroCuota){
   showToast('Pago registrado');
 }
 
-async function generarConstanciaPrestamoPdf(id){
+async function generarConstanciaPrestamoPdfAnterior(id){
   const p = prestamos.find(x=>x.id===id);
   if(!p) return;
   const e = employees.find(x=>x.id===p.empId);
@@ -6344,15 +6676,13 @@ function renderPrestamos(){
   const sorted = [...prestamos].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
 
   const saldoPorTipo = (tipos) => prestamos.filter(p=>tipos.includes(p.tipo)).reduce((s,p)=>s+saldoPrestamo(p),0);
-  const totalReembolsos = saldoPorTipo(['Reembolso EPP','Reembolso Otros']);
-  const totalPrestamosAdelantos = saldoPorTipo(['Préstamo','Adelanto']);
-  const totalDescuentos = saldoPorTipo(['Descuento EPP']);
   const resumenEl = document.getElementById('prestamosResumen');
   if(resumenEl){
     resumenEl.innerHTML = `
-      <div class="stat-card warn"><div class="num">S/ ${totalReembolsos.toFixed(2)}</div><div class="label">Total pendiente por reembolsar</div></div>
-      <div class="stat-card"><div class="num">S/ ${totalPrestamosAdelantos.toFixed(2)}</div><div class="label">Préstamos y adelantos pendientes</div></div>
-      <div class="stat-card"><div class="num">S/ ${totalDescuentos.toFixed(2)}</div><div class="label">Descuentos EPP pendientes</div></div>
+      <div class="stat-card"><div class="num">S/ ${saldoPorTipo(['Préstamo']).toFixed(2)}</div><div class="label">Préstamos por descontar</div></div>
+      <div class="stat-card"><div class="num">S/ ${saldoPorTipo(['Adelanto']).toFixed(2)}</div><div class="label">Adelantos por descontar</div></div>
+      <div class="stat-card"><div class="num">S/ ${saldoPorTipo(['Descuento EPP']).toFixed(2)}</div><div class="label">Descuentos EPP pendientes</div></div>
+      <div class="stat-card warn"><div class="num">S/ ${(saldoPorTipo(['Reembolso EPP','Reembolso Otros']) + reembolsoPendienteTotal()).toFixed(2)}</div><div class="label">Reembolsos por pagar (ver pestaña Reembolsos)</div></div>
     `;
   }
 
@@ -6362,25 +6692,490 @@ function renderPrestamos(){
     const estado = saldo<=0 ? '<span class="pill pill-ok">Pagado</span>' : '<span class="pill pill-warn">Pendiente</span>';
     return `<tr>
       <td>${e ? e.nombre : '(colaborador eliminado)'}</td>
-      <td><span class="pill pill-muted">${p.tipo}</span></td>
+      <td><span class="pill pill-muted">${p.tipo}</span>${p.numero ? `<div class="mono" style="font-size:11px;color:var(--muted);margin-top:3px;">${p.numero}</div>` : ''}</td>
       <td class="mono">S/ ${p.monto.toFixed(2)}</td>
       <td>${fmtDate(p.fecha)}</td>
       <td class="mono">${p.cuotas}</td>
       <td class="mono">S/ ${saldo.toFixed(2)}</td>
       <td>${estado}</td>
-      <td>${p.motivo||'—'}</td>
+      <td>${escHtml(p.motivo||'—')}</td>
       <td class="actions-cell">
-        ${saldo>0 ? `<button class="btn btn-accent btn-sm" onclick="openPrestamoPagosModal('${p.id}')">Registrar pago</button>` : ''}
-        <button class="btn btn-primary btn-sm" onclick="generarConstanciaPrestamoPdf('${p.id}')">Constancia y cronograma</button>
+        ${saldo>0 ? `<button class="btn btn-accent btn-sm" onclick="openPrestamoPagosModal('${p.id}')">Registrar descuento</button>` : ''}
+        <button class="btn btn-primary btn-sm" onclick="generarConstanciaPrestamoPdf('${p.id}')">📄 Formato PDF</button>
         <button class="btn btn-danger btn-sm" onclick="deletePrestamo('${p.id}')">Eliminar</button>
       </td>
     </tr>`;
   }).join('');
   document.getElementById('prestamosTable').innerHTML = sorted.length ? `
     <div class="table-scroll">
-    <table><thead><tr><th>Colaborador</th><th>Tipo</th><th>Monto</th><th>Fecha</th><th>Cuotas</th><th>Saldo</th><th>Estado</th><th>Motivo</th><th></th></tr></thead>
+    <table><thead><tr><th>Colaborador</th><th>Tipo / N°</th><th>Monto</th><th>Fecha</th><th>Cuotas</th><th>Saldo</th><th>Estado</th><th>Motivo / comentario</th><th></th></tr></thead>
     <tbody>${rows}</tbody></table>
     </div>` : `<div class="empty">Aún no registras préstamos ni adelantos.</div>`;
+}
+
+// ---------- Formatos formales en PDF (préstamos, adelantos, reembolsos) ----------
+// Pequeño "maquetador" A4: encabezado con N°, secciones, filas etiqueta/valor, tablas con texto ajustado y firmas.
+function pdfFormal(doc){
+  const W = doc.internal.pageSize.getWidth(), M = 42, ancho = W - 2*M, TOPE = 790;
+  const o = {doc, W, M, ancho, y:40};
+  o.salto = h => { if(o.y + h > TOPE){ doc.addPage(); o.y = 50; } };
+  o.encabezado = (titulo, numero, fecha) => {
+    const emp = window._empresaData || {};
+    const y = o.y;
+    const lw = addLogoToPdf(doc, M, y-6, 46);
+    const tx = M + (lw ? 56 : 0);
+    doc.setTextColor(0);
+    doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.text(emp.razonSocial || '', tx, y+8);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.3); doc.text('RUC ' + (emp.ruc || '—'), tx, y+20);
+    if(emp.domicilioFiscal) doc.text(doc.splitTextToSize(emp.domicilioFiscal, 290).slice(0,2), tx, y+31);
+    doc.setDrawColor(31,58,52); doc.setLineWidth(1); doc.roundedRect(W-M-125, y-6, 125, 40, 3, 3);
+    doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.text('N° ' + numero, W-M-62.5, y+9, {align:'center'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.text('Fecha: ' + docsFechaCorta(fecha), W-M-62.5, y+24, {align:'center'});
+    o.y = y + 64;
+    doc.setFont('helvetica','bold'); doc.setFontSize(12.5);
+    doc.splitTextToSize(titulo, ancho-40).forEach(l=>{ doc.text(l, W/2, o.y, {align:'center'}); o.y += 15; });
+    o.y += 2;
+  };
+  o.seccion = t => {
+    o.salto(50); o.y += 8;
+    doc.setFillColor(31,58,52); doc.rect(M, o.y, ancho, 15, 'F');
+    doc.setTextColor(255); doc.setFont('helvetica','bold'); doc.setFontSize(8.8); doc.text(t, M+6, o.y+10.5);
+    doc.setTextColor(0); o.y += 15;
+  };
+  o.fila = pares => {
+    o.salto(16);
+    const colW = ancho / pares.length;
+    pares.forEach(([lab, val], i)=>{
+      const x = M + i*colW;
+      doc.setDrawColor(190); doc.setLineWidth(0.5); doc.rect(x, o.y, colW, 16);
+      doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(90); doc.text(lab, x+4, o.y+10.5);
+      const lw = doc.getTextWidth(lab) + 8;
+      doc.setFont('helvetica','normal'); doc.setFontSize(8.8); doc.setTextColor(0);
+      doc.text(doc.splitTextToSize(String(val==null || val==='' ? '—' : val), colW-lw-6)[0], x+lw, o.y+11);
+    });
+    o.y += 16;
+  };
+  o.caja = (lab, texto) => {
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.8);
+    const lineas = doc.splitTextToSize(String(texto || '—'), ancho-10);
+    const h = 18 + lineas.length*11;
+    o.salto(h);
+    doc.setDrawColor(190); doc.setLineWidth(0.5); doc.rect(M, o.y, ancho, h);
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(90); doc.text(lab, M+4, o.y+10);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.8); doc.setTextColor(0); doc.text(lineas, M+4, o.y+21);
+    o.y += h;
+  };
+  o.tabla = (cols, filas) => {
+    const tot = cols.reduce((s,c)=>s+c.w, 0);
+    let x = M; cols.forEach(c=>{ c.x = x; c.ancho = ancho*c.w/tot; x += c.ancho; });
+    const posX = c => c.al==='r' ? c.x + c.ancho - 4 : c.x + 4;
+    const cab = () => {
+      o.salto(32);
+      doc.setFillColor(232,238,236); doc.rect(M, o.y, ancho, 15, 'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(7.8); doc.setTextColor(0);
+      cols.forEach(c=>doc.text(c.t, posX(c), o.y+10.5, {align: c.al==='r' ? 'right' : 'left'}));
+      o.y += 15;
+      doc.setFont('helvetica','normal'); doc.setFontSize(8.3);
+    };
+    cab();
+    filas.forEach(f=>{
+      const negrita = f.negrita; doc.setFont('helvetica', negrita ? 'bold' : 'normal');
+      const lineas = f.map((v,i)=>doc.splitTextToSize(String(v==null ? '' : v), cols[i].ancho-8));
+      const h = Math.max(...lineas.map(l=>l.length))*10 + 6;
+      if(o.y + h > TOPE){ doc.addPage(); o.y = 50; cab(); doc.setFont('helvetica', negrita ? 'bold' : 'normal'); }
+      doc.setDrawColor(200); doc.setLineWidth(0.5);
+      cols.forEach((c,i)=>{ doc.rect(c.x, o.y, c.ancho, h); doc.text(lineas[i], posX(c), o.y+10.5, {align: c.al==='r' ? 'right' : 'left'}); });
+      o.y += h;
+    });
+    doc.setFont('helvetica','normal');
+  };
+  o.parrafos = lista => {
+    o.y += 12; doc.setFont('helvetica','normal'); doc.setFontSize(8.6); doc.setTextColor(0);
+    lista.forEach((t,i)=>{
+      const lineas = doc.splitTextToSize(t, ancho-16);
+      o.salto(lineas.length*10.5 + 4);
+      doc.text((i+1)+'.', M, o.y); doc.text(lineas, M+16, o.y);
+      o.y += lineas.length*10.5 + 4;
+    });
+  };
+  o.texto = t => {
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.6);
+    const lineas = doc.splitTextToSize(t, ancho);
+    o.salto(lineas.length*10.5 + 4); o.y += 4;
+    doc.text(lineas, M, o.y); o.y += lineas.length*10.5;
+  };
+  o.datosTrabajador = e => {
+    o.fila([['Apellidos y nombres', e.nombre]]);
+    o.fila([['DNI', e.dni], ['Cargo', e.cargo]]);
+    o.fila([['Área', e.area], ['Fecha de ingreso', docsFechaCorta(e.fechaIngreso)]]);
+    o.fila([['Celular', e.celular1], ['Jornal diario', e.sueldoDiario ? soles(e.sueldoDiario) : '—']]);
+  };
+  // Firma del gerente (sello) a la izquierda; trabajador con huella a la derecha.
+  o.firmas = (tituloEmp, tituloTrab, e) => {
+    const emp = window._empresaData || {};
+    o.salto(125);
+    const yL = o.y + 78, cxE = M + 110, cxT = M + 340;
+    sellarFirmaGerente(doc, cxE, yL, 140);
+    doc.setDrawColor(0); doc.setLineWidth(0.6);
+    doc.line(M+15, yL, M+205, yL);
+    doc.line(M+255, yL, M+425, yL);
+    doc.setDrawColor(150); doc.rect(M+445, yL-64, 60, 72);
+    doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(120); doc.text('Huella digital', M+475, yL+17, {align:'center'}); doc.setTextColor(0);
+    // Títulos arriba: debajo de la línea del empleador va el nombre y cargo que trae el propio sello.
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
+    doc.text(tituloEmp, cxE, yL-66, {align:'center'}); doc.text(tituloTrab, cxT, yL-66, {align:'center'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.8);
+    doc.text(`DNI ${emp.representanteDni || '—'}`, cxE, yL+28, {align:'center'});
+    doc.text(doc.splitTextToSize(e.nombre, 175)[0], cxT, yL+12, {align:'center'});
+    doc.text('DNI ' + (e.dni || '—'), cxT, yL+22, {align:'center'});
+    o.y = yL + 40;
+  };
+  o.pie = numero => {
+    const emp = window._empresaData || {}, n = doc.getNumberOfPages();
+    for(let i=1; i<=n; i++){
+      doc.setPage(i); doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(130);
+      doc.text(`${emp.razonSocial || ''} · Documento ${numero} · Página ${i} de ${n}`, W/2, 825, {align:'center'});
+      doc.setTextColor(0);
+    }
+  };
+  return o;
+}
+function numeroCorrelativo(prefijo, fecha, lista){
+  const pref = prefijo + '-' + (fecha || hoyISO()).slice(0,4) + '-';
+  const max = lista.map(x=>x.numero || '').filter(n=>n.startsWith(pref)).reduce((m,n)=>Math.max(m, parseInt(n.slice(pref.length))||0), 0);
+  return pref + String(max+1).padStart(4,'0');
+}
+function nombreArchivoSeguro(s){ return plsNorm(s).replace(/[^A-Z0-9]+/g,'_').replace(/^_|_$/g,''); }
+
+// ---------- Préstamos y adelantos: formato formal ----------
+const PRESTAMO_TITULOS = {
+  'Préstamo': 'CONVENIO DE PRÉSTAMO Y AUTORIZACIÓN DE DESCUENTO',
+  'Adelanto': 'SOLICITUD DE ADELANTO DE REMUNERACIÓN Y AUTORIZACIÓN DE DESCUENTO',
+  'Descuento EPP': 'ACTA DE DESCUENTO POR PÉRDIDA O DAÑO DE EPP'
+};
+// Próxima fecha de pago semanal después de 'desde', tomando el día de pago de las planillas registradas.
+function prestamoSiguientePago(desde){
+  let ref = null;
+  try{ ref = planillasSemanales.map(s=>bsFechaPago(s)).filter(Boolean).sort().pop(); }catch(err){}
+  if(!ref) return plsSumarDias(desde, 7);
+  let f = ref;
+  while(f <= desde) f = plsSumarDias(f, 7);
+  while(plsSumarDias(f, -7) > desde) f = plsSumarDias(f, -7);
+  return f;
+}
+function prestamoVistaPrevia(){
+  const el = document.getElementById('prestamoPrevia');
+  if(!el) return;
+  const fechaEl = document.getElementById('prestamoFecha');
+  if(!fechaEl.value) fechaEl.value = hoyISO();
+  const pd = document.getElementById('prestamoPrimerDescuento');
+  if(!pd.value || pd.dataset.auto==='1'){ pd.value = prestamoSiguientePago(fechaEl.value); pd.dataset.auto = '1'; }
+  const monto = parseFloat(document.getElementById('prestamoMonto').value);
+  const cuotas = Math.max(1, parseInt(document.getElementById('prestamoCuotas').value)||1);
+  if(!(monto > 0)){ el.innerHTML = 'Escribe el monto para ver el cronograma de descuentos.'; return; }
+  const crono = calcularCronogramaPrestamo({monto, cuotas, fecha: fechaEl.value, primerDescuento: pd.value, pagos:[]});
+  const e = employees.find(x=>x.id===document.getElementById('prestamoEmployeeSelect').value);
+  const semanal = e && e.sueldoDiario ? e.sueldoDiario*6 : 0;
+  const pct = semanal ? Math.round(crono[0].monto/semanal*100) : 0;
+  el.innerHTML = `📅 ${cuotas} cuota(s) de <strong>${soles(crono[0].monto)}</strong>${cuotas>1 && crono[cuotas-1].monto!==crono[0].monto ? ` (última ${soles(crono[cuotas-1].monto)})` : ''}, del ${fmtDate(crono[0].fecha)} al ${fmtDate(crono[cuotas-1].fecha)}.`
+    + (semanal ? ` Cada cuota es el <strong style="color:${pct>50 ? 'var(--danger)' : 'inherit'}">${pct}%</strong> de su pago semanal aproximado (${soles(semanal)}).${pct>50 ? ' ⚠️ Es una carga alta: considera más cuotas.' : ''}` : '');
+}
+async function guardarPrestamoFormal(){
+  const empId = document.getElementById('prestamoEmployeeSelect').value;
+  const monto = Math.round(parseFloat(document.getElementById('prestamoMonto').value)*100)/100;
+  const fecha = document.getElementById('prestamoFecha').value;
+  const tipo = document.getElementById('prestamoTipo').value;
+  const cuotas = parseInt(document.getElementById('prestamoCuotas').value)||1;
+  const primerDescuento = document.getElementById('prestamoPrimerDescuento').value || (fecha && prestamoSiguientePago(fecha));
+  const motivo = document.getElementById('prestamoMotivo').value.trim();
+  if(!empId || !fecha || isNaN(monto) || monto<=0){ showToast('Completa colaborador, fecha y un monto válido'); return; }
+  if(cuotas < 1 || cuotas > 52){ showToast('El número de cuotas debe estar entre 1 y 52'); return; }
+  if(primerDescuento < fecha){ showToast('El primer descuento no puede ser antes de la fecha de entrega'); return; }
+  if(tipo==='Descuento EPP' && !motivo){ showToast('Describe qué EPP se perdió o dañó y cómo'); return; }
+  const p = {
+    id:'pr'+Date.now()+Math.random().toString(36).slice(2,6), numero: numeroCorrelativo('PRE', fecha, prestamos), empId, fecha, monto, tipo, cuotas, primerDescuento,
+    formaEntrega: tipo==='Descuento EPP' ? 'No aplica (descuento)' : document.getElementById('prestamoFormaEntrega').value,
+    motivo, pagos: []
+  };
+  prestamos.push(p);
+  await saveData('prestamos', prestamos);
+  ['prestamoMonto','prestamoMotivo'].forEach(id=>document.getElementById(id).value = '');
+  document.getElementById('prestamoCuotas').value = 1;
+  document.getElementById('prestamoPrimerDescuento').dataset.auto = '1';
+  prestamoVistaPrevia();
+  renderPrestamos();
+  await generarConstanciaPrestamoPdf(p.id);
+  showToast(`${p.numero} registrado. Imprime el formato para la firma del trabajador.`);
+}
+async function generarConstanciaPrestamoPdf(id){
+  const p = prestamos.find(x=>x.id===id);
+  if(!p) return;
+  const e = employees.find(x=>x.id===p.empId);
+  if(!e){ showToast('El colaborador ya no existe'); return; }
+  if(!p.numero){ p.numero = numeroCorrelativo('PRE', p.fecha, prestamos); await saveData('prestamos', prestamos); }
+  const emp = window._empresaData || {};
+  const razon = emp.razonSocial || 'la empresa';
+  const crono = calcularCronogramaPrestamo(p);
+  const ultima = crono[crono.length-1];
+  const esEpp = p.tipo==='Descuento EPP', esAdelanto = p.tipo==='Adelanto';
+  const forma = p.formaEntrega || 'Efectivo';
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const o = pdfFormal(doc);
+  o.encabezado(PRESTAMO_TITULOS[p.tipo] || ('CONSTANCIA DE ' + p.tipo.toUpperCase()), p.numero, p.fecha);
+  o.seccion('1. DATOS DEL TRABAJADOR');
+  o.datosTrabajador(e);
+  o.seccion(esEpp ? '2. DATOS DEL DESCUENTO' : '2. CONDICIONES DEL ' + (esAdelanto ? 'ADELANTO' : 'PRÉSTAMO'));
+  o.fila([['Monto', soles(p.monto)], [esEpp ? 'Concepto' : 'Forma de entrega', esEpp ? 'Reposición de EPP' : forma]]);
+  o.fila([['Son', montoEnLetras(p.monto)]]);
+  o.fila([['N° de cuotas semanales', String(p.cuotas)], ['Cuota semanal', soles(crono[0].monto) + (ultima.monto!==crono[0].monto ? ' (última ' + soles(ultima.monto) + ')' : '')]]);
+  o.fila([['Primer descuento', docsFechaCorta(crono[0].fecha)], ['Último descuento', docsFechaCorta(ultima.fecha)]]);
+  o.caja(esEpp ? 'EPP PERDIDO O DAÑADO / DETALLE' : 'MOTIVO / COMENTARIO', p.motivo || '—');
+  o.seccion('3. CRONOGRAMA DE DESCUENTOS');
+  o.tabla([{t:'N°', w:0.5}, {t:'Fecha de pago semanal', w:2}, {t:'Cuota', w:1.2, al:'r'}, {t:'Saldo después del descuento', w:1.9, al:'r'}, {t:'Estado', w:1.2}],
+    crono.map(c=>[c.numero, docsFechaCorta(c.fecha), soles(c.monto), soles(c.saldoDespues), c.pagada ? 'Descontada' : 'Pendiente']));
+  o.seccion('4. DECLARACIÓN Y AUTORIZACIÓN DE DESCUENTO');
+  const quien = `${e.nombre}, identificado(a) con DNI N° ${e.dni || '—'}`;
+  const cuotasTxt = `${p.cuotas} cuota(s) semanal(es) de ${soles(crono[0].monto)}${ultima.monto!==crono[0].monto ? ' (la última de ' + soles(ultima.monto) + ')' : ''}`;
+  const clausulas = esEpp ? [
+    `${quien}, reconoce que el equipo de protección personal que le fue entregado por ${razon} se perdió o dañó por causa imputable a su persona, según el detalle indicado en este documento.`,
+    `Acepta y autoriza expresamente que el costo de reposición, ascendente a ${soles(p.monto)} (${montoEnLetras(p.monto)}), se descuente de sus remuneraciones semanales en ${cuotasTxt}, según el cronograma anterior. Cada descuento figurará en su boleta de pago.`,
+    `La empresa le entrega un nuevo equipo para que continúe trabajando de forma segura. Este descuento no constituye sanción disciplinaria.`,
+    `Si el vínculo laboral termina antes de completar el descuento, autoriza que el saldo pendiente se descuente de su liquidación de beneficios sociales, dentro de los límites que permite la ley.`
+  ] : [
+    `${quien}, declara haber solicitado y recibido de ${razon} la suma de ${soles(p.monto)} (${montoEnLetras(p.monto)}) en calidad de ${esAdelanto ? 'adelanto de remuneración' : 'préstamo'}, mediante ${forma.toLowerCase()}, a su entera satisfacción.`,
+    `Autoriza expresamente a la empresa a descontar dicho monto de sus remuneraciones semanales en ${cuotasTxt}, según el cronograma anterior. Cada descuento figurará en su boleta de pago.`,
+    esAdelanto ? `El adelanto es a cuenta de su remuneración: no es un pago adicional ni genera intereses.` : `El préstamo no genera intereses, comisiones ni gastos para el trabajador.`,
+    `Si el vínculo laboral termina antes de cancelar el total, autoriza que el saldo pendiente se descuente de su liquidación de beneficios sociales, dentro de los límites que permite la ley.`,
+    `Puede cancelar el saldo por adelantado en cualquier momento. Si en alguna semana no se pudiera efectuar el descuento, la cuota pasará a la siguiente fecha de pago.`
+  ];
+  o.parrafos(clausulas);
+  o.texto(`En señal de conformidad, ambas partes firman el presente documento el ${docsFechaLarga(p.fecha)}.`);
+  o.firmas('EL EMPLEADOR', 'EL TRABAJADOR', e);
+  o.pie(p.numero);
+  const archivo = `${p.numero}-${esEpp ? 'descuento-epp' : esAdelanto ? 'adelanto' : 'prestamo'}-${nombreArchivoSeguro(e.nombre)}.pdf`;
+  doc.save(archivo);
+  // Solo se guarda la referencia en el legajo: el PDF se vuelve a generar igual cuando se descargue.
+  if(!workerDocs.some(d=>d.prestamoId===p.id)){
+    workerDocs.push({id:'p'+Date.now()+Math.random().toString(36).slice(2,6), empId:p.empId, categoria:'anexo', periodo:'', vigencia:null, prestamoId:p.id,
+      fileName:archivo, fileType:'application/pdf', fileData:null, fecha:hoyISO(),
+      historial:[{accion:'Generado', fecha:hoyISO(), detalle:`${PRESTAMO_TITULOS[p.tipo] || p.tipo} ${p.numero}`}]});
+    await saveData('workerDocs', workerDocs);
+  }
+}
+
+// ---------- Reembolsos de gastos (EPP, pasajes, otros) ----------
+const REEMBOLSO_CONCEPTOS = ['Compra de EPP','Pasajes / movilidad','Alimentación / viáticos','Materiales o herramientas','Exámenes / trámites','Otros'];
+const REEMBOLSO_COMPROBANTES = ['Boleta de venta','Factura','Ticket','Recibo','Sin comprobante (DJ)'];
+const REEMBOLSO_PILL = {Pendiente:'pill-warn', Aprobado:'pill-muted', Pagado:'pill-ok', Rechazado:'pill-danger'};
+let reembolsoLineasForm = [];
+let reembolsoEstadoActualId = null;
+function reembolsoMontoFinal(r){ return r.estado==='Rechazado' ? 0 : (r.montoAprobado!=null ? r.montoAprobado : r.total); }
+function reembolsoPendienteTotal(){ return reembolsos.filter(r=>r.estado==='Pendiente' || r.estado==='Aprobado').reduce((s,r)=>s+reembolsoMontoFinal(r), 0); }
+// Reembolsos pagados en la boleta semanal en un mes (AAAA-MM): suman al neto del reporte mensual.
+function reembolsosEnBoletaMes(empId, ym){
+  return reembolsos.filter(r=>r.empId===empId && r.estado==='Pagado' && r.pagoForma==='En la boleta semanal' && (r.pagoFecha||'').slice(0,7)===ym).reduce((s,r)=>s+reembolsoMontoFinal(r), 0);
+}
+function reembolsoLineaVacia(){
+  return {fecha: document.getElementById('reembolsoFecha').value || hoyISO(), concepto:'Compra de EPP', detalle:'', comprobanteTipo:'Boleta de venta', comprobanteNum:'', monto:''};
+}
+function initReembolsoForm(){
+  const f = document.getElementById('reembolsoFecha');
+  if(!f.value) f.value = hoyISO();
+  if(!reembolsoLineasForm.length) reembolsoLineasForm = [reembolsoLineaVacia()];
+  document.getElementById('reembolsoDetalleSugerido').innerHTML = inventoryItems.map(i=>`<option value="${escHtml(i.nombre)}">`).join('');
+  renderReembolsoLineas();
+  renderReembolsos();
+}
+function renderReembolsoLineas(){
+  const opt = (arr, v)=>arr.map(x=>`<option${x===v ? ' selected' : ''}>${x}</option>`).join('');
+  document.getElementById('reembolsoLineas').innerHTML = reembolsoLineasForm.map((l,i)=>`<tr>
+    <td><input type="date" value="${l.fecha}" onchange="reembolsoLineasForm[${i}].fecha=this.value"></td>
+    <td><select onchange="reembolsoLineasForm[${i}].concepto=this.value">${opt(REEMBOLSO_CONCEPTOS, l.concepto)}</select></td>
+    <td><input style="min-width:200px;" value="${escHtml(l.detalle)}" list="reembolsoDetalleSugerido" placeholder="Ej. guantes de cuero x2 / pasaje Lima–Chimbote" oninput="reembolsoLineasForm[${i}].detalle=this.value"></td>
+    <td><select onchange="reembolsoLineasForm[${i}].comprobanteTipo=this.value">${opt(REEMBOLSO_COMPROBANTES, l.comprobanteTipo)}</select></td>
+    <td><input value="${escHtml(l.comprobanteNum)}" placeholder="B001-123" oninput="reembolsoLineasForm[${i}].comprobanteNum=this.value"></td>
+    <td><input type="number" step="0.01" min="0" value="${l.monto}" oninput="reembolsoLineasForm[${i}].monto=this.value; reembolsoTotalForm()"></td>
+    <td>${reembolsoLineasForm.length>1 ? `<button class="btn btn-ghost btn-sm" title="Quitar este gasto" onclick="reembolsoQuitarLinea(${i})">✕</button>` : ''}</td>
+  </tr>`).join('');
+  reembolsoTotalForm();
+}
+function reembolsoTotalForm(){
+  const t = reembolsoLineasForm.reduce((s,l)=>s+(parseFloat(l.monto)||0), 0);
+  document.getElementById('reembolsoTotalForm').textContent = 'Total: ' + soles(t);
+}
+function reembolsoAgregarLinea(){
+  const ult = reembolsoLineasForm[reembolsoLineasForm.length-1];
+  const nueva = reembolsoLineaVacia();
+  if(ult){ nueva.fecha = ult.fecha; nueva.concepto = ult.concepto; }
+  reembolsoLineasForm.push(nueva);
+  renderReembolsoLineas();
+}
+function reembolsoQuitarLinea(i){ reembolsoLineasForm.splice(i, 1); renderReembolsoLineas(); }
+async function saveReembolso(){
+  const empId = document.getElementById('reembolsoEmployeeSelect').value;
+  const fecha = document.getElementById('reembolsoFecha').value;
+  const lineas = reembolsoLineasForm
+    .map(l=>({fecha:l.fecha || fecha, concepto:l.concepto, detalle:(l.detalle||'').trim(), comprobanteTipo:l.comprobanteTipo, comprobanteNum:(l.comprobanteNum||'').trim(), monto:Math.round((parseFloat(l.monto)||0)*100)/100}))
+    .filter(l=>l.monto>0 || l.detalle);
+  if(!empId || !fecha){ showToast('Elige el colaborador y la fecha de la solicitud'); return; }
+  if(!lineas.length){ showToast('Agrega al menos un gasto con su monto'); return; }
+  if(lineas.some(l=>!(l.monto>0))){ showToast('Cada gasto debe tener un monto mayor a 0'); return; }
+  if(lineas.some(l=>!l.detalle)){ showToast('Escribe el detalle de cada gasto (qué se compró o el recorrido del pasaje)'); return; }
+  const total = Math.round(lineas.reduce((s,l)=>s+l.monto, 0)*100)/100;
+  const r = {
+    id:'re'+Date.now()+Math.random().toString(36).slice(2,6), numero: numeroCorrelativo('REE', fecha, reembolsos), empId, fecha, lineas, total,
+    comentario: document.getElementById('reembolsoComentario').value.trim(),
+    pagoForma: document.getElementById('reembolsoFormaPago').value,
+    estado:'Pendiente', historial:[{fecha:hoyISO(), accion:'Registrado'}]
+  };
+  reembolsos.push(r);
+  await saveData('reembolsos', reembolsos);
+  workerDocs.push({id:'p'+Date.now()+Math.random().toString(36).slice(2,6), empId, categoria:'anexo', periodo:'', vigencia:null, reembolsoId:r.id,
+    fileName:`${r.numero}-reembolso.pdf`, fileType:'application/pdf', fileData:null, fecha:hoyISO(),
+    historial:[{accion:'Generado', fecha:hoyISO(), detalle:`Solicitud de reembolso ${r.numero}`}]});
+  await saveData('workerDocs', workerDocs);
+  reembolsoLineasForm = [];
+  document.getElementById('reembolsoComentario').value = '';
+  initReembolsoForm();
+  renderPrestamos();
+  await descargarReembolsoPdf(r.id);
+  showToast(`${r.numero} registrado. Imprime el formato para la firma.`);
+}
+async function deleteReembolso(id){
+  const r = reembolsos.find(x=>x.id===id);
+  if(!r || !confirm(`¿Eliminar el reembolso ${r.numero}?`)) return;
+  reembolsos = reembolsos.filter(x=>x.id!==id);
+  workerDocs = workerDocs.filter(d=>d.reembolsoId!==id);
+  await saveData('reembolsos', reembolsos);
+  await saveData('workerDocs', workerDocs);
+  renderReembolsos(); renderPrestamos();
+}
+function openReembolsoEstadoModal(id){
+  const r = reembolsos.find(x=>x.id===id);
+  if(!r) return;
+  const e = employees.find(x=>x.id===r.empId);
+  reembolsoEstadoActualId = id;
+  document.getElementById('reembolsoEstadoTitulo').textContent = `Reembolso ${r.numero}`;
+  document.getElementById('reembolsoEstadoResumen').textContent = `${e ? e.nombre : '—'} · solicitado ${soles(r.total)} el ${fmtDate(r.fecha)}`;
+  document.getElementById('reembolsoEstadoNuevo').value = r.estado==='Pendiente' ? 'Aprobado' : r.estado==='Aprobado' ? 'Pagado' : r.estado;
+  document.getElementById('reembolsoMontoAprobado').value = (r.montoAprobado!=null ? r.montoAprobado : r.total).toFixed(2);
+  document.getElementById('reembolsoPagoFecha').value = r.pagoFecha || hoyISO();
+  document.getElementById('reembolsoPagoForma').value = r.pagoForma || 'En la boleta semanal';
+  document.getElementById('reembolsoComentarioRrhh').value = r.comentarioRrhh || '';
+  reembolsoToggleEstadoCampos();
+  document.getElementById('reembolsoEstadoModalOverlay').classList.add('active');
+}
+function closeReembolsoEstadoModal(){
+  document.getElementById('reembolsoEstadoModalOverlay').classList.remove('active');
+  reembolsoEstadoActualId = null;
+}
+function reembolsoToggleEstadoCampos(){
+  const est = document.getElementById('reembolsoEstadoNuevo').value;
+  document.getElementById('reembolsoPagoCampos').style.display = est==='Pagado' ? 'flex' : 'none';
+  document.getElementById('reembolsoMontoAprobadoField').style.display = (est==='Aprobado' || est==='Pagado') ? 'block' : 'none';
+}
+async function guardarEstadoReembolso(){
+  const r = reembolsos.find(x=>x.id===reembolsoEstadoActualId);
+  if(!r) return;
+  const est = document.getElementById('reembolsoEstadoNuevo').value;
+  const comentario = document.getElementById('reembolsoComentarioRrhh').value.trim();
+  if(est==='Rechazado' && !comentario){ showToast('Escribe el motivo del rechazo en el comentario'); return; }
+  if(est==='Aprobado' || est==='Pagado'){
+    const m = Math.round(parseFloat(document.getElementById('reembolsoMontoAprobado').value)*100)/100;
+    if(isNaN(m) || m<0){ showToast('Monto aprobado inválido'); return; }
+    if(m > r.total){ showToast('El monto aprobado no puede ser mayor a lo solicitado'); return; }
+    if(m < r.total && !comentario){ showToast('Explica en el comentario por qué se aprueba un monto menor'); return; }
+    r.montoAprobado = m;
+    r.aprobadoFecha = r.aprobadoFecha || hoyISO();
+  }
+  if(est==='Pagado'){
+    const f = document.getElementById('reembolsoPagoFecha').value;
+    if(!f){ showToast('Indica la fecha de pago'); return; }
+    r.pagoFecha = f;
+    r.pagoForma = document.getElementById('reembolsoPagoForma').value;
+  } else {
+    delete r.pagoFecha;
+  }
+  r.estado = est;
+  r.comentarioRrhh = comentario;
+  (r.historial = r.historial || []).push({fecha:hoyISO(), accion:est, detalle:comentario});
+  await saveData('reembolsos', reembolsos);
+  closeReembolsoEstadoModal();
+  renderReembolsos(); renderPrestamos();
+  showToast(`Reembolso ${r.numero}: ${est.toLowerCase()}`);
+}
+function renderReembolsos(){
+  const cont = document.getElementById('reembolsosTable');
+  if(!cont) return;
+  const filtro = document.getElementById('reembolsoFiltro').value;
+  const mes = hoyISO().slice(0,7);
+  const suma = L => L.reduce((s,r)=>s+reembolsoMontoFinal(r), 0);
+  const pend = reembolsos.filter(r=>r.estado==='Pendiente'), apr = reembolsos.filter(r=>r.estado==='Aprobado');
+  const pagMes = reembolsos.filter(r=>r.estado==='Pagado' && (r.pagoFecha||'').slice(0,7)===mes);
+  const antiguos = prestamos.filter(p=>['Reembolso EPP','Reembolso Otros'].includes(p.tipo) && saldoPrestamo(p)>0);
+  document.getElementById('reembolsosResumen').innerHTML = `
+    <div class="stat-card warn"><div class="num">${soles(suma(pend))}</div><div class="label">${pend.length} por aprobar</div></div>
+    <div class="stat-card warn"><div class="num">${soles(suma(apr))}</div><div class="label">${apr.length} aprobado(s) por pagar</div></div>
+    <div class="stat-card"><div class="num">${soles(suma(pagMes))}</div><div class="label">Pagado este mes (${pagMes.length})</div></div>`;
+  const L = reembolsos.filter(r=>!filtro || r.estado===filtro).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'') || (b.numero||'').localeCompare(a.numero||''));
+  const rows = L.map(r=>{
+    const e = employees.find(x=>x.id===r.empId);
+    const conceptos = [...new Set(r.lineas.map(l=>l.concepto))].join(', ');
+    const detalle = r.lineas.map(l=>escHtml(l.detalle)).join(' · ');
+    const montoTxt = r.montoAprobado!=null && r.montoAprobado!==r.total ? `${soles(r.montoAprobado)}<div style="font-size:11px;color:var(--muted);">pidió ${soles(r.total)}</div>` : soles(r.total);
+    return `<tr>
+      <td class="mono">${r.numero}</td>
+      <td>${e ? e.nombre : '(colaborador eliminado)'}</td>
+      <td>${fmtDate(r.fecha)}</td>
+      <td><strong>${conceptos}</strong><div style="font-size:12px;color:var(--muted);">${detalle}</div></td>
+      <td class="mono">${montoTxt}</td>
+      <td><span class="pill ${REEMBOLSO_PILL[r.estado] || 'pill-muted'}">${r.estado}</span>${r.estado==='Pagado' ? `<div style="font-size:11px;color:var(--muted);margin-top:3px;">${fmtDate(r.pagoFecha)} · ${r.pagoForma}</div>` : ''}</td>
+      <td style="font-size:12px;">${r.comentario ? escHtml(r.comentario) : ''}${r.comentarioRrhh ? `<div style="color:var(--muted);margin-top:3px;">RRHH: ${escHtml(r.comentarioRrhh)}</div>` : ''}${!r.comentario && !r.comentarioRrhh ? '—' : ''}</td>
+      <td class="actions-cell">
+        ${r.estado!=='Pagado' && r.estado!=='Rechazado' ? `<button class="btn btn-accent btn-sm" onclick="openReembolsoEstadoModal('${r.id}')">${r.estado==='Pendiente' ? 'Aprobar / rechazar' : 'Marcar pagado'}</button>` : `<button class="btn btn-ghost btn-sm" onclick="openReembolsoEstadoModal('${r.id}')">Editar</button>`}
+        <button class="btn btn-primary btn-sm" onclick="descargarReembolsoPdf('${r.id}')">📄 Formato PDF</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteReembolso('${r.id}')">Eliminar</button>
+      </td>
+    </tr>`;
+  }).join('');
+  cont.innerHTML = (antiguos.length ? `<div class="hint" style="padding:10px 18px 0;">Hay ${antiguos.length} reembolso(s) antiguo(s) pendientes registrados en “Préstamos y adelantos” (${soles(antiguos.reduce((s,p)=>s+saldoPrestamo(p),0))}).</div>` : '')
+    + (L.length ? `<div class="table-scroll"><table><thead><tr><th>N°</th><th>Colaborador</th><th>Fecha</th><th>Concepto / detalle</th><th>Monto</th><th>Estado</th><th>Comentario</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
+      : `<div class="empty">${filtro ? 'No hay reembolsos con este estado.' : 'Aún no registras reembolsos.'}</div>`);
+}
+async function descargarReembolsoPdf(id){
+  const r = reembolsos.find(x=>x.id===id);
+  if(!r) return;
+  const e = employees.find(x=>x.id===r.empId);
+  if(!e){ showToast('El colaborador ya no existe'); return; }
+  const emp = window._empresaData || {};
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const o = pdfFormal(doc);
+  o.encabezado('SOLICITUD Y LIQUIDACIÓN DE REEMBOLSO DE GASTOS', r.numero, r.fecha);
+  o.seccion('1. DATOS DEL TRABAJADOR');
+  o.datosTrabajador(e);
+  o.seccion('2. DETALLE DE LOS GASTOS');
+  const filas = r.lineas.map((l,i)=>[i+1, docsFechaCorta(l.fecha), l.concepto, l.detalle, l.comprobanteTipo + (l.comprobanteNum ? ' ' + l.comprobanteNum : ''), soles(l.monto)]);
+  const total = ['', '', '', '', 'TOTAL SOLICITADO', soles(r.total)]; total.negrita = true; filas.push(total);
+  if(r.montoAprobado!=null && r.montoAprobado!==r.total){ const ap = ['', '', '', '', 'MONTO APROBADO', soles(r.montoAprobado)]; ap.negrita = true; filas.push(ap); }
+  o.tabla([{t:'N°', w:0.4}, {t:'Fecha', w:0.95}, {t:'Concepto', w:1.5}, {t:'Detalle', w:2.6}, {t:'Comprobante', w:1.6}, {t:'Monto', w:1, al:'r'}], filas);
+  o.fila([['Son', montoEnLetras(reembolsoMontoFinal(r))]]);
+  o.caja('COMENTARIO O DETALLE DEL TRABAJADOR', r.comentario || '—');
+  o.seccion('3. APROBACIÓN Y PAGO');
+  o.fila([['Estado', r.estado], ['Fecha de aprobación', docsFechaCorta(r.aprobadoFecha) || '—']]);
+  o.fila([['Forma de pago', r.pagoForma || '—'], ['Fecha de pago', r.estado==='Pagado' ? docsFechaCorta(r.pagoFecha) : '______ / ______ / ________']]);
+  if(r.comentarioRrhh) o.caja('OBSERVACIONES DE RRHH / GERENCIA', r.comentarioRrhh);
+  o.seccion('4. DECLARACIÓN');
+  const sinComp = r.lineas.some(l=>/^Sin comprobante/.test(l.comprobanteTipo));
+  o.parrafos([
+    `${e.nombre}, identificado(a) con DNI N° ${e.dni || '—'}, declara que los gastos detallados fueron realizados para el cumplimiento de sus labores, por encargo de ${emp.razonSocial || 'la empresa'}, y que entrega los comprobantes originales que los sustentan.`,
+    sinComp ? `Los gastos marcados "Sin comprobante (DJ)" se declaran bajo juramento como reales y necesarios para el trabajo; la presente tiene carácter de declaración jurada.` : `Los comprobantes adjuntos corresponden a gastos reales y no han sido presentados antes para otro reembolso.`,
+    `Al firmar, el trabajador declara haber recibido conforme el importe reembolsado de ${soles(reembolsoMontoFinal(r))} (${montoEnLetras(reembolsoMontoFinal(r))})${r.pagoForma==='En la boleta semanal' ? ', que se abona junto con su pago semanal' : ''}. El reembolso no es remuneración: solo devuelve el gasto realizado.`
+  ]);
+  o.firmas('APROBADO POR', 'SOLICITANTE / RECIBÍ CONFORME', e);
+  o.pie(r.numero);
+  doc.save(`${r.numero}-reembolso-${nombreArchivoSeguro(e.nombre)}.pdf`);
 }
 
 // ---------- Formato de asistencia manual (hoja de firmas diaria) ----------
@@ -7887,9 +8682,11 @@ function renderKitsEpp(){
 function tallaSugeridaParaItem(it, e){
   if(!e) return '';
   const n = it.nombre.toLowerCase();
-  if(/zapato|calzado|bota/.test(n)) return e.tallaCalzado||'';
+  if(/zapato|calzado|bota|bot[ií]n/.test(n)) return e.tallaCalzado||'';
   if(/pantal/.test(n)) return e.tallaPantalon||'';
-  if(/camisa|casaca|chaleco|polo|overol|mameluco/.test(n)) return e.tallaCamisa||'';
+  if(/polo/.test(n)) return e.tallaPolo||e.tallaCamisa||'';
+  if(/casaca/.test(n)) return e.tallaCasaca||e.tallaCamisa||'';
+  if(/camisa|blusa|chaleco|overol|mameluco/.test(n)) return e.tallaCamisa||'';
   return '';
 }
 function renderEppChecklist(){
@@ -8684,7 +9481,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // ---------- Respaldo (guardar / restaurar todo el sistema) ----------
 const BACKUP_KEYS = ['employees','menuEntries','workerDocs','faltas','permisos','descansos','prestamos',
   'registrosDiarios','inventoryItems','inventoryMovements','eventos','encuestas','capacitaciones','reconocimientos',
-  'eppAsignaciones','empresaData','wordDocsGuardados','segurosEmpresa','contratoOficialTemplates','firmasDigitales','asistenciaManual','procesosCese','documentosSunafil','induccionesSeguridad','cesesRegistro','eppKits','planillasSemanales','boletasSemanales','aportesConfig','aportesPagos','vacacionesRegistro','horasExtraRegistro'];
+  'eppAsignaciones','empresaData','wordDocsGuardados','segurosEmpresa','contratoOficialTemplates','firmasDigitales','asistenciaManual','procesosCese','documentosSunafil','induccionesSeguridad','cesesRegistro','eppKits','planillasSemanales','boletasSemanales','aportesConfig','aportesPagos','vacacionesRegistro','horasExtraRegistro','reembolsos'];
 
 async function mostrarEspacioAlmacenamiento(){
   document.getElementById('espacioModalOverlay').classList.add('active');
@@ -9750,7 +10547,18 @@ const REPORTES = [
          est.ent ? docsFechaCorta(est.ent.fecha) : '', est.ent && est.ent.firmada ? 'Sí' : 'No', est.texto]); }));
      return {subtitulo: repRangoActual().texto+' · '+L.length+' boletas', archivo:'control-boletas',
        columnas:[{t:'Semana',w:1.9},{t:'Trabajador',w:2.6},{t:'DNI',w:1},{t:'Neto S/',w:1,tipo:'m'},{t:'Fecha pago',w:1},{t:'Entregar hasta',w:1},{t:'Entregada',w:1},{t:'Firmada',w:0.7},{t:'Estado',w:2.4}],
-       filas: L, total:null}; }}
+       filas: L, total:null}; }},
+  {id:'prestamosree', titulo:'Préstamos, adelantos y reembolsos', icono:'🤝', rango:true,
+   desc:'Préstamos y adelantos entregados con su saldo por descontar, y reembolsos de gastos (EPP, pasajes, otros) con su estado de pago.',
+   fn:()=>{ const r = repRangoActual(), L = [];
+     prestamos.filter(p=>p.fecha>=r.desde && p.fecha<=r.hasta && !['Reembolso EPP','Reembolso Otros'].includes(p.tipo)).forEach(p=>{ const e = employees.find(x=>x.id===p.empId);
+       L.push([docsFechaCorta(p.fecha), p.numero||'', e?e.nombre:'—', p.tipo, p.motivo||'', p.monto, -saldoPrestamo(p), saldoPrestamo(p)>0 ? 'Por descontar' : 'Cancelado']); });
+     reembolsos.filter(x=>x.fecha>=r.desde && x.fecha<=r.hasta).forEach(x=>{ const e = employees.find(y=>y.id===x.empId);
+       L.push([docsFechaCorta(x.fecha), x.numero, e?e.nombre:'—', 'Reembolso: '+[...new Set(x.lineas.map(l=>l.concepto))].join(', '), [x.lineas.map(l=>l.detalle).join('; '), x.comentario].filter(Boolean).join(' — '), reembolsoMontoFinal(x), (x.estado==='Pendiente'||x.estado==='Aprobado') ? reembolsoMontoFinal(x) : 0, x.estado + (x.pagoFecha ? ' '+docsFechaCorta(x.pagoFecha) : '')]); });
+     L.sort((a,b)=>a[0].split('/').reverse().join('').localeCompare(b[0].split('/').reverse().join('')));
+     return {subtitulo: r.texto+' · '+L.length+' registros · saldo negativo = por descontar al trabajador; positivo = por pagarle', archivo:'prestamos-reembolsos',
+       columnas:[{t:'Fecha',w:0.9},{t:'N°',w:1.1},{t:'Trabajador',w:2.4},{t:'Tipo',w:1.8},{t:'Motivo / detalle',w:3.2},{t:'Monto S/',w:0.9,tipo:'m'},{t:'Saldo S/',w:0.9,tipo:'m'},{t:'Estado',w:1.2}],
+       filas: L, total:['','','','','Total', L.reduce((s,f)=>s+f[5],0), L.reduce((s,f)=>s+f[6],0), '']}; }}
 ];
 function repGenerar(id){
   const def = REPORTES.find(r=>r.id===id);
@@ -10778,6 +11586,8 @@ function calcularPendientes(){
   const mesAnt = plsSumarDias(hoy.slice(0,8)+'01', -1).slice(0,7);
   const M = apCalcularAnio(mesAnt.slice(0,4)).find(m=>m.mes===mesAnt);
   if(M && M.pendiente > 1) add('warn', `Aportes de ${apNombreMes(mesAnt)} (AFP, ONP, EsSalud) sin pago registrado: ${soles(M.pendiente)}`, null, 'Registrar pago', "switchView('dashboard'); document.getElementById('aportesContenido').scrollIntoView({behavior:'smooth'})");
+  const reePend = reembolsos.filter(r=>r.estado==='Pendiente' || r.estado==='Aprobado');
+  add('warn', `${reePend.length} reembolso(s) de gastos por aprobar o pagar: ${soles(reembolsoPendienteTotal())}`, reePend.map(r=>{ const e = employees.find(x=>x.id===r.empId); return (e ? e.nombre : '—')+' ('+r.numero+', '+r.estado.toLowerCase()+')'; }), 'Ver reembolsos', "switchView('asistencia'); switchAsistTab('reembolsos')");
   const compras = eppListaCompras();
   if(compras.length) add('info', `EPP por comprar: ${compras.reduce((s,f)=>s+f.comprar,0)} unidades en ${compras.length} artículo(s)`, null, 'Ver lista de compras', "switchView('epp'); switchEppTab('compras')");
   const orden = {danger:0, warn:1, info:2};
