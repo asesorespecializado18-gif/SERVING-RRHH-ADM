@@ -177,7 +177,7 @@ tr:hover td{background:#FAF9F6;}
     </div>
 
     <div id="authLoginBlock">
-      <div class="field"><label>Correo</label><input type="email" id="authEmailInput" readonly style="background:#F3F1EA;color:var(--ink-soft);"></div>
+      <div class="field"><label>Usuario</label><select id="authEmailInput"></select></div>
       <div class="field" style="margin-top:10px;"><label>Contraseña</label><input type="password" id="authPasswordInput" placeholder="Ingresa tu contraseña" autocomplete="current-password"></div>
       <p class="hint" id="authError" style="color:var(--danger);margin:8px 0 0;min-height:16px;"></p>
       <button class="btn btn-primary" id="authLoginBtn" style="width:100%;margin-top:14px;" onclick="intentarLogin()">Ingresar</button>
@@ -231,6 +231,7 @@ tr:hover td{background:#FAF9F6;}
       <input type="file" id="restoreBackupFile" accept=".json" style="display:none;" onchange="restaurarRespaldo(this.files[0])">
       <button class="sidebar-action-btn" onclick="document.getElementById('claveModalOverlay').classList.add('active')">&#128272; Cambiar contraseña</button>
       <button class="sidebar-action-btn" onclick="mostrarEspacioAlmacenamiento()">&#128202; Ver espacio usado</button>
+      <div id="sesionUsuario" style="font-size:11.5px;opacity:0.75;padding:4px 10px;"></div>
       <button class="sidebar-action-btn" onclick="cerrarSesion()">&#10162; Cerrar sesión</button>
     </div>
   </div>
@@ -12283,7 +12284,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
 // ---------- Acceso al sistema ----------
 const ADMIN_EMAIL = 'servindgonzales@gmail.com';
+// Usuarios con acceso. Cada correo debe existir en Firebase Authentication y figurar en las reglas de Firestore.
+const USUARIOS_SISTEMA = {
+  'servindgonzales@gmail.com': 'Administrador (Gerencia / RRHH)',
+  'fg.asociadosperu@gmail.com': 'Asistente de RRHH'
+};
 const MIN_CLAVE = 8;
+function correoLogin(){ return document.getElementById('authEmailInput').value || ADMIN_EMAIL; }
 
 function mensajeErrorAuth(err){
   const c = err && err.code || '';
@@ -12309,8 +12316,9 @@ async function intentarLogin(){
   const btn = document.getElementById('authLoginBtn');
   btn.disabled = true;
   try{
-    await firebase.auth().signInWithEmailAndPassword(ADMIN_EMAIL, pass);
+    await firebase.auth().signInWithEmailAndPassword(correoLogin(), pass);
     document.getElementById('authPasswordInput').value = '';
+    try{ localStorage.setItem('rrhhUltimoUsuario', correoLogin()); }catch(e){}
   }catch(err){
     errEl.textContent = mensajeErrorAuth(err);
   }finally{
@@ -12321,9 +12329,9 @@ async function recuperarContrasena(){
   const errEl = document.getElementById('authError');
   if(!FIREBASE_CONFIGURADO){ errEl.textContent = 'Falta configurar Firebase (FIREBASE_CONFIG).'; return; }
   try{
-    await firebase.auth().sendPasswordResetEmail(ADMIN_EMAIL);
+    await firebase.auth().sendPasswordResetEmail(correoLogin());
     errEl.style.color = 'var(--primary)';
-    errEl.textContent = 'Te enviamos un correo a '+ADMIN_EMAIL+' para restablecer la contraseña.';
+    errEl.textContent = 'Te enviamos un correo a '+correoLogin()+' para crear o restablecer la contraseña (revisa también Spam).';
     setTimeout(()=>{ errEl.style.color = ''; }, 8000);
   }catch(err){
     errEl.textContent = mensajeErrorAuth(err);
@@ -12384,7 +12392,9 @@ async function arrancarSistema(){
 }
 
 (function bootstrap(){
-  document.getElementById('authEmailInput').value = ADMIN_EMAIL;
+  const selUsuario = document.getElementById('authEmailInput');
+  selUsuario.innerHTML = Object.entries(USUARIOS_SISTEMA).map(([correo, rol])=>`<option value="${correo}">${rol} — ${correo}</option>`).join('');
+  try{ const u = localStorage.getItem('rrhhUltimoUsuario'); if(u && USUARIOS_SISTEMA[u]) selUsuario.value = u; }catch(e){}
   document.getElementById('authPasswordInput').addEventListener('keydown', e=>{ if(e.key==='Enter') intentarLogin(); });
   if(!FIREBASE_CONFIGURADO){
     mostrarBloqueAuth('login');
@@ -12395,7 +12405,9 @@ async function arrancarSistema(){
   firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(console.error);
   firebase.auth().onAuthStateChanged(user=>{
     if(user && !sistemaIniciado){
-      if(user.email !== ADMIN_EMAIL){ firebase.auth().signOut(); return; }
+      if(!USUARIOS_SISTEMA[(user.email||'').toLowerCase()]){ firebase.auth().signOut(); return; }
+      const ses = document.getElementById('sesionUsuario');
+      if(ses) ses.textContent = '👤 ' + USUARIOS_SISTEMA[user.email.toLowerCase()];
       arrancarSistema();
     } else if(!user){
       if(sistemaIniciado){ location.reload(); return; }
