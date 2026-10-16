@@ -2721,8 +2721,121 @@ async function loadData(key, fallback){
   }catch(e){ return fallback; }
 }
 async function saveData(key, value){
-  try{ await window.storage.set(key, JSON.stringify(value), false); }
+  try{
+    const antes = refsArchivoEn(cloudCache.get(key));
+    if(value && typeof value==='object') await externalizarArchivos(value);
+    await window.storage.set(key, JSON.stringify(value), false);
+    if(antes.size) limpiarArchivosHuerfanos(antes, key);
+  }
   catch(e){ console.error('storage error', e); showToast('No se pudo guardar. Intenta de nuevo.'); }
+}
+
+// ---------- Archivos guardados por separado ----------
+// Cada PDF o imagen de un documento (campo fileData) se guarda aparte en rrhh/archivos/partes y en los
+// datos solo queda una referencia "nube:<id>:<partes>:<tamaño>". Así, al entrar no se descargan todos
+// los documentos (solo cuando se abre uno) y guardar otro dato no vuelve a subirlos.
+const ARCHIVO_PREFIJO = 'nube:';
+const ARCHIVO_MIN = 20000;              // los archivos más pequeños se quedan dentro del dato
+const archivoCache = new Map();         // referencia -> contenido (en esta sesión)
+const archivoPorContenido = new Map();  // contenido -> referencia (evita subir dos veces el mismo archivo)
+function esRefArchivo(v){ return typeof v==='string' && v.startsWith(ARCHIVO_PREFIJO); }
+function archivosCol(){ return cloudCol().doc('archivos').collection('partes'); }
+function refArchivoInfo(ref){ const [, id, n, tam] = ref.split(':'); return {id, n: parseInt(n)||0, tam: parseInt(tam)||0}; }
+function refsArchivoEn(texto){ return new Set(String(texto||'').match(/nube:f[a-z0-9]+:\d+:\d+/g) || []); }
+async function subirArchivoNube(contenido){
+  if(archivoPorContenido.has(contenido)) return archivoPorContenido.get(contenido);
+  const id = 'f' + nuevaRev();
+  const n = Math.ceil(contenido.length / CLOUD_TAM_PARTE);
+  const col = archivosCol();
+  for(let i=0;i<n;i+=5){
+    await Promise.all(Array.from({length:Math.min(5, n-i)}, (_, j)=>
+      col.doc(id+'_'+(i+j)).set({data: contenido.slice((i+j)*CLOUD_TAM_PARTE, (i+j+1)*CLOUD_TAM_PARTE)})));
+  }
+  const ref = `${ARCHIVO_PREFIJO}${id}:${n}:${contenido.length}`;
+  archivoCache.set(ref, contenido); archivoPorContenido.set(contenido, ref);
+  return ref;
+}
+async function archivoDatos(v){
+  if(!esRefArchivo(v)) return v;
+  if(archivoCache.has(v)) return archivoCache.get(v);
+  const {id, n} = refArchivoInfo(v), col = archivosCol();
+  const partes = await Promise.all(Array.from({length:n}, (_, i)=>col.doc(id+'_'+i).get()));
+  if(partes.some(p=>!p.exists)) throw new Error('No se encontró el archivo en la nube');
+  const contenido = partes.map(p=>p.data().data).join('');
+  archivoCache.set(v, contenido); archivoPorContenido.set(contenido, v);
+  return contenido;
+}
+async function borrarArchivoNube(ref){
+  const {id, n} = refArchivoInfo(ref);
+  try{ await Promise.all(Array.from({length:n}, (_, i)=>archivosCol().doc(id+'_'+i).delete())); }
+  catch(e){ console.warn('No se pudo borrar el archivo', ref, e); }
+  const c = archivoCache.get(ref);
+  if(c) archivoPorContenido.delete(c);
+  archivoCache.delete(ref);
+}
+// Sube aparte cada fileData grande que aún esté dentro del dato y lo cambia por su referencia (en memoria también).
+async function externalizarArchivos(valor){
+  const pend = [];
+  const visitar = (o, prof)=>{
+    if(!o || typeof o!=='object' || prof>5) return;
+    if(Array.isArray(o)){ o.forEach(x=>visitar(x, prof+1)); return; }
+    if(typeof o.fileData==='string' && o.fileData.startsWith('data:') && o.fileData.length > ARCHIVO_MIN) pend.push(o);
+    for(const k in o){ if(k!=='fileData' && o[k] && typeof o[k]==='object') visitar(o[k], prof+1); }
+  };
+  visitar(valor, 0);
+  for(const o of pend) o.fileData = await subirArchivoNube(o.fileData);
+  return pend.length;
+}
+// Al eliminar un documento, borra su archivo de la nube si ningún otro dato lo usa.
+async function limpiarArchivosHuerfanos(antes, key){
+  const ahora = refsArchivoEn(cloudCache.get(key));
+  const quitados = [...antes].filter(r=>!ahora.has(r));
+  if(!quitados.length) return;
+  const enUso = new Set();
+  cloudCache.forEach(v=>refsArchivoEn(v).forEach(r=>enUso.add(r)));
+  for(const r of quitados) if(!enUso.has(r)) await borrarArchivoNube(r);
+}
+// Reemplaza las referencias por el contenido real (para respaldos completos).
+async function incrustarArchivos(valor){
+  const pend = [];
+  const visitar = (o, prof)=>{
+    if(!o || typeof o!=='object' || prof>5) return;
+    if(Array.isArray(o)){ o.forEach(x=>visitar(x, prof+1)); return; }
+    if(esRefArchivo(o.fileData)) pend.push(o);
+    for(const k in o){ if(k!=='fileData' && o[k] && typeof o[k]==='object') visitar(o[k], prof+1); }
+  };
+  visitar(valor, 0);
+  for(const o of pend){
+    try{ o.fileData = await archivoDatos(o.fileData); }
+    catch(e){ console.warn('Archivo no disponible para el respaldo', o.fileData, e); }
+  }
+  return pend.length;
+}
+async function descargarArchivo(fileData, nombre){
+  if(!fileData) return;
+  const lejos = esRefArchivo(fileData) && !archivoCache.has(fileData);
+  if(lejos) showToast('Descargando documento...');
+  try{
+    const contenido = await archivoDatos(fileData);
+    const a = document.createElement('a');
+    a.href = contenido; a.download = nombre || 'documento';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }catch(err){ console.error(err); showToast('No se pudo descargar el documento. Revisa tu conexión e intenta de nuevo.'); }
+}
+// Una sola vez: pasa los documentos que todavía están dentro de los datos a archivos separados.
+async function migrarArchivosANube(){
+  let total = 0;
+  for(const key of BACKUP_KEYS){
+    const texto = cloudCache.get(key);
+    if(!texto || !texto.includes('"fileData":"data:')) continue;
+    const valor = JSON.parse(texto);
+    const n = await externalizarArchivos(valor);
+    if(!n) continue;
+    await window.storage.set(key, JSON.stringify(valor), false);
+    total += n;
+  }
+  if(total) showToast(`✅ ${total} documento(s) optimizados: ahora se guardan por separado`);
+  return total;
 }
 
 let employees = [];
@@ -5046,9 +5159,7 @@ function actualizarDocumentoSunafil(id, file){
 function descargarDocumentoSunafil(id){
   const doc = documentosSunafil.find(d=>d.id===id);
   if(!doc) return;
-  const a = document.createElement('a');
-  a.href = doc.fileData; a.download = doc.fileName;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  descargarArchivo(doc.fileData, doc.fileName);
 }
 async function eliminarDocumentoSunafil(id){
   if(!confirm('¿Eliminar este documento?')) return;
@@ -5897,9 +6008,7 @@ function downloadBoleta(id){
   if(!b.fileData && b.entregaId){ generarConstanciaEppPdf(b.entregaId); return; }
   if(!b.fileData && b.prestamoId){ generarConstanciaPrestamoPdf(b.prestamoId); return; }
   if(!b.fileData && b.reembolsoId){ descargarReembolsoPdf(b.reembolsoId); return; }
-  const a = document.createElement('a');
-  a.href = b.fileData; a.download = b.fileName;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  descargarArchivo(b.fileData, b.fileName);
 }
 function renderBoletas(){
   // Sin interfaz propia — módulo retirado. Se mantiene como no-op para no romper otras
@@ -7600,9 +7709,7 @@ async function deleteDescanso(id){
 function downloadDescansoFile(id){
   const d = descansos.find(x=>x.id===id);
   if(!d || !d.fileData) return;
-  const a = document.createElement('a');
-  a.href = d.fileData; a.download = d.fileName;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  descargarArchivo(d.fileData, d.fileName);
 }
 function generarConstanciaDescansoPdf(id){
   const d = descansos.find(x=>x.id===id);
@@ -9593,6 +9700,11 @@ async function mostrarEspacioAlmacenamiento(){
     const bytes = new Blob([JSON.stringify(data)]).size;
     filas.push({key, bytes});
   }
+  // Archivos guardados por separado: su tamaño viene en cada referencia.
+  const refs = new Set();
+  cloudCache.forEach(v=>refsArchivoEn(v).forEach(r=>refs.add(r)));
+  const bytesArchivos = [...refs].reduce((s,r)=>s+refArchivoInfo(r).tam, 0);
+  if(refs.size) filas.push({key:`Documentos PDF guardados aparte (${refs.size})`, bytes: bytesArchivos});
   filas.sort((a,b)=>b.bytes-a.bytes);
   const LIMITE = 1024*1024*1024; // 1 GB del plan gratuito de Firestore, para todo el sistema
   const totalBytes = filas.reduce((s,f)=>s+f.bytes,0);
@@ -9619,7 +9731,8 @@ async function mostrarEspacioAlmacenamiento(){
 
 async function guardarRespaldo(){
   const backup = {_meta:{sistema:'SERVING RRHH', fecha: new Date().toISOString()}};
-  for(const key of BACKUP_KEYS){ backup[key] = await loadData(key, []); }
+  showToast('Preparando el respaldo con todos los documentos...');
+  for(const key of BACKUP_KEYS){ backup[key] = await loadData(key, []); await incrustarArchivos(backup[key]); }
   const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -11898,9 +12011,7 @@ async function anularCese(id){
 function downloadCeseFile(id){
   const c = cesesRegistro.find(x=>x.id===id);
   if(!c || !c.fileData) return;
-  const a = document.createElement('a');
-  a.href = c.fileData; a.download = c.fileName || 'documento-cese';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  descargarArchivo(c.fileData, c.fileName || 'documento-cese');
 }
 function cesePasoPill(fechaHecho, fechaCese, plazoDias){
   if(fechaHecho) return `<span class="pill pill-ok">${fmtDate(fechaHecho)}</span>`;
@@ -12075,9 +12186,7 @@ async function deleteInduccion(id){
 function downloadInduccionFile(sesionId){
   const r = induccionesSeguridad.find(x=>x.sesionId===sesionId && x.fileData);
   if(!r) return;
-  const a = document.createElement('a');
-  a.href = r.fileData; a.download = r.fileName || 'constancia-induccion';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  descargarArchivo(r.fileData, r.fileName || 'constancia-induccion');
 }
 function induccionPill(r){
   if(!r.vence) return `<span class="pill pill-ok">Sin vencimiento</span>`;
@@ -12281,9 +12390,7 @@ async function deleteSeguro(id){
 function downloadSeguroFile(id){
   const s = segurosEmpresa.find(x=>x.id===id);
   if(!s || !s.fileData) return;
-  const a = document.createElement('a');
-  a.href = s.fileData; a.download = s.fileName;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  descargarArchivo(s.fileData, s.fileName);
 }
 async function eliminarArchivoSeguro(id){
   const s = segurosEmpresa.find(x=>x.id===id);
@@ -12501,6 +12608,8 @@ async function arrancarSistema(){
   escucharCambiosRemotos();
   sistemaIniciado = true;
   mostrarBloqueAuth(null);
+  // Los documentos que aún estén dentro de los datos se pasan a archivos separados (solo la primera vez).
+  setTimeout(()=>migrarArchivosANube().catch(err=>console.error('Migración de archivos', err)), 2500);
 }
 
 (function bootstrap(){
