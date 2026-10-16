@@ -2160,6 +2160,29 @@ tr:hover td{background:#FAF9F6;}
   </div>
 </div>
 
+<!-- MODAL AVISOS CONSTANCIA DE SEGURIDAD -->
+<div class="modal-overlay" id="constSegModalOverlay">
+  <div class="modal" style="max-width:980px;">
+    <h3>Constancias de Seguridad en el Trabajo</h3>
+    <p class="hint" id="constSegResumen" style="margin:-6px 0 12px;"></p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+      <select id="constSegFiltro" onchange="renderAvisosConstSeg()" style="width:auto;">
+        <option value="alerta">Vencidas, por vencer y sin registro</option>
+        <option value="vencida">Solo vencidas</option>
+        <option value="porvencer">Solo por vencer (15 días)</option>
+        <option value="sin">Solo sin registro</option>
+        <option value="todas">Todos los trabajadores activos</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" onclick="repPdf('constseg')">Descargar PDF</button>
+      <button class="btn btn-ghost btn-sm" onclick="repExcel('constseg')">Descargar Excel</button>
+    </div>
+    <div id="constSegContenido" style="max-height:60vh;overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="document.getElementById('constSegModalOverlay').classList.remove('active')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL ESTADO DE REEMBOLSO -->
 <div class="modal-overlay" id="reembolsoEstadoModalOverlay">
   <div class="modal" style="max-width:520px;">
@@ -2955,6 +2978,9 @@ function renderDashboard(){
   const constSegPorVencer = employees.filter(e=>{
     const d = daysUntil(e.constanciaSeg); return e.estado==='activo' && d!==null && d<=15 && d>=0;
   });
+  const constSegVencidas = employees.filter(e=>{
+    const d = daysUntil(e.constanciaSeg); return e.estado==='activo' && d!==null && d<0;
+  }).sort((a,b)=>a.constanciaSeg.localeCompare(b.constanciaSeg));
   const licenciaPorVencer = employees.filter(e=>{
     const d = daysUntil(e.licenciaVigencia); return e.tieneLicencia==='si' && d!==null && d<=30 && d>=0;
   });
@@ -2977,7 +3003,7 @@ function renderDashboard(){
   const sunafilDocsPorVencer = documentosSunafil.filter(d=>{ const dd=daysUntil(d.vigencia); return dd!==null && dd>=0 && dd<=30; });
   const sunafilDocsVencidos = documentosSunafil.filter(d=>{ const dd=daysUntil(d.vigencia); return dd!==null && dd<0; });
   const totalAvisos = contratosPorVencer.length + contratosVencidos.length + saludPorVencer.length + sctrPorVencer.length
-    + vidaLeyPorVencer.length + emoPorVencer.length + constSegPorVencer.length + licenciaPorVencer.length + segurosPorVencer.length
+    + vidaLeyPorVencer.length + emoPorVencer.length + constSegPorVencer.length + constSegVencidas.length + licenciaPorVencer.length + segurosPorVencer.length
     + segurosVencidos.length + eppStockBajo.length + activosSinEpp.length + sinTRegistro.length
     + sinBoletaEsteMesDash.length + sunafilDocsPorVencer.length + sunafilDocsVencidos.length + tallasEppAgotadasDash.length;
 
@@ -2987,6 +3013,7 @@ function renderDashboard(){
     <div class="stat-card warn"><div class="num">${contratosPorVencer.length}</div><div class="label">Contratos por vencer (30 días)</div></div>
     <div class="stat-card warn"><div class="num">${contratosVencidos.length}</div><div class="label">Contratos vencidos</div></div>
     <div class="stat-card ${sinTRegistro.length?'warn':''}"><div class="num">${sinTRegistro.length}</div><div class="label">Sin Alta en T-Registro</div></div>
+    <div class="stat-card ${constSegVencidas.length?'warn':''}" style="cursor:pointer;" title="Ver todas las constancias de seguridad" onclick="abrirAvisosConstSeg('vencida')"><div class="num">${constSegVencidas.length}</div><div class="label">Constancias de seguridad vencidas</div></div>
     <div class="stat-card ${sinBoletaEsteMesDash.length?'warn':''}"><div class="num">${sinBoletaEsteMesDash.length}</div><div class="label">Sin boleta de ${periodoBoletaActual}</div></div>
   `;
 
@@ -3013,6 +3040,9 @@ function renderDashboard(){
   emoPorVencer.forEach(e=>{
     const d = daysUntil(e.fechaEmo);
     tickerItems.push(`<div class="ticker-item">EMO de <b>${e.nombre}</b> vence en ${d} día(s) — ${fmtDate(e.fechaEmo)}</div>`);
+  });
+  constSegVencidas.forEach(e=>{
+    tickerItems.push(`<div class="ticker-item">⚠ Constancia de seguridad de <b>${e.nombre}</b> venció el ${fmtDate(e.constanciaSeg)}</div>`);
   });
   constSegPorVencer.forEach(e=>{
     const d = daysUntil(e.constanciaSeg);
@@ -6734,6 +6764,53 @@ function renderPrestamos(){
     <table><thead><tr><th>Colaborador</th><th>Tipo / N°</th><th>Monto</th><th>Fecha</th><th>Cuotas</th><th>Saldo</th><th>Estado</th><th>Motivo / comentario</th><th></th></tr></thead>
     <tbody>${rows}</tbody></table>
     </div>` : `<div class="empty">Aún no registras préstamos ni adelantos.</div>`;
+}
+
+// ---------- Avisos: Constancia de Seguridad en el Trabajo ----------
+function constSegEstado(e){
+  if(!e.constanciaSeg) return {clave:'sin', orden:2, nivel:'pill-muted', texto:'Sin registro'};
+  const d = daysUntil(e.constanciaSeg);
+  if(d < 0) return {clave:'vencida', orden:0, nivel:'pill-danger', texto:`Vencida hace ${-d} día(s)`};
+  if(d <= 15) return {clave:'porvencer', orden:1, nivel:'pill-warn', texto: d===0 ? 'Vence hoy' : `Vence en ${d} día(s)`};
+  return {clave:'vigente', orden:3, nivel:'pill-ok', texto:`Vigente (${d} días)`};
+}
+function constSegLista(){
+  return employees.filter(e=>e.estado==='activo').map(e=>({e, est:constSegEstado(e)}))
+    .sort((a,b)=>a.est.orden-b.est.orden || (a.e.constanciaSeg||'').localeCompare(b.e.constanciaSeg||'') || a.e.nombre.localeCompare(b.e.nombre));
+}
+function abrirAvisosConstSeg(filtro){
+  if(filtro) document.getElementById('constSegFiltro').value = filtro;
+  document.getElementById('constSegModalOverlay').classList.add('active');
+  renderAvisosConstSeg();
+}
+function renderAvisosConstSeg(){
+  const L = constSegLista(), cuenta = k => L.filter(x=>x.est.clave===k).length;
+  document.getElementById('constSegResumen').innerHTML = `🔴 <b>${cuenta('vencida')}</b> vencidas · 🟡 <b>${cuenta('porvencer')}</b> por vencer · ⚪ <b>${cuenta('sin')}</b> sin registro · 🟢 <b>${cuenta('vigente')}</b> vigentes — de ${L.length} trabajadores activos`;
+  const f = document.getElementById('constSegFiltro').value;
+  const V = L.filter(x=> f==='todas' ? true : f==='alerta' ? x.est.clave!=='vigente' : x.est.clave===f);
+  document.getElementById('constSegContenido').innerHTML = V.length ? `<div class="table-scroll"><table>
+    <thead><tr><th>Trabajador</th><th>DNI</th><th>Cargo</th><th>Estado</th><th>Inicio</th><th>Fin de vigencia</th><th></th></tr></thead>
+    <tbody>${V.map(({e, est})=>`<tr>
+      <td>${escHtml(e.nombre)}</td><td class="mono">${e.dni||''}</td><td>${escHtml(e.cargo||'')}</td>
+      <td><span class="pill ${est.nivel}">${est.texto}</span></td>
+      <td><input type="date" id="csIni_${e.id}" value="${e.constanciaSegInicio||''}" style="width:140px;"></td>
+      <td><input type="date" id="csFin_${e.id}" value="${e.constanciaSeg||''}" style="width:140px;"></td>
+      <td><button class="btn btn-accent btn-sm" onclick="guardarConstSegRapido('${e.id}')">Guardar</button></td>
+    </tr>`).join('')}</tbody></table></div>
+    <p class="hint" style="margin-top:8px;">Para renovar: pon las fechas de la nueva constancia y presiona Guardar.</p>`
+    : `<div class="empty">No hay trabajadores en este grupo. ✅</div>`;
+}
+async function guardarConstSegRapido(empId){
+  const e = employees.find(x=>x.id===empId);
+  if(!e) return;
+  const ini = document.getElementById('csIni_'+empId).value, fin = document.getElementById('csFin_'+empId).value;
+  if(!fin){ showToast('Indica la fecha de fin de vigencia'); return; }
+  if(ini && ini > fin){ showToast('El inicio no puede ser posterior al fin'); return; }
+  e.constanciaSegInicio = ini; e.constanciaSeg = fin;
+  await saveData('employees', employees);
+  renderAvisosConstSeg();
+  try{ renderDashboard(); renderPendientes(); }catch(err){ console.error(err); }
+  showToast(`Constancia de ${e.nombre} actualizada hasta el ${fmtDate(fin)}`);
 }
 
 // ---------- Formatos formales en PDF (préstamos, adelantos, reembolsos) ----------
@@ -10571,6 +10648,13 @@ const REPORTES = [
      return {subtitulo: repRangoActual().texto+' · '+L.length+' boletas', archivo:'control-boletas',
        columnas:[{t:'Semana',w:1.9},{t:'Trabajador',w:2.6},{t:'DNI',w:1},{t:'Neto S/',w:1,tipo:'m'},{t:'Fecha pago',w:1},{t:'Entregar hasta',w:1},{t:'Entregada',w:1},{t:'Firmada',w:0.7},{t:'Estado',w:2.4}],
        filas: L, total:null}; }},
+  {id:'constseg', titulo:'Constancias de Seguridad en el Trabajo', icono:'🦺', rango:false,
+   desc:'Estado de la constancia de seguridad de cada trabajador activo: vencidas, por vencer, sin registro y vigentes.',
+   fn:()=>{ const f = (document.getElementById('constSegFiltro')||{}).value || 'todas';
+     const L = constSegLista().filter(x=> f==='todas' ? true : f==='alerta' ? x.est.clave!=='vigente' : x.est.clave===f);
+     return {subtitulo: repHoy()+' · '+L.length+' trabajadores', archivo:'constancias-seguridad',
+       columnas:[{t:'Trabajador',w:3},{t:'DNI',w:1.1},{t:'Cargo',w:2},{t:'Inicio',w:1.1},{t:'Fin de vigencia',w:1.2},{t:'Estado',w:1.8}],
+       filas: L.map(({e, est})=>[e.nombre, e.dni, e.cargo, docsFechaCorta(e.constanciaSegInicio), docsFechaCorta(e.constanciaSeg), est.texto]), total:null}; }},
   {id:'prestamosree', titulo:'Préstamos, adelantos y reembolsos', icono:'🤝', rango:true,
    desc:'Préstamos y adelantos entregados con su saldo por descontar, y reembolsos de gastos (EPP, pasajes, otros) con su estado de pago.',
    fn:()=>{ const r = repRangoActual(), L = [];
@@ -11598,8 +11682,12 @@ function calcularPendientes(){
     const heSinReg = ult.personas.filter(p=>(p.horasExtra||p.pago25) && !regs.some(r=>r.empId===p.empId)).map(p=>p.nombre);
     add('warn', `${heSinReg.length} trabajador(es) con horas extra pagadas sin registro de sobretiempo`, heSinReg, 'Registrar', "switchView('horasextra')");
   }
-  const sinConstSeg = act.filter(e=>!e.constanciaSeg || e.constanciaSeg < hoy);
-  add('warn', `${sinConstSeg.length} trabajador(es) con constancia de seguridad en el trabajo vencida o sin registro`, sinConstSeg.map(e=>e.nombre), 'Ver personal', "switchView('personal')");
+  const constSegVencidas = act.filter(e=>e.constanciaSeg && e.constanciaSeg < hoy).sort((a,b)=>a.constanciaSeg.localeCompare(b.constanciaSeg));
+  add('danger', `${constSegVencidas.length} constancia(s) de seguridad en el trabajo VENCIDAS`, constSegVencidas.map(e=>`${e.nombre} (venció ${fmtDate(e.constanciaSeg)}, hace ${-daysUntil(e.constanciaSeg)} día(s))`), 'Ver lista', "abrirAvisosConstSeg()");
+  const constSegPorVencerP = act.filter(e=>e.constanciaSeg && e.constanciaSeg >= hoy && daysUntil(e.constanciaSeg) <= 15).sort((a,b)=>a.constanciaSeg.localeCompare(b.constanciaSeg));
+  add('warn', `${constSegPorVencerP.length} constancia(s) de seguridad vencen en los próximos 15 días`, constSegPorVencerP.map(e=>`${e.nombre} (${fmtDate(e.constanciaSeg)})`), 'Ver lista', "abrirAvisosConstSeg()");
+  const sinConstSeg = act.filter(e=>!e.constanciaSeg);
+  add('warn', `${sinConstSeg.length} trabajador(es) sin constancia de seguridad en el trabajo registrada`, sinConstSeg.map(e=>e.nombre), 'Ver lista', "abrirAvisosConstSeg()");
   const sinEmo = act.filter(e=>!e.fechaEmo || e.fechaEmo < hoy);
   add('warn', `${sinEmo.length} trabajador(es) con EMO vencido o sin registro`, sinEmo.map(e=>e.nombre), 'Ver EMO', "switchView('emo')");
   const sinVida = act.filter(e=>!e.vigenciaVidaLey || e.vigenciaVidaLey < hoy);
