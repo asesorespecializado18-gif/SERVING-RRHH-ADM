@@ -4336,22 +4336,21 @@ function renderEmo(){
          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('emoPdfInput_${e.id}').click()">Reemplazar</button>`
       : `<button class="btn btn-accent btn-sm" onclick="document.getElementById('emoPdfInput_${e.id}').click()">Subir PDF</button>`;
     return `<tr>
-      <td><b>${e.nombre}</b></td>
-      <td class="mono">${e.dni}</td>
-      <td>${e.cargo||'—'}</td>
-      <td>${e.area||'—'}</td>
-      <td>${fmtDate(e.fechaEmo)}</td>
-      <td>${emoPill(e)}</td>
+      <td><b>${e.nombre}</b><div class="mono" style="font-size:12px;color:var(--ink-soft);">DNI ${e.dni||'—'}</div></td>
+      <td>${e.cargo||'—'}<div style="font-size:12px;color:var(--ink-soft);">${e.area||''}</div></td>
+      <td style="white-space:nowrap;">${fmtDate(e.fechaEmo)}<div style="margin-top:3px;">${emoPill(e)}</div></td>
       <td>
-        ${docCell}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${docCell}
+          <button class="btn btn-ghost btn-sm" onclick="openEmployeeModal('${e.id}')">Actualizar EMO</button>
+        </div>
         <input type="file" id="emoPdfInput_${e.id}" accept=".pdf" style="display:none;" onchange="subirPdfEmo('${e.id}', this.files[0])">
       </td>
-      <td><button class="btn btn-ghost btn-sm" onclick="openEmployeeModal('${e.id}')">Actualizar EMO</button></td>
     </tr>`;
   }).join('');
   document.getElementById('emoTable').innerHTML = employees.length ? `
-    <div class="table-scroll">
-    <table><thead><tr><th>Nombre</th><th>DNI</th><th>Cargo</th><th>Área</th><th>Vigencia EMO</th><th>Estado</th><th>Documento EMO</th><th></th></tr></thead>
+    <div style="overflow-x:auto;">
+    <table><thead><tr><th>Colaborador</th><th>Cargo / Área</th><th>Vigencia EMO</th><th>Documento EMO</th></tr></thead>
     <tbody>${rows}</tbody></table>
     </div>` : `<div class="empty">Aún no registras colaboradores.</div>`;
 }
