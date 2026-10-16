@@ -2114,6 +2114,12 @@ tr:hover td{background:#FAF9F6;}
         <div class="field"><label>Inicio de vigencia</label><input type="date" id="empFechaEmoInicio"></div>
         <div class="field"><label>Fin de vigencia</label><input type="date" id="empFechaEmo"></div>
       </div>
+
+      <h3 style="font-size:14px;margin:18px 0 10px;color:var(--ink-soft);">Constancia de Seguridad en el Trabajo</h3>
+      <div class="field-row">
+        <div class="field"><label>Inicio de vigencia</label><input type="date" id="empConstSegInicio"></div>
+        <div class="field"><label>Fin de vigencia</label><input type="date" id="empConstSeg"></div>
+      </div>
     </div>
 
     <!-- TAB: LICENCIA Y REFERENCIAS -->
@@ -2946,6 +2952,9 @@ function renderDashboard(){
   const emoPorVencer = employees.filter(e=>{
     const d = daysUntil(e.fechaEmo); return d!==null && d<=30 && d>=0;
   });
+  const constSegPorVencer = employees.filter(e=>{
+    const d = daysUntil(e.constanciaSeg); return e.estado==='activo' && d!==null && d<=15 && d>=0;
+  });
   const licenciaPorVencer = employees.filter(e=>{
     const d = daysUntil(e.licenciaVigencia); return e.tieneLicencia==='si' && d!==null && d<=30 && d>=0;
   });
@@ -2968,7 +2977,7 @@ function renderDashboard(){
   const sunafilDocsPorVencer = documentosSunafil.filter(d=>{ const dd=daysUntil(d.vigencia); return dd!==null && dd>=0 && dd<=30; });
   const sunafilDocsVencidos = documentosSunafil.filter(d=>{ const dd=daysUntil(d.vigencia); return dd!==null && dd<0; });
   const totalAvisos = contratosPorVencer.length + contratosVencidos.length + saludPorVencer.length + sctrPorVencer.length
-    + vidaLeyPorVencer.length + emoPorVencer.length + licenciaPorVencer.length + segurosPorVencer.length
+    + vidaLeyPorVencer.length + emoPorVencer.length + constSegPorVencer.length + licenciaPorVencer.length + segurosPorVencer.length
     + segurosVencidos.length + eppStockBajo.length + activosSinEpp.length + sinTRegistro.length
     + sinBoletaEsteMesDash.length + sunafilDocsPorVencer.length + sunafilDocsVencidos.length + tallasEppAgotadasDash.length;
 
@@ -3004,6 +3013,10 @@ function renderDashboard(){
   emoPorVencer.forEach(e=>{
     const d = daysUntil(e.fechaEmo);
     tickerItems.push(`<div class="ticker-item">EMO de <b>${e.nombre}</b> vence en ${d} día(s) — ${fmtDate(e.fechaEmo)}</div>`);
+  });
+  constSegPorVencer.forEach(e=>{
+    const d = daysUntil(e.constanciaSeg);
+    tickerItems.push(`<div class="ticker-item">Constancia de seguridad de <b>${e.nombre}</b> vence en ${d} día(s) — ${fmtDate(e.constanciaSeg)}</div>`);
   });
   licenciaPorVencer.forEach(e=>{
     const d = daysUntil(e.licenciaVigencia);
@@ -3236,7 +3249,7 @@ function previewEmpFoto(input){
 const EMP_FIELD_IDS = ['empNombre','empDni','empDomicilio','empCiudad','empCorreo1','empCorreo2',
   'empCelular1','empCelular2','empCargo','empTallaPantalon','empTallaCamisa','empTallaCalzado','empTallaPolo','empTallaCasaca','empAlergias','empEpsNombre','empEpsDescuento','empSueldoDiario','empHoraEntrada','empHoraSalida','empFechaNacimiento','empPaisNacimiento','empFechaIngreso','empFechaFin',
   'empProyectoObra','empDuracionContrato','empLugarPrestacion','empDiasHorario','empPeriodoPruebaDuracion','empCiudadFirma',
-  'empFechaSalud','empVigenciaSctrInicio','empVigenciaSctr','empVigenciaVidaLeyInicio','empVigenciaVidaLey','empFechaEmoInicio','empFechaEmo',
+  'empFechaSalud','empVigenciaSctrInicio','empVigenciaSctr','empVigenciaVidaLeyInicio','empVigenciaVidaLey','empFechaEmoInicio','empFechaEmo','empConstSegInicio','empConstSeg',
   'empLicenciaCategoria','empLicenciaNumero','empLicenciaVigencia','empBanco','empNumeroCuenta','empCci',
   'empRefNombre','empRefParentesco','empRefTelefono','empRefDireccion','empNotas'];
 
@@ -3331,6 +3344,8 @@ function openEmployeeModal(id){
     document.getElementById('empVigenciaVidaLey').value = e.vigenciaVidaLey||'';
     document.getElementById('empFechaEmoInicio').value = e.fechaEmoInicio||'';
     document.getElementById('empFechaEmo').value = e.fechaEmo||'';
+    document.getElementById('empConstSegInicio').value = e.constanciaSegInicio||'';
+    document.getElementById('empConstSeg').value = e.constanciaSeg||'';
     document.getElementById('empTieneLicencia').value = e.tieneLicencia||'no';
     document.getElementById('empLicenciaCategoria').value = e.licenciaCategoria||'';
     document.getElementById('empLicenciaNumero').value = e.licenciaNumero||'';
@@ -3495,6 +3510,8 @@ async function saveEmployee(){
     vigenciaVidaLey: document.getElementById('empVigenciaVidaLey').value,
     fechaEmoInicio: document.getElementById('empFechaEmoInicio').value,
     fechaEmo: document.getElementById('empFechaEmo').value,
+    constanciaSegInicio: document.getElementById('empConstSegInicio').value,
+    constanciaSeg: document.getElementById('empConstSeg').value,
     tieneLicencia: document.getElementById('empTieneLicencia').value,
     licenciaCategoria: document.getElementById('empLicenciaCategoria').value.trim(),
     licenciaNumero: document.getElementById('empLicenciaNumero').value.trim(),
@@ -3661,6 +3678,7 @@ function downloadEmployeePdf(id){
   grilla([
     [['Seguro de salud', salud]],
     [['Sistema de pensión', pension], ['CUSPP', e.cuspp]],
+    [['Const. seguridad', e.constanciaSeg ? `${docsFechaCorta(e.constanciaSegInicio) || '—'} al ${docsFechaCorta(e.constanciaSeg)}` : '—']],
     [['Alergias / condición médica', e.alergias || 'Ninguna declarada']]
   ]);
   seccion('4. TALLAS PARA EPP Y UNIFORME');
@@ -3772,6 +3790,7 @@ function downloadEmployeePdfAnterior(id){
   row('Vigencia SCTR', `${fmtDate(e.vigenciaSctrInicio)} — ${fmtDate(e.vigenciaSctr)}`);
   row('Vigencia Seguro Vida Ley', `${fmtDate(e.vigenciaVidaLeyInicio)} — ${fmtDate(e.vigenciaVidaLey)}`);
   row('Vigencia EMO', `${fmtDate(e.fechaEmoInicio)} — ${fmtDate(e.fechaEmo)}`);
+  row('Constancia de seguridad', `${fmtDate(e.constanciaSegInicio)} — ${fmtDate(e.constanciaSeg)}`);
   y+=3;
 
   section('Referencia familiar');
@@ -3993,7 +4012,7 @@ function exportSelectedExcel(){
 const PERSONAL_EXCEL_HEADERS = ['Nombre completo','DNI o RUC','Fecha nacimiento','Estado civil','Domicilio','Ciudad',
   'Correo 1','Correo 2','Celular 1','Celular 2','Cargo o puesto','Área','Sueldo diario','Hora entrada','Hora salida',
   'Fecha ingreso','Fecha fin contrato','Estado','Régimen salud','Vencimiento salud','Sistema pensión','AFP',
-  'Inicio vigencia SCTR','Fin vigencia SCTR','Inicio vigencia Vida Ley','Fin vigencia Vida Ley','Inicio vigencia EMO','Fin vigencia EMO',
+  'Inicio vigencia SCTR','Fin vigencia SCTR','Inicio vigencia Vida Ley','Fin vigencia Vida Ley','Inicio vigencia EMO','Fin vigencia EMO','Inicio constancia seguridad','Fin constancia seguridad',
   'Tiene licencia','Categoría licencia','Número licencia','Vigencia licencia',
   'Referencia nombre','Referencia parentesco','Referencia teléfono','Notas'];
 
@@ -4072,6 +4091,8 @@ function uploadPersonalExcel(file){
           vigenciaVidaLey: normalizeExcelDate(row['Fin vigencia Vida Ley']),
           fechaEmoInicio: normalizeExcelDate(row['Inicio vigencia EMO']),
           fechaEmo: normalizeExcelDate(row['Fin vigencia EMO']),
+          constanciaSegInicio: normalizeExcelDate(row['Inicio constancia seguridad']),
+          constanciaSeg: normalizeExcelDate(row['Fin constancia seguridad']),
           tieneLicencia: tieneLicenciaRaw.startsWith('s') ? 'si' : 'no',
           licenciaCategoria: String(row['Categoría licencia']||'').trim(),
           licenciaNumero: String(row['Número licencia']||'').trim(),
@@ -4091,7 +4112,7 @@ function uploadPersonalExcel(file){
             fechaIngreso:'Fecha ingreso', fechaFin:'Fecha fin contrato', estado:'Estado', salud:'Régimen salud', fechaSalud:'Vencimiento salud',
             pension:'Sistema pensión', afpNombre:'AFP', vigenciaSctrInicio:'Inicio vigencia SCTR', vigenciaSctr:'Fin vigencia SCTR',
             vigenciaVidaLeyInicio:'Inicio vigencia Vida Ley', vigenciaVidaLey:'Fin vigencia Vida Ley', fechaEmoInicio:'Inicio vigencia EMO',
-            fechaEmo:'Fin vigencia EMO', tieneLicencia:'Tiene licencia', licenciaCategoria:'Categoría licencia', licenciaNumero:'Número licencia',
+            fechaEmo:'Fin vigencia EMO', constanciaSegInicio:'Inicio constancia seguridad', constanciaSeg:'Fin constancia seguridad', tieneLicencia:'Tiene licencia', licenciaCategoria:'Categoría licencia', licenciaNumero:'Número licencia',
             licenciaVigencia:'Vigencia licencia', refNombre:'Referencia nombre', refParentesco:'Referencia parentesco',
             refTelefono:'Referencia teléfono', notas:'Notas'};
           existing.nombre = nombre;
@@ -4709,7 +4730,7 @@ function switchLegajoTab(tab){
   if(tab==='documentos') renderDocumentosSunafil();
 }
 // Matriz de cumplimiento: cada punto tiene nivel ok / warn / danger / na, un texto corto para la celda y el detalle.
-const MATRIZ_COLUMNAS = [['contrato','Contrato'],['contratoDoc','Contrato firmado'],['emo','EMO'],['sctr','SCTR'],['vidaley','Vida Ley'],['induccion','Inducción'],['epp','EPP (kit)'],['tregistro','T-Registro'],['cuenta','Cuenta banco']];
+const MATRIZ_COLUMNAS = [['contrato','Contrato'],['contratoDoc','Contrato firmado'],['emo','EMO'],['sctr','SCTR'],['vidaley','Vida Ley'],['constseg','Const. seguridad'],['induccion','Inducción'],['epp','EPP (kit)'],['tregistro','T-Registro'],['cuenta','Cuenta banco']];
 function itemVigencia(key, nombre, fin, avisoDias){
   if(!fin) return {key, nivel:'danger', corto:'Sin registro', label:`${nombre}: sin registro`};
   const d = daysUntil(fin);
@@ -4729,6 +4750,7 @@ function checklistLegajo(e){
   items.push(itemVigencia('emo', 'EMO', e.fechaEmo, 30));
   items.push(itemVigencia('sctr', 'SCTR', e.vigenciaSctr, 7));
   items.push(itemVigencia('vidaley', 'Vida Ley', e.vigenciaVidaLey, 15));
+  items.push(itemVigencia('constseg', 'Constancia de seguridad', e.constanciaSeg, 15));
   items.push(tieneInduccionVigente(e.id)
     ? {key:'induccion', nivel:'ok', corto:'✓', label:'Inducción de seguridad vigente'}
     : {key:'induccion', nivel:'danger', corto:'Sin registro', label:'Sin inducción de seguridad registrada o vigente'});
@@ -5937,13 +5959,13 @@ function descargarPlanillaBancariaExcel(){
 
 function exportDatabaseCsv(){
   if(!employees.length){ showToast('No hay colaboradores registrados'); return; }
-  const headers = ['Nombre','DNI/RUC','FechaNacimiento','EstadoCivil','Domicilio','Ciudad','Correo1','Correo2','Celular1','Celular2','Cargo','Área','SueldoDiario','SueldoMensual','Estado','FechaIngreso','FechaFin','Salud','FechaSalud','Pension','AFP','InicioVigenciaSCTR','FinVigenciaSCTR','InicioVigenciaVidaLey','FinVigenciaVidaLey','InicioVigenciaEMO','FinVigenciaEMO','LicenciaConducir','LicenciaCategoria','LicenciaNumero','LicenciaVigencia','RefNombre','RefParentesco','RefTelefono'];
+  const headers = ['Nombre','DNI/RUC','FechaNacimiento','EstadoCivil','Domicilio','Ciudad','Correo1','Correo2','Celular1','Celular2','Cargo','Área','SueldoDiario','SueldoMensual','Estado','FechaIngreso','FechaFin','Salud','FechaSalud','Pension','AFP','InicioVigenciaSCTR','FinVigenciaSCTR','InicioVigenciaVidaLey','FinVigenciaVidaLey','InicioVigenciaEMO','FinVigenciaEMO','InicioConstanciaSeguridad','FinConstanciaSeguridad','LicenciaConducir','LicenciaCategoria','LicenciaNumero','LicenciaVigencia','RefNombre','RefParentesco','RefTelefono'];
   const escape = v => `"${String(v||'').replace(/"/g,'""')}"`;
   const lines = [headers.join(',')];
   employees.forEach(e=>{
     lines.push([e.nombre,e.dni,e.fechaNacimiento,e.estadoCivil,e.domicilio,e.ciudad,e.correo1,e.correo2,e.celular1,e.celular2,e.cargo,e.area,
       e.sueldoDiario,e.sueldoMensual,e.estado,e.fechaIngreso,e.fechaFin,e.salud,e.fechaSalud,e.pension,e.afpNombre,
-      e.vigenciaSctrInicio,e.vigenciaSctr,e.vigenciaVidaLeyInicio,e.vigenciaVidaLey,e.fechaEmoInicio,e.fechaEmo,
+      e.vigenciaSctrInicio,e.vigenciaSctr,e.vigenciaVidaLeyInicio,e.vigenciaVidaLey,e.fechaEmoInicio,e.fechaEmo,e.constanciaSegInicio,e.constanciaSeg,
       e.tieneLicencia==='si'?'Sí':'No',e.licenciaCategoria,e.licenciaNumero,e.licenciaVigencia,
       e.refNombre,e.refParentesco,e.refTelefono].map(escape).join(','));
   });
@@ -10494,7 +10516,7 @@ const REPORTES = [
      repActivos().forEach(e=>{
        const ind = induccionesSeguridad.filter(r=>r.empId===e.id);
        const indVence = ind.some(r=>!r.vence) ? 'sin_vencimiento' : ind.map(r=>r.vence).sort().pop();
-       [['Contrato', e.fechaFin], ['EMO', e.fechaEmo], ['SCTR', e.vigenciaSctr], ['Vida Ley', e.vigenciaVidaLey], ['Inducción de seguridad', indVence]].forEach(([doc, f])=>{
+       [['Contrato', e.fechaFin], ['EMO', e.fechaEmo], ['SCTR', e.vigenciaSctr], ['Vida Ley', e.vigenciaVidaLey], ['Constancia de seguridad', e.constanciaSeg], ['Inducción de seguridad', indVence]].forEach(([doc, f])=>{
          if(f==='sin_vencimiento') return;
          const d = daysUntil(f);
          if(f && d > H) return;
@@ -11576,6 +11598,8 @@ function calcularPendientes(){
     const heSinReg = ult.personas.filter(p=>(p.horasExtra||p.pago25) && !regs.some(r=>r.empId===p.empId)).map(p=>p.nombre);
     add('warn', `${heSinReg.length} trabajador(es) con horas extra pagadas sin registro de sobretiempo`, heSinReg, 'Registrar', "switchView('horasextra')");
   }
+  const sinConstSeg = act.filter(e=>!e.constanciaSeg || e.constanciaSeg < hoy);
+  add('warn', `${sinConstSeg.length} trabajador(es) con constancia de seguridad en el trabajo vencida o sin registro`, sinConstSeg.map(e=>e.nombre), 'Ver personal', "switchView('personal')");
   const sinEmo = act.filter(e=>!e.fechaEmo || e.fechaEmo < hoy);
   add('warn', `${sinEmo.length} trabajador(es) con EMO vencido o sin registro`, sinEmo.map(e=>e.nombre), 'Ver EMO', "switchView('emo')");
   const sinVida = act.filter(e=>!e.vigenciaVidaLey || e.vigenciaVidaLey < hoy);
