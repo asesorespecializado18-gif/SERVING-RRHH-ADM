@@ -2177,6 +2177,27 @@ tr:hover td{background:#FAF9F6;}
   </div>
 </div>
 
+<!-- MODAL APTOS PARA OBRA -->
+<div class="modal-overlay" id="aptosModalOverlay">
+  <div class="modal" style="max-width:1000px;">
+    <h3>Personal apto para obra</h3>
+    <p class="hint" id="aptosResumen" style="margin:-6px 0 12px;"></p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+      <select id="aptosFiltro" onchange="renderAptosObra()" style="width:auto;">
+        <option value="todos">Todos los activos</option>
+        <option value="danger">Solo NO aptos</option>
+        <option value="warn">Aptos con algo por vencer</option>
+        <option value="aptos">Todos los aptos (para enviar al cliente)</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" onclick="repPdf('aptos')">Descargar PDF</button>
+      <button class="btn btn-ghost btn-sm" onclick="repExcel('aptos')">Descargar Excel</button>
+    </div>
+    <div id="aptosContenido" style="max-height:60vh;overflow-y:auto;"></div>
+    <p class="hint" style="margin-top:8px;">Requisitos: contrato vigente, SCTR, EMO, inducción de seguridad, constancia de seguridad en el trabajo y Vida Ley. Pasa el mouse sobre cada círculo para ver el detalle.</p>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="document.getElementById('aptosModalOverlay').classList.remove('active')">Cerrar</button></div>
+  </div>
+</div>
+
 <!-- MODAL RESPALDO SEMANAL -->
 <div class="modal-overlay" id="respaldoSemanalOverlay">
   <div class="modal" style="max-width:480px;text-align:center;">
@@ -2280,7 +2301,8 @@ tr:hover td{background:#FAF9F6;}
 
 <!-- MODAL FICHA RAPIDA -->
 <div class="modal-overlay" id="fichaModalOverlay">
-  <div class="modal" style="max-width:600px;">
+  <div class="modal" style="max-width:720px;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--accent);text-transform:uppercase;margin-bottom:6px;">Expediente del trabajador</div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
       <img id="fichaFoto" src="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;background:#EEECE6;display:none;">
       <div id="fichaFotoPlaceholder" style="width:56px;height:56px;border-radius:50%;background:var(--primary-light);color:var(--primary);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-size:20px;font-weight:600;"></div>
@@ -2290,8 +2312,10 @@ tr:hover td{background:#FAF9F6;}
       </div>
     </div>
     <div id="fichaContenido" style="max-height:60vh;overflow-y:auto;"></div>
-    <div class="modal-actions">
+    <div class="modal-actions" style="flex-wrap:wrap;">
       <button class="btn btn-ghost" onclick="closeFichaModal()">Cerrar</button>
+      <button class="btn btn-ghost" onclick="const i=fichaCurrentId; closeFichaModal(); abrirEntregaEpp(i);">🦺 Entregar EPP</button>
+      <button class="btn btn-ghost" onclick="const i=fichaCurrentId; closeFichaModal(); abrirDocumentosTrabajador(i);">📄 Contratos y adendas</button>
       <button class="btn btn-accent" onclick="downloadEmployeePdf(fichaCurrentId)">Descargar ficha para firmar (PDF)</button>
       <button class="btn btn-primary" onclick="openEmployeeModal(fichaCurrentId); closeFichaModal();">Editar colaborador</button>
     </div>
@@ -3285,6 +3309,7 @@ function renderDashboard(){
     <div class="stat-card warn"><div class="num">${contratosPorVencer.length}</div><div class="label">Contratos por vencer (30 días)</div></div>
     <div class="stat-card warn"><div class="num">${contratosVencidos.length}</div><div class="label">Contratos vencidos</div></div>
     <div class="stat-card ${sinTRegistro.length?'warn':''}"><div class="num">${sinTRegistro.length}</div><div class="label">Sin Alta en T-Registro</div></div>
+    ${(()=>{ const noAptos = activos.filter(e=>aptoParaObra(e).nivel==='danger').length; return `<div class="stat-card ${noAptos?'warn':''}" style="cursor:pointer;" title="Ver el semáforo de cada trabajador" onclick="abrirAptosObra('todos')"><div class="num">${activos.length-noAptos}/${activos.length}</div><div class="label">Aptos para obra hoy 🚦</div></div>`; })()}
     <div class="stat-card ${constSegVencidas.length?'warn':''}" style="cursor:pointer;" title="Ver todas las constancias de seguridad" onclick="abrirAvisosConstSeg('vencida')"><div class="num">${constSegVencidas.length}</div><div class="label">Constancias de seguridad vencidas</div></div>
     <div class="stat-card ${sinBoletaEsteMesDash.length?'warn':''}"><div class="num">${sinBoletaEsteMesDash.length}</div><div class="label">Sin boleta de ${periodoBoletaActual}</div></div>
   `;
@@ -3485,7 +3510,7 @@ function renderPersonalTable(filter){
     <tr>
       <td style="white-space:nowrap;"><input type="checkbox" ${personalSelected.has(e.id)?'checked':''} onchange="toggleEmployeeSelect('${e.id}', this.checked)"></td>
       <td style="white-space:nowrap;">${avatarHtml(e)}</td>
-      <td style="white-space:nowrap;max-width:220px;"><button class="btn-link-name" onclick="openFichaRapida('${e.id}')" style="background:none;border:none;padding:0;font-weight:700;color:var(--ink);cursor:pointer;text-align:left;text-decoration:underline;text-decoration-color:var(--border);white-space:normal;">${e.nombre}</button></td>
+      <td style="white-space:nowrap;max-width:220px;"><button class="btn-link-name" onclick="openFichaRapida('${e.id}')" style="background:none;border:none;padding:0;font-weight:700;color:var(--ink);cursor:pointer;text-align:left;text-decoration:underline;text-decoration-color:var(--border);white-space:normal;">${e.nombre}</button>${e.estado==='activo' ? `<div style="margin-top:3px;">${aptoPill(e)}</div>` : ''}</td>
       <td class="mono" style="white-space:nowrap;">${e.dni}</td>
       <td style="white-space:nowrap;">${e.cargo||'—'}</td>
       <td style="white-space:nowrap;">${e.area||'—'}</td>
@@ -4260,6 +4285,16 @@ function openFichaRapida(id){
 
   let html = '';
 
+  // Semáforo "apto para obra"
+  if(e.estado==='activo'){
+    const a = aptoParaObra(e);
+    const fondo = a.nivel==='danger' ? 'var(--danger-light)' : a.nivel==='warn' ? '#FBF1DD' : 'var(--success-light)';
+    html += section('¿Puede entrar a obra hoy?', `<div style="background:${fondo};border-radius:8px;padding:10px 12px;">
+      <div style="font-weight:700;font-size:13.5px;margin-bottom:8px;">${a.nivel==='danger' ? '🔴' : a.nivel==='warn' ? '🟡' : '🟢'} ${escHtml(a.texto)}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">${a.req.map(r=>`<span class="pill ${r.nivel==='danger'?'pill-danger':r.nivel==='warn'?'pill-warn':'pill-ok'}" style="font-size:11px;" title="${escHtml(r.label)}">${escHtml(r.corto)}: ${escHtml(r.detalle||'')}</span>`).join('')}</div>
+    </div>`);
+  }
+
   const tieneDoc = (cat)=> docs.some(d=>d.categoria===cat);
   const mesActualPeriodo = `${MESES_INV[new Date().getMonth()]} ${new Date().getFullYear()}`;
   const tieneBoletaEsteMes = docs.some(d=>d.categoria==='boleta' && d.periodo===mesActualPeriodo);
@@ -4291,7 +4326,23 @@ function openFichaRapida(id){
     row(`Ingreso: ${fmtDate(e.fechaIngreso)} · Fin: ${fmtDate(e.fechaFin)} ${contractPill(e)}`),
     row(`Sueldo mensual: S/ ${(e.sueldoMensual||0).toFixed(2)}`)
   ]));
-  html += section(`Documentos (${docs.length})`, list(docs.map(d=>row(`${BOLETA_CATEGORIAS[d.categoria]||d.categoria} — ${fmtDate(d.fecha)}`))));
+  // Pagos y beneficios del trabajador
+  const ym = hoyISO().slice(0,7);
+  const diasMes = diasAsistenciaMes(e, ym);
+  const asis = diasMes.filter(d=>d.asistio===true).length, aus = diasMes.filter(d=>d.asistio===false).length;
+  const heMes = horasExtraRegistro.filter(r=>r.empId===id && (r.fecha||'').startsWith(ym)).reduce((s,r)=>s+(r.horas||0),0);
+  const presEmp = prestamos.filter(p=>p.empId===id && saldoPrestamo(p)>0 && !['Reembolso EPP','Reembolso Otros'].includes(p.tipo));
+  const reeEmp = reembolsos.filter(r=>r.empId===id && (r.estado==='Pendiente' || r.estado==='Aprobado'));
+  let vac = null; try{ vac = vacEstado(e); }catch(err){}
+  html += section('Este mes y beneficios', list([
+    row(`📋 Asistencia de ${MESES[parseInt(ym.slice(5))-1].toLowerCase()}: <b>${asis}</b> día(s) asistidos${aus ? ` · <span style="color:var(--danger);">${aus} ausencia(s)</span>` : ''}${heMes ? ` · ${heMes} h extra` : ''}`),
+    row(`🤝 Préstamos/adelantos por descontar: ${presEmp.length ? presEmp.map(p=>`${p.numero||p.tipo} <b>${soles(saldoPrestamo(p))}</b>`).join(', ') : 'ninguno'}`),
+    row(`🧾 Reembolsos por pagarle: ${reeEmp.length ? reeEmp.map(r=>`${r.numero} <b>${soles(reembolsoMontoFinal(r))}</b> (${r.estado.toLowerCase()})`).join(', ') : 'ninguno'}`),
+    vac ? row(`🏖️ Vacaciones: <b>${vac.pendientes}</b> día(s) pendientes${vac.vencidos ? ` · <span style="color:var(--danger);">${vac.vencidos} vencidos</span>` : ''}`) : ''
+  ].filter(Boolean)));
+  html += section(`Documentos (${docs.length})`, list(docs.map(d=>`<div style="font-size:12.5px;padding:5px 10px;background:#FAF9F6;border-radius:6px;display:flex;align-items:center;gap:8px;">
+    <span style="flex:1;">${BOLETA_CATEGORIAS[d.categoria]||d.categoria} — ${fmtDate(d.fecha)}${d.periodo ? ' · '+escHtml(d.periodo) : ''}</span>
+    ${(d.fileData || d.entregaId || d.prestamoId || d.reembolsoId) ? `<button class="btn btn-ghost btn-sm" onclick="downloadBoleta('${d.id}')">Descargar</button>` : ''}</div>`)));
   html += section(`EPP entregado (${epp.length})`, list(epp.map(a=>{
     const it = inventoryItems.find(x=>x.id===a.itemId);
     return row(`${it?it.nombre:'—'} × ${a.cantidad} — ${fmtDate(a.fecha)} ${eppVencimientoPill(a)}`);
@@ -4299,6 +4350,8 @@ function openFichaRapida(id){
   html += section(`Faltas (${faltasEmp.length})`, list(faltasEmp.map(f=>row(`${f.tipo} — ${fmtDate(f.fecha)}`))));
   html += section(`Descansos médicos (${descansosEmp.length})`, list(descansosEmp.map(d=>row(`${fmtDate(d.inicio)} — ${fmtDate(d.fin)} (${d.dias} días)`))));
   html += section(`Reconocimientos (${reconEmp.length})`, list(reconEmp.map(r=>row(`${r.motivo} — ${fmtDate(r.fecha)}`))));
+  const cambios = historialCambios().filter(ev=>ev.id===id || (ev.detalle||'').includes(e.nombre)).slice(0, 8);
+  html += section('Últimos cambios registrados', list(cambios.map(ev=>row(`${fechaHoraCorta(ev.fecha)} · <b>${escHtml(ev.usuario)}</b> ${ev.accion.toLowerCase()} en ${escHtml(ev.seccion)}${ev.detalle ? ' — '+escHtml(ev.detalle) : ''}`))));
 
   document.getElementById('fichaContenido').innerHTML = html;
 }
@@ -6580,7 +6633,7 @@ function exportReporteMensualPdf(){
 
   addLogoToPdf(doc, 740, 25, 45);
   doc.setFont('helvetica','bold'); doc.setFontSize(14);
-  doc.text(`REPORTE DE NÓMINA — ${MESES_ES[parseInt(currentReporteMes)]} ${currentReporteAnio}`, marginX, y);
+  doc.text(`REPORTE DE NÓMINA — ${MESES[parseInt(currentReporteMes)].toUpperCase()} ${currentReporteAnio}`, marginX, y);
   y += 20;
   if(emp.razonSocial){ doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.text(emp.razonSocial, marginX, y); y += 16; }
   y += 10;
@@ -7137,6 +7190,50 @@ function renderPrestamos(){
     <table><thead><tr><th>Colaborador</th><th>Tipo / N°</th><th>Monto</th><th>Fecha</th><th>Cuotas</th><th>Saldo</th><th>Estado</th><th>Motivo / comentario</th><th></th></tr></thead>
     <tbody>${rows}</tbody></table>
     </div>` : `<div class="empty">Aún no registras préstamos ni adelantos.</div>`;
+}
+
+// ---------- Semáforo "apto para obra" ----------
+// Para ingresar a obra (SIMA y otros clientes) el trabajador necesita estos requisitos vigentes.
+const APTO_REQUISITOS = [['contrato','Contrato'],['sctr','SCTR'],['emo','EMO'],['induccion','Inducción'],['constseg','Const. seguridad'],['vidaley','Vida Ley']];
+function aptoParaObra(e){
+  const items = checklistLegajo(e);
+  const req = APTO_REQUISITOS.map(([key, corto])=>{
+    const it = items.find(x=>x.key===key) || {nivel:'danger', label: corto+': sin registro'};
+    return {key, corto, nivel: it.nivel, label: it.label, detalle: it.corto};
+  });
+  const faltan = req.filter(r=>r.nivel==='danger'), porVencer = req.filter(r=>r.nivel==='warn');
+  const nivel = faltan.length ? 'danger' : porVencer.length ? 'warn' : 'ok';
+  return {nivel, req, faltan, porVencer,
+    texto: nivel==='danger' ? 'No apto: '+faltan.map(r=>r.corto).join(', ') : nivel==='warn' ? 'Apto (vence pronto: '+porVencer.map(r=>r.corto).join(', ')+')' : 'Apto para obra'};
+}
+function aptoPill(e){
+  if(!e || e.estado!=='activo') return '';
+  const a = aptoParaObra(e);
+  const cls = a.nivel==='danger' ? 'pill-danger' : a.nivel==='warn' ? 'pill-warn' : 'pill-ok';
+  const ic = a.nivel==='danger' ? '🔴' : a.nivel==='warn' ? '🟡' : '🟢';
+  return `<span class="pill ${cls}" style="font-size:11px;white-space:normal;" title="${escHtml(a.req.map(r=>r.label).join(' · '))}">${ic} ${escHtml(a.texto)}</span>`;
+}
+function abrirAptosObra(filtro){
+  if(filtro) document.getElementById('aptosFiltro').value = filtro;
+  document.getElementById('aptosModalOverlay').classList.add('active');
+  renderAptosObra();
+}
+function renderAptosObra(){
+  const L = employees.filter(e=>e.estado==='activo').map(e=>({e, a:aptoParaObra(e)}))
+    .sort((x,y)=>({danger:0,warn:1,ok:2}[x.a.nivel] - {danger:0,warn:1,ok:2}[y.a.nivel]) || x.e.nombre.localeCompare(y.e.nombre));
+  const n = k => L.filter(x=>x.a.nivel===k).length;
+  document.getElementById('aptosResumen').innerHTML = `🟢 <b>${n('ok')}</b> aptos · 🟡 <b>${n('warn')}</b> aptos con algo por vencer · 🔴 <b>${n('danger')}</b> no aptos — de ${L.length} trabajadores activos`;
+  const f = document.getElementById('aptosFiltro').value;
+  const V = L.filter(x=>f==='todos' || x.a.nivel===f || (f==='aptos' && x.a.nivel!=='danger'));
+  const celda = r => `<td style="text-align:center;" title="${escHtml(r.label)}">${r.nivel==='danger' ? '🔴' : r.nivel==='warn' ? '🟡' : '🟢'}<div style="font-size:10.5px;color:var(--ink-soft);white-space:nowrap;">${escHtml(r.detalle||'')}</div></td>`;
+  document.getElementById('aptosContenido').innerHTML = V.length ? `<div style="overflow-x:auto;"><table>
+    <thead><tr><th>Trabajador</th>${APTO_REQUISITOS.map(([,c])=>`<th style="text-align:center;">${c}</th>`).join('')}<th></th></tr></thead>
+    <tbody>${V.map(({e,a})=>`<tr>
+      <td><b>${escHtml(e.nombre)}</b><div style="font-size:11.5px;color:var(--ink-soft);">${escHtml(e.cargo||'')} · DNI ${e.dni||'—'}</div></td>
+      ${a.req.map(celda).join('')}
+      <td><button class="btn btn-ghost btn-sm" onclick="document.getElementById('aptosModalOverlay').classList.remove('active'); openFichaRapida('${e.id}')">Expediente</button></td>
+    </tr>`).join('')}</tbody></table></div>`
+    : `<div class="empty">No hay trabajadores en este grupo.</div>`;
 }
 
 // ---------- Avisos: Constancia de Seguridad en el Trabajo ----------
@@ -7737,7 +7834,7 @@ function renderFormatoManualTable(){
     <tr>
       <td class="mono">${i+1}</td>
       <td class="mono">${r.emp?r.emp.dni:'—'}</td>
-      <td>${r.emp?r.emp.nombre:'(colaborador eliminado)'}</td>
+      <td>${r.emp?r.emp.nombre:'(colaborador eliminado)'}${r.emp && aptoParaObra(r.emp).nivel==='danger' ? `<div style="margin-top:3px;">${aptoPill(r.emp)}</div>` : ''}</td>
       <td>
         <select onchange="marcarAsistioFormatoManual('${r.id}', this.value)" style="width:120px;">
           <option value="" ${r.asistio===null?'selected':''}>Sin marcar</option>
@@ -11028,6 +11125,15 @@ const REPORTES = [
      return {subtitulo: repRangoActual().texto+' · '+L.length+' boletas', archivo:'control-boletas',
        columnas:[{t:'Semana',w:1.9},{t:'Trabajador',w:2.6},{t:'DNI',w:1},{t:'Neto S/',w:1,tipo:'m'},{t:'Fecha pago',w:1},{t:'Entregar hasta',w:1},{t:'Entregada',w:1},{t:'Firmada',w:0.7},{t:'Estado',w:2.4}],
        filas: L, total:null}; }},
+  {id:'aptos', titulo:'Personal apto para obra', icono:'🚦', rango:false,
+   desc:'Semáforo de cada trabajador activo: contrato, SCTR, EMO, inducción, constancia de seguridad y Vida Ley. Útil para enviar al cliente (SIMA).',
+   fn:()=>{ const f = (document.getElementById('aptosFiltro')||{}).value || 'todos';
+     const L = employees.filter(e=>e.estado==='activo').map(e=>({e, a:aptoParaObra(e)})).filter(x=>f==='todos' || x.a.nivel===f || (f==='aptos' && x.a.nivel!=='danger'))
+       .sort((x,y)=>({danger:0,warn:1,ok:2}[x.a.nivel] - {danger:0,warn:1,ok:2}[y.a.nivel]) || x.e.nombre.localeCompare(y.e.nombre));
+     const fin = (e, campo)=>docsFechaCorta(e[campo]) || 'Sin registro';
+     return {subtitulo: repHoy()+' · '+L.length+' trabajadores', archivo:'personal-apto-para-obra',
+       columnas:[{t:'Trabajador',w:2.8},{t:'DNI',w:1},{t:'Cargo',w:1.8},{t:'Contrato hasta',w:1.1},{t:'SCTR hasta',w:1.1},{t:'EMO hasta',w:1.1},{t:'Inducción',w:1.1},{t:'Const. seguridad',w:1.1},{t:'Vida Ley hasta',w:1.1},{t:'Estado',w:2.4}],
+       filas: L.map(({e,a})=>[e.nombre, e.dni, e.cargo, fin(e,'fechaFin'), fin(e,'vigenciaSctr'), fin(e,'fechaEmo'), a.req.find(r=>r.key==='induccion').nivel==='danger' ? 'Sin registro' : 'Vigente', fin(e,'constanciaSeg'), fin(e,'vigenciaVidaLey'), a.texto]), total:null}; }},
   {id:'historial', titulo:'Historial de cambios (quién hizo qué)', icono:'🕵️', rango:true,
    desc:'Qué registró, modificó o eliminó cada usuario (Administrador o Asistente), con fecha, hora y sección.',
    fn:()=>{ const r = repRangoActual(), L = historialCambios(r.desde, r.hasta);
@@ -12068,6 +12174,8 @@ function calcularPendientes(){
     const heSinReg = ult.personas.filter(p=>(p.horasExtra||p.pago25) && !regs.some(r=>r.empId===p.empId)).map(p=>p.nombre);
     add('warn', `${heSinReg.length} trabajador(es) con horas extra pagadas sin registro de sobretiempo`, heSinReg, 'Registrar', "switchView('horasextra')");
   }
+  const noAptos = act.filter(e=>aptoParaObra(e).nivel==='danger');
+  add('danger', `${noAptos.length} trabajador(es) NO aptos para entrar a obra hoy`, noAptos.map(e=>e.nombre+' ('+aptoParaObra(e).faltan.map(r=>r.corto).join(', ')+')'), 'Ver semáforo', "abrirAptosObra('danger')");
   const constSegVencidas = act.filter(e=>e.constanciaSeg && e.constanciaSeg < hoy).sort((a,b)=>a.constanciaSeg.localeCompare(b.constanciaSeg));
   add('danger', `${constSegVencidas.length} constancia(s) de seguridad en el trabajo VENCIDAS`, constSegVencidas.map(e=>`${e.nombre} (venció ${fmtDate(e.constanciaSeg)}, hace ${-daysUntil(e.constanciaSeg)} día(s))`), 'Ver lista', "abrirAvisosConstSeg()");
   const constSegPorVencerP = act.filter(e=>e.constanciaSeg && e.constanciaSeg >= hoy && daysUntil(e.constanciaSeg) <= 15).sort((a,b)=>a.constanciaSeg.localeCompare(b.constanciaSeg));
