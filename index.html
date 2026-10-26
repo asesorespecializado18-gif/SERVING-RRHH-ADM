@@ -2138,7 +2138,7 @@ tr:hover td{background:#FAF9F6;}
         <div class="field"><label>Fin de vigencia</label><input type="date" id="empFechaEmo"></div>
       </div>
 
-      <h3 style="font-size:14px;margin:18px 0 10px;color:var(--ink-soft);">Constancia de Seguridad en el Trabajo</h3>
+      <h3 style="font-size:14px;margin:18px 0 10px;color:var(--ink-soft);">Examen de Inducción de Seguridad</h3>
       <div class="field-row">
         <div class="field"><label>Inicio de vigencia</label><input type="date" id="empConstSegInicio"></div>
         <div class="field"><label>Fin de vigencia</label><input type="date" id="empConstSeg"></div>
@@ -2221,7 +2221,7 @@ tr:hover td{background:#FAF9F6;}
       <button class="btn btn-ghost btn-sm" onclick="repExcel('aptos')">Descargar Excel</button>
     </div>
     <div id="aptosContenido" style="max-height:60vh;overflow-y:auto;"></div>
-    <p class="hint" style="margin-top:8px;">Requisitos: contrato vigente, SCTR, EMO, inducción de seguridad, constancia de seguridad en el trabajo y Vida Ley. Pasa el mouse sobre cada círculo para ver el detalle.</p>
+    <p class="hint" style="margin-top:8px;">Requisitos: contrato vigente, SCTR, EMO, examen de inducción de seguridad y Vida Ley. Pasa el mouse sobre cada círculo para ver el detalle.</p>
     <div class="modal-actions"><button class="btn btn-ghost" onclick="document.getElementById('aptosModalOverlay').classList.remove('active')">Cerrar</button></div>
   </div>
 </div>
@@ -2243,12 +2243,12 @@ tr:hover td{background:#FAF9F6;}
 <!-- MODAL AVISOS CONSTANCIA DE SEGURIDAD -->
 <div class="modal-overlay" id="constSegModalOverlay">
   <div class="modal" style="max-width:980px;">
-    <h3>Constancias de Seguridad en el Trabajo</h3>
+    <h3>Exámenes de Inducción de Seguridad</h3>
     <p class="hint" id="constSegResumen" style="margin:-6px 0 12px;"></p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
       <select id="constSegFiltro" onchange="renderAvisosConstSeg()" style="width:auto;">
         <option value="alerta">Vencidas, por vencer y sin registro</option>
-        <option value="vencida">Solo vencidas</option>
+        <option value="vencida">Solo vencidos</option>
         <option value="porvencer">Solo por vencer (15 días)</option>
         <option value="sin">Solo sin registro</option>
         <option value="todas">Todos los trabajadores activos</option>
@@ -3338,7 +3338,7 @@ function renderDashboard(){
     <div class="stat-card warn"><div class="num">${contratosVencidos.length}</div><div class="label">Contratos vencidos</div></div>
     <div class="stat-card ${sinTRegistro.length?'warn':''}"><div class="num">${sinTRegistro.length}</div><div class="label">Sin Alta en T-Registro</div></div>
     ${(()=>{ const noAptos = activos.filter(e=>aptoParaObra(e).nivel==='danger').length; return `<div class="stat-card ${noAptos?'warn':''}" style="cursor:pointer;" title="Ver el semáforo de cada trabajador" onclick="abrirAptosObra('todos')"><div class="num">${activos.length-noAptos}/${activos.length}</div><div class="label">Aptos para obra hoy 🚦</div></div>`; })()}
-    <div class="stat-card ${constSegVencidas.length?'warn':''}" style="cursor:pointer;" title="Ver todas las constancias de seguridad" onclick="abrirAvisosConstSeg('vencida')"><div class="num">${constSegVencidas.length}</div><div class="label">Constancias de seguridad vencidas</div></div>
+    <div class="stat-card ${constSegVencidas.length?'warn':''}" style="cursor:pointer;" title="Ver todos los exámenes de inducción de seguridad" onclick="abrirAvisosConstSeg('vencida')"><div class="num">${constSegVencidas.length}</div><div class="label">Exámenes de inducción vencidos</div></div>
     <div class="stat-card ${sinBoletaEsteMesDash.length?'warn':''}"><div class="num">${sinBoletaEsteMesDash.length}</div><div class="label">Sin boleta de ${periodoBoletaActual}</div></div>
   `;
 
@@ -3367,11 +3367,11 @@ function renderDashboard(){
     tickerItems.push(`<div class="ticker-item">EMO de <b>${e.nombre}</b> vence en ${d} día(s) — ${fmtDate(e.fechaEmo)}</div>`);
   });
   constSegVencidas.forEach(e=>{
-    tickerItems.push(`<div class="ticker-item">⚠ Constancia de seguridad de <b>${e.nombre}</b> venció el ${fmtDate(e.constanciaSeg)}</div>`);
+    tickerItems.push(`<div class="ticker-item">⚠ Examen de inducción de seguridad de <b>${e.nombre}</b> venció el ${fmtDate(e.constanciaSeg)}</div>`);
   });
   constSegPorVencer.forEach(e=>{
     const d = daysUntil(e.constanciaSeg);
-    tickerItems.push(`<div class="ticker-item">Constancia de seguridad de <b>${e.nombre}</b> vence en ${d} día(s) — ${fmtDate(e.constanciaSeg)}</div>`);
+    tickerItems.push(`<div class="ticker-item">Examen de inducción de seguridad de <b>${e.nombre}</b> vence en ${d} día(s) — ${fmtDate(e.constanciaSeg)}</div>`);
   });
   licenciaPorVencer.forEach(e=>{
     const d = daysUntil(e.licenciaVigencia);
@@ -4087,7 +4087,7 @@ function downloadEmployeePdf(id){
   grilla([
     [['Seguro de salud', salud]],
     [['Sistema de pensión', pension], ['CUSPP', e.cuspp]],
-    [['Const. seguridad', e.constanciaSeg ? `${docsFechaCorta(e.constanciaSegInicio) || '—'} al ${docsFechaCorta(e.constanciaSeg)}` : '—']],
+    [['Examen inducción', e.constanciaSeg ? `${docsFechaCorta(e.constanciaSegInicio) || '—'} al ${docsFechaCorta(e.constanciaSeg)}` : '—']],
     [['Alergias / condición médica', e.alergias || 'Ninguna declarada']]
   ]);
   seccion('4. TALLAS PARA EPP Y UNIFORME');
@@ -4199,7 +4199,7 @@ function downloadEmployeePdfAnterior(id){
   row('Vigencia SCTR', `${fmtDate(e.vigenciaSctrInicio)} — ${fmtDate(e.vigenciaSctr)}`);
   row('Vigencia Seguro Vida Ley', `${fmtDate(e.vigenciaVidaLeyInicio)} — ${fmtDate(e.vigenciaVidaLey)}`);
   row('Vigencia EMO', `${fmtDate(e.fechaEmoInicio)} — ${fmtDate(e.fechaEmo)}`);
-  row('Constancia de seguridad', `${fmtDate(e.constanciaSegInicio)} — ${fmtDate(e.constanciaSeg)}`);
+  row('Examen de inducción de seguridad', `${fmtDate(e.constanciaSegInicio)} — ${fmtDate(e.constanciaSeg)}`);
   y+=3;
 
   section('Referencia familiar');
@@ -5168,7 +5168,7 @@ function switchLegajoTab(tab){
   if(tab==='documentos') renderDocumentosSunafil();
 }
 // Matriz de cumplimiento: cada punto tiene nivel ok / warn / danger / na, un texto corto para la celda y el detalle.
-const MATRIZ_COLUMNAS = [['contrato','Contrato'],['contratoDoc','Contrato firmado'],['emo','EMO'],['sctr','SCTR'],['vidaley','Vida Ley'],['constseg','Const. seguridad'],['induccion','Inducción'],['epp','EPP (kit)'],['tregistro','T-Registro'],['cuenta','Cuenta banco']];
+const MATRIZ_COLUMNAS = [['contrato','Contrato'],['contratoDoc','Contrato firmado'],['emo','EMO'],['sctr','SCTR'],['vidaley','Vida Ley'],['constseg','Examen inducción'],['induccion','Inducción'],['epp','EPP (kit)'],['tregistro','T-Registro'],['cuenta','Cuenta banco']];
 function itemVigencia(key, nombre, fin, avisoDias){
   if(!fin) return {key, nivel:'danger', corto:'Sin registro', label:`${nombre}: sin registro`};
   const d = daysUntil(fin);
@@ -5188,7 +5188,7 @@ function checklistLegajo(e){
   items.push(itemVigencia('emo', 'EMO', e.fechaEmo, 30));
   items.push(itemVigencia('sctr', 'SCTR', e.vigenciaSctr, 7));
   items.push(itemVigencia('vidaley', 'Vida Ley', e.vigenciaVidaLey, 15));
-  items.push(itemVigencia('constseg', 'Constancia de seguridad', e.constanciaSeg, 15));
+  items.push(itemVigencia('constseg', 'Examen de inducción de seguridad', e.constanciaSeg, 15));
   items.push(tieneInduccionVigente(e.id)
     ? {key:'induccion', nivel:'ok', corto:'✓', label:'Inducción de seguridad vigente'}
     : {key:'induccion', nivel:'danger', corto:'Sin registro', label:'Sin inducción de seguridad registrada o vigente'});
@@ -7243,21 +7243,21 @@ async function descargarInformeEmoInduccion(){
   const act = employees.filter(e=>e.estado==='activo').sort((a,b)=>a.nombre.localeCompare(b.nombre));
   if(!act.length){ showToast('No hay trabajadores activos'); return; }
   const emp = window._empresaData || {};
-  const filas = act.map(e=>{ const ind = induccionResumen(e.id); return {e, ind, emo: estadoVigencia(e.fechaEmo), indE: estadoVigencia(ind.vence, ind.sinVencimiento)}; });
+  const filas = act.map(e=>({e, emo: estadoVigencia(e.fechaEmo), indE: estadoVigencia(e.constanciaSeg)}));
   const cuenta = (k, c)=>filas.filter(f=>f[k].clave===c).length;
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({unit:'pt', format:'a4'});
   const o = pdfFormal(doc);
   const numero = 'INF-SST-' + hoyISO().replace(/-/g,'');
-  o.encabezado('INFORME DE VENCIMIENTOS: EXÁMENES MÉDICOS OCUPACIONALES (EMO) E INDUCCIÓN DE SEGURIDAD', numero, hoyISO());
+  o.encabezado('INFORME DE VENCIMIENTOS: EXÁMENES MÉDICOS OCUPACIONALES (EMO) Y EXAMEN DE INDUCCIÓN DE SEGURIDAD', numero, hoyISO());
   o.fila([['Dirigido a', 'Gerencia General' + (emp.representanteNombre ? ' — ' + emp.representanteNombre : '')]]);
   o.fila([['Elaborado por', 'Recursos Humanos'], ['Personal evaluado', act.length + ' trabajador(es) activos']]);
   o.y += 10;
-  o.texto(`Se informa el estado de los Exámenes Médicos Ocupacionales y de las inducciones de seguridad del personal activo al ${docsFechaLarga(hoyISO())}, conforme a la Ley N.° 29783 de Seguridad y Salud en el Trabajo y su reglamento. "Por vencer" considera los próximos ${INFORME_DIAS_AVISO} días.`);
+  o.texto(`Se informa el estado de los Exámenes Médicos Ocupacionales y de los exámenes de inducción de seguridad del personal activo al ${docsFechaLarga(hoyISO())}, conforme a la Ley N.° 29783 de Seguridad y Salud en el Trabajo y su reglamento. "Por vencer" considera los próximos ${INFORME_DIAS_AVISO} días.`);
   o.seccion('1. RESUMEN');
   o.tabla([{t:'Control', w:2.2}, {t:'Vigentes', w:1, al:'r'}, {t:`Por vencer (${INFORME_DIAS_AVISO} d)`, w:1.3, al:'r'}, {t:'Vencidos', w:1, al:'r'}, {t:'Sin registro', w:1.1, al:'r'}], [
     ['Examen Médico Ocupacional (EMO)', cuenta('emo','vigente'), cuenta('emo','porvencer'), cuenta('emo','vencido'), cuenta('emo','sin')],
-    ['Inducción de seguridad', cuenta('indE','vigente'), cuenta('indE','porvencer'), cuenta('indE','vencido'), cuenta('indE','sin')]
+    ['Examen de inducción de seguridad', cuenta('indE','vigente'), cuenta('indE','porvencer'), cuenta('indE','vencido'), cuenta('indE','sin')]
   ]);
   const alerta = k => filas.filter(f=>f[k].clave!=='vigente').sort((a,b)=>a[k].orden-b[k].orden || (a[k].dias||0)-(b[k].dias||0) || a.e.nombre.localeCompare(b.e.nombre));
   const emoAl = alerta('emo'), indAl = alerta('indE');
@@ -7265,22 +7265,22 @@ async function descargarInformeEmoInduccion(){
   if(emoAl.length) o.tabla([{t:'N°', w:0.4}, {t:'Trabajador', w:2.8}, {t:'DNI', w:1}, {t:'Cargo', w:1.8}, {t:'EMO vence', w:1.1}, {t:'Estado', w:1.6}],
     emoAl.map((f,i)=>[i+1, f.e.nombre, f.e.dni||'', f.e.cargo||'', docsFechaCorta(f.e.fechaEmo) || '—', f.emo.texto]));
   else o.texto('Todo el personal activo tiene su EMO vigente.');
-  o.seccion(`3. INDUCCIONES VENCIDAS, POR VENCER O SIN REGISTRO (${indAl.length})`);
-  if(indAl.length) o.tabla([{t:'N°', w:0.4}, {t:'Trabajador', w:2.6}, {t:'DNI', w:1}, {t:'Última inducción', w:1.9}, {t:'Vence', w:1.1}, {t:'Estado', w:1.6}],
-    indAl.map((f,i)=>[i+1, f.e.nombre, f.e.dni||'', f.ind.ultima ? `${docsFechaCorta(f.ind.ultima.fecha)} · ${f.ind.ultima.tipo||''}${f.ind.ultima.cliente ? ' ('+f.ind.ultima.cliente+')' : ''}` : '—', f.ind.sinVencimiento ? 'No vence' : (docsFechaCorta(f.ind.vence) || '—'), f.indE.texto]));
-  else o.texto('Todo el personal activo tiene su inducción de seguridad vigente.');
+  o.seccion(`3. EXÁMENES DE INDUCCIÓN VENCIDOS, POR VENCER O SIN REGISTRO (${indAl.length})`);
+  if(indAl.length) o.tabla([{t:'N°', w:0.4}, {t:'Trabajador', w:2.6}, {t:'DNI', w:1}, {t:'Cargo', w:1.8}, {t:'Examen vence', w:1.1}, {t:'Estado', w:1.6}],
+    indAl.map((f,i)=>[i+1, f.e.nombre, f.e.dni||'', f.e.cargo||'', docsFechaCorta(f.e.constanciaSeg) || '—', f.indE.texto]));
+  else o.texto('Todo el personal activo tiene su examen de inducción de seguridad vigente.');
   o.seccion('4. DETALLE DEL PERSONAL ACTIVO');
-  o.tabla([{t:'N°', w:0.4}, {t:'Trabajador', w:2.5}, {t:'Cargo', w:1.5}, {t:'EMO vence', w:1.1}, {t:'Estado EMO', w:1.3}, {t:'Induc. vence', w:1.15}, {t:'Estado induc.', w:1.35}],
-    filas.map((f,i)=>[i+1, f.e.nombre, f.e.cargo||'', docsFechaCorta(f.e.fechaEmo) || '—', f.emo.clave==='vigente' ? 'Vigente' : f.emo.texto, f.ind.sinVencimiento ? 'No vence' : (docsFechaCorta(f.ind.vence) || '—'), f.indE.clave==='vigente' ? 'Vigente' : f.indE.texto]));
+  o.tabla([{t:'N°', w:0.4}, {t:'Trabajador', w:2.5}, {t:'Cargo', w:1.5}, {t:'EMO vence', w:1.1}, {t:'Estado EMO', w:1.3}, {t:'Examen vence', w:1.15}, {t:'Estado examen', w:1.35}],
+    filas.map((f,i)=>[i+1, f.e.nombre, f.e.cargo||'', docsFechaCorta(f.e.fechaEmo) || '—', f.emo.clave==='vigente' ? 'Vigente' : f.emo.texto, docsFechaCorta(f.e.constanciaSeg) || '—', f.indE.clave==='vigente' ? 'Vigente' : f.indE.texto]));
   o.seccion('5. ACCIONES RECOMENDADAS');
   const acciones = [];
   const nEmo = cuenta('emo','vencido') + cuenta('emo','sin'), nEmoPv = cuenta('emo','porvencer');
   const nInd = cuenta('indE','vencido') + cuenta('indE','sin'), nIndPv = cuenta('indE','porvencer');
   if(nEmo) acciones.push(`Programar el EMO de ${nEmo} trabajador(es) con examen vencido o sin registro; no deben realizar labores de riesgo ni ingresar a obra hasta contar con el certificado de aptitud.`);
   if(nEmoPv) acciones.push(`Coordinar con la clínica la renovación de ${nEmoPv} EMO que vencen en los próximos ${INFORME_DIAS_AVISO} días.`);
-  if(nInd) acciones.push(`Realizar la inducción de seguridad a ${nInd} trabajador(es) con inducción vencida o sin registro, y archivar la constancia firmada.`);
-  if(nIndPv) acciones.push(`Programar la reinducción de ${nIndPv} trabajador(es) cuya inducción vence en los próximos ${INFORME_DIAS_AVISO} días.`);
-  if(!acciones.length) acciones.push('No se requieren acciones inmediatas: todo el personal activo tiene EMO e inducción vigentes.');
+  if(nInd) acciones.push(`Programar el examen de inducción de seguridad de ${nInd} trabajador(es) con examen vencido o sin registro, y archivar la constancia firmada.`);
+  if(nIndPv) acciones.push(`Programar la renovación del examen de inducción de ${nIndPv} trabajador(es) cuyo examen vence en los próximos ${INFORME_DIAS_AVISO} días.`);
+  if(!acciones.length) acciones.push('No se requieren acciones inmediatas: todo el personal activo tiene EMO y examen de inducción vigentes.');
   acciones.push('Mantener los certificados y constancias en el legajo de cada trabajador, a disposición de SUNAFIL y del cliente.');
   o.parrafos(acciones);
   // Firmas: elabora RRHH, revisa Gerencia General.
@@ -7296,13 +7296,13 @@ async function descargarInformeEmoInduccion(){
   doc.text('Gerencia General', cx2, yL + 35, {align:'center'});
   o.y = yL + 45;
   o.pie(numero);
-  doc.save(`${numero}-vencimientos-EMO-induccion.pdf`);
+  doc.save(`${numero}-vencimientos-EMO-examen-induccion.pdf`);
   showToast('Informe descargado');
 }
 
 // ---------- Semáforo "apto para obra" ----------
 // Para ingresar a obra (SIMA y otros clientes) el trabajador necesita estos requisitos vigentes.
-const APTO_REQUISITOS = [['contrato','Contrato'],['sctr','SCTR'],['emo','EMO'],['induccion','Inducción'],['constseg','Const. seguridad'],['vidaley','Vida Ley']];
+const APTO_REQUISITOS = [['contrato','Contrato'],['sctr','SCTR'],['emo','EMO'],['constseg','Examen de inducción de seguridad'],['vidaley','Vida Ley']];
 function aptoParaObra(e){
   const items = checklistLegajo(e);
   const req = APTO_REQUISITOS.map(([key, corto])=>{
@@ -7344,11 +7344,11 @@ function renderAptosObra(){
     : `<div class="empty">No hay trabajadores en este grupo.</div>`;
 }
 
-// ---------- Avisos: Constancia de Seguridad en el Trabajo ----------
+// ---------- Avisos: Examen de Inducción de Seguridad ----------
 function constSegEstado(e){
   if(!e.constanciaSeg) return {clave:'sin', orden:2, nivel:'pill-muted', texto:'Sin registro'};
   const d = daysUntil(e.constanciaSeg);
-  if(d < 0) return {clave:'vencida', orden:0, nivel:'pill-danger', texto:`Vencida hace ${-d} día(s)`};
+  if(d < 0) return {clave:'vencida', orden:0, nivel:'pill-danger', texto:`Vencido hace ${-d} día(s)`};
   if(d <= 15) return {clave:'porvencer', orden:1, nivel:'pill-warn', texto: d===0 ? 'Vence hoy' : `Vence en ${d} día(s)`};
   return {clave:'vigente', orden:3, nivel:'pill-ok', texto:`Vigente (${d} días)`};
 }
@@ -7363,7 +7363,7 @@ function abrirAvisosConstSeg(filtro){
 }
 function renderAvisosConstSeg(){
   const L = constSegLista(), cuenta = k => L.filter(x=>x.est.clave===k).length;
-  document.getElementById('constSegResumen').innerHTML = `🔴 <b>${cuenta('vencida')}</b> vencidas · 🟡 <b>${cuenta('porvencer')}</b> por vencer · ⚪ <b>${cuenta('sin')}</b> sin registro · 🟢 <b>${cuenta('vigente')}</b> vigentes — de ${L.length} trabajadores activos`;
+  document.getElementById('constSegResumen').innerHTML = `🔴 <b>${cuenta('vencida')}</b> vencidos · 🟡 <b>${cuenta('porvencer')}</b> por vencer · ⚪ <b>${cuenta('sin')}</b> sin registro · 🟢 <b>${cuenta('vigente')}</b> vigentes — de ${L.length} trabajadores activos`;
   const f = document.getElementById('constSegFiltro').value;
   const V = L.filter(x=> f==='todas' ? true : f==='alerta' ? x.est.clave!=='vigente' : x.est.clave===f);
   document.getElementById('constSegContenido').innerHTML = V.length ? `<div class="table-scroll"><table>
@@ -11178,7 +11178,7 @@ const REPORTES = [
      repActivos().forEach(e=>{
        const ind = induccionesSeguridad.filter(r=>r.empId===e.id);
        const indVence = ind.some(r=>!r.vence) ? 'sin_vencimiento' : ind.map(r=>r.vence).sort().pop();
-       [['Contrato', e.fechaFin], ['EMO', e.fechaEmo], ['SCTR', e.vigenciaSctr], ['Vida Ley', e.vigenciaVidaLey], ['Constancia de seguridad', e.constanciaSeg], ['Inducción de seguridad', indVence]].forEach(([doc, f])=>{
+       [['Contrato', e.fechaFin], ['EMO', e.fechaEmo], ['SCTR', e.vigenciaSctr], ['Vida Ley', e.vigenciaVidaLey], ['Examen de inducción de seguridad', e.constanciaSeg], ['Inducción de seguridad', indVence]].forEach(([doc, f])=>{
          if(f==='sin_vencimiento') return;
          const d = daysUntil(f);
          if(f && d > H) return;
@@ -11234,22 +11234,22 @@ const REPORTES = [
        columnas:[{t:'Semana',w:1.9},{t:'Trabajador',w:2.6},{t:'DNI',w:1},{t:'Neto S/',w:1,tipo:'m'},{t:'Fecha pago',w:1},{t:'Entregar hasta',w:1},{t:'Entregada',w:1},{t:'Firmada',w:0.7},{t:'Estado',w:2.4}],
        filas: L, total:null}; }},
   {id:'aptos', titulo:'Personal apto para obra', icono:'🚦', rango:false,
-   desc:'Semáforo de cada trabajador activo: contrato, SCTR, EMO, inducción, constancia de seguridad y Vida Ley. Útil para enviar al cliente (SIMA).',
+   desc:'Semáforo de cada trabajador activo: contrato, SCTR, EMO, examen de inducción de seguridad y Vida Ley. Útil para enviar al cliente (SIMA).',
    fn:()=>{ const f = (document.getElementById('aptosFiltro')||{}).value || 'todos';
      const L = employees.filter(e=>e.estado==='activo').map(e=>({e, a:aptoParaObra(e)})).filter(x=>f==='todos' || x.a.nivel===f || (f==='aptos' && x.a.nivel!=='danger'))
        .sort((x,y)=>({danger:0,warn:1,ok:2}[x.a.nivel] - {danger:0,warn:1,ok:2}[y.a.nivel]) || x.e.nombre.localeCompare(y.e.nombre));
      const fin = (e, campo)=>docsFechaCorta(e[campo]) || 'Sin registro';
      return {subtitulo: repHoy()+' · '+L.length+' trabajadores', archivo:'personal-apto-para-obra',
-       columnas:[{t:'Trabajador',w:2.8},{t:'DNI',w:1},{t:'Cargo',w:1.8},{t:'Contrato hasta',w:1.1},{t:'SCTR hasta',w:1.1},{t:'EMO hasta',w:1.1},{t:'Inducción',w:1.1},{t:'Const. seguridad',w:1.1},{t:'Vida Ley hasta',w:1.1},{t:'Estado',w:2.4}],
-       filas: L.map(({e,a})=>[e.nombre, e.dni, e.cargo, fin(e,'fechaFin'), fin(e,'vigenciaSctr'), fin(e,'fechaEmo'), a.req.find(r=>r.key==='induccion').nivel==='danger' ? 'Sin registro' : 'Vigente', fin(e,'constanciaSeg'), fin(e,'vigenciaVidaLey'), a.texto]), total:null}; }},
+       columnas:[{t:'Trabajador',w:2.8},{t:'DNI',w:1},{t:'Cargo',w:1.8},{t:'Contrato hasta',w:1.1},{t:'SCTR hasta',w:1.1},{t:'EMO hasta',w:1.1},{t:'Examen de inducción hasta',w:1.3},{t:'Vida Ley hasta',w:1.1},{t:'Estado',w:2.4}],
+       filas: L.map(({e,a})=>[e.nombre, e.dni, e.cargo, fin(e,'fechaFin'), fin(e,'vigenciaSctr'), fin(e,'fechaEmo'), fin(e,'constanciaSeg'), fin(e,'vigenciaVidaLey'), a.texto]), total:null}; }},
   {id:'historial', titulo:'Historial de cambios (quién hizo qué)', icono:'🕵️', rango:true,
    desc:'Qué registró, modificó o eliminó cada usuario (Administrador o Asistente), con fecha, hora y sección.',
    fn:()=>{ const r = repRangoActual(), L = historialCambios(r.desde, r.hasta);
      return {subtitulo: r.texto+' · '+L.length+' cambios', archivo:'historial-cambios',
        columnas:[{t:'Fecha y hora',w:1.4},{t:'Usuario',w:1.4},{t:'Acción',w:1},{t:'Sección',w:1.8},{t:'Detalle',w:4}],
        filas: L.map(ev=>[fechaHoraCorta(ev.fecha), ev.usuario, ev.accion, ev.seccion, ev.detalle]), total:null}; }},
-  {id:'constseg', titulo:'Constancias de Seguridad en el Trabajo', icono:'🦺', rango:false,
-   desc:'Estado de la constancia de seguridad de cada trabajador activo: vencidas, por vencer, sin registro y vigentes.',
+  {id:'constseg', titulo:'Exámenes de Inducción de Seguridad', icono:'🦺', rango:false,
+   desc:'Estado del examen de inducción de seguridad de cada trabajador activo: vencidas, por vencer, sin registro y vigentes.',
    fn:()=>{ const f = (document.getElementById('constSegFiltro')||{}).value || 'todas';
      const L = constSegLista().filter(x=> f==='todas' ? true : f==='alerta' ? x.est.clave!=='vigente' : x.est.clave===f);
      return {subtitulo: repHoy()+' · '+L.length+' trabajadores', archivo:'constancias-seguridad',
@@ -12292,11 +12292,11 @@ function calcularPendientes(){
   const noAptos = act.filter(e=>aptoParaObra(e).nivel==='danger');
   add('danger', `${noAptos.length} trabajador(es) NO aptos para entrar a obra hoy`, noAptos.map(e=>e.nombre+' ('+aptoParaObra(e).faltan.map(r=>r.corto).join(', ')+')'), 'Ver semáforo', "abrirAptosObra('danger')");
   const constSegVencidas = act.filter(e=>e.constanciaSeg && e.constanciaSeg < hoy).sort((a,b)=>a.constanciaSeg.localeCompare(b.constanciaSeg));
-  add('danger', `${constSegVencidas.length} constancia(s) de seguridad en el trabajo VENCIDAS`, constSegVencidas.map(e=>`${e.nombre} (venció ${fmtDate(e.constanciaSeg)}, hace ${-daysUntil(e.constanciaSeg)} día(s))`), 'Ver lista', "abrirAvisosConstSeg()");
+  add('danger', `${constSegVencidas.length} examen(es) de inducción de seguridad VENCIDOS`, constSegVencidas.map(e=>`${e.nombre} (venció ${fmtDate(e.constanciaSeg)}, hace ${-daysUntil(e.constanciaSeg)} día(s))`), 'Ver lista', "abrirAvisosConstSeg()");
   const constSegPorVencerP = act.filter(e=>e.constanciaSeg && e.constanciaSeg >= hoy && daysUntil(e.constanciaSeg) <= 15).sort((a,b)=>a.constanciaSeg.localeCompare(b.constanciaSeg));
-  add('warn', `${constSegPorVencerP.length} constancia(s) de seguridad vencen en los próximos 15 días`, constSegPorVencerP.map(e=>`${e.nombre} (${fmtDate(e.constanciaSeg)})`), 'Ver lista', "abrirAvisosConstSeg()");
+  add('warn', `${constSegPorVencerP.length} examen(es) de inducción de seguridad vencen en los próximos 15 días`, constSegPorVencerP.map(e=>`${e.nombre} (${fmtDate(e.constanciaSeg)})`), 'Ver lista', "abrirAvisosConstSeg()");
   const sinConstSeg = act.filter(e=>!e.constanciaSeg);
-  add('warn', `${sinConstSeg.length} trabajador(es) sin constancia de seguridad en el trabajo registrada`, sinConstSeg.map(e=>e.nombre), 'Ver lista', "abrirAvisosConstSeg()");
+  add('warn', `${sinConstSeg.length} trabajador(es) sin examen de inducción de seguridad registrado`, sinConstSeg.map(e=>e.nombre), 'Ver lista', "abrirAvisosConstSeg()");
   const sinEmo = act.filter(e=>!e.fechaEmo || e.fechaEmo < hoy);
   add('warn', `${sinEmo.length} trabajador(es) con EMO vencido o sin registro`, sinEmo.map(e=>e.nombre), 'Ver EMO', "switchView('emo')");
   const sinVida = act.filter(e=>!e.vigenciaVidaLey || e.vigenciaVidaLey < hoy);
