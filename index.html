@@ -229,7 +229,7 @@ tr:hover td{background:#FAF9F6;}
       <button class="sidebar-action-btn" onclick="toggleDarkMode()"><span id="darkModeIcon">&#9789;</span> <span id="darkModeLabel">Modo noche</span></button>
       <button class="sidebar-action-btn" onclick="toggleAvisos()"><span id="avisosIcon">&#128276;</span> <span id="avisosLabel">Activar avisos</span></button>
       <button class="sidebar-action-btn" onclick="guardarRespaldo()">&#8595; Guardar respaldo</button>
-      <button class="sidebar-action-btn" onclick="document.getElementById('restoreBackupFile').click()">&#8593; Restaurar respaldo</button>
+      <button class="sidebar-action-btn" id="btnRestaurarRespaldo" onclick="document.getElementById('restoreBackupFile').click()">&#8593; Restaurar respaldo</button>
       <input type="file" id="restoreBackupFile" accept=".json" style="display:none;" onchange="restaurarRespaldo(this.files[0])">
       <button class="sidebar-action-btn" onclick="document.getElementById('claveModalOverlay').classList.add('active')">&#128272; Cambiar contraseña</button>
       <button class="sidebar-action-btn" onclick="mostrarEspacioAlmacenamiento()">&#128202; Ver espacio usado</button>
@@ -2166,12 +2166,27 @@ tr:hover td{background:#FAF9F6;}
       <div class="field"><label>Notas</label><textarea id="empNotas" style="min-height:60px;font-family:'Inter';"></textarea></div>
     </div>
 
+    <p class="hint" id="empAuditoria" style="margin:10px 0 0;font-size:12px;"></p>
     <div class="modal-actions" style="justify-content:space-between;">
       <button class="btn btn-danger btn-sm" id="empDeleteBtn" style="display:none;" onclick="deleteEmployeeFromModal()">Eliminar definitivamente</button>
       <div style="display:flex;gap:10px;margin-left:auto;">
         <button class="btn btn-ghost" onclick="closeEmployeeModal()">Cancelar</button>
         <button class="btn btn-primary" onclick="saveEmployee()">Guardar</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RESPALDO SEMANAL -->
+<div class="modal-overlay" id="respaldoSemanalOverlay">
+  <div class="modal" style="max-width:480px;text-align:center;">
+    <div style="font-size:40px;">💾</div>
+    <h3 style="margin-top:4px;">Respaldo semanal</h3>
+    <p id="respaldoSemanalTexto" style="margin:8px 0 16px;"></p>
+    <p class="hint" style="margin:0 0 16px;">El respaldo es un archivo .json con toda la información del sistema y todos los PDF. Guárdalo en tu PC y, si puedes, una copia en Google Drive o en una USB.</p>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn btn-ghost" onclick="posponerRespaldoSemanal()">Recordármelo mañana</button>
+      <button class="btn btn-primary" onclick="hacerRespaldoSemanal()">Descargar respaldo ahora</button>
     </div>
   </div>
 </div>
@@ -2740,10 +2755,117 @@ async function saveData(key, value){
   try{
     const antes = refsArchivoEn(cloudCache.get(key));
     if(value && typeof value==='object') await externalizarArchivos(value);
+    const eventos = marcarAuditoria(key, value);
     await window.storage.set(key, JSON.stringify(value), false);
     if(antes.size) limpiarArchivosHuerfanos(antes, key);
+    if(eventos.length) registrarAuditoria(eventos);
   }
   catch(e){ console.error('storage error', e); showToast('No se pudo guardar. Intenta de nuevo.'); }
+}
+
+// ---------- Usuarios y permisos ----------
+function usuarioActualCorreo(){
+  try{ const u = firebase.auth().currentUser; return u && u.email ? u.email.toLowerCase() : ''; }catch(e){ return ''; }
+}
+function usuarioActualNombre(){
+  const c = usuarioActualCorreo();
+  return (typeof USUARIOS_SISTEMA!=='undefined' && USUARIOS_SISTEMA[c]) ? USUARIOS_SISTEMA[c].split(' (')[0] : (c || 'Sistema');
+}
+// Sin sesión (solo en pruebas locales) se trata como administrador.
+function esAdmin(){ const c = usuarioActualCorreo(); return !c || c === ADMIN_EMAIL; }
+function soloAdmin(accion){
+  if(esAdmin()) return true;
+  alert(`Solo el Administrador puede ${accion}.\n\nSi es necesario, pídeselo a Gerencia / RRHH.`);
+  return false;
+}
+
+// ---------- Historial de cambios: quién registró, modificó o eliminó cada cosa ----------
+// Cada registro guarda creadoPor/creadoFecha y modificadoPor/modificadoFecha. Además se lleva un historial
+// por mes y por usuario (claves auditoria_AAAA-MM_usuario), así dos personas no escriben el mismo documento.
+const AUDITORIA_EXCLUIR = new Set(['darkModePref','ultimoRespaldoFecha']);
+const AUDITORIA_SECCIONES = {employees:'Personal', asistenciaManual:'Asistencia del día', registrosDiarios:'Registro diario (antiguo)', faltas:'Faltas', permisos:'Permisos',
+  descansos:'Descansos médicos', prestamos:'Préstamos y adelantos', reembolsos:'Reembolsos', workerDocs:'Documentos del trabajador', eppAsignaciones:'Entregas de EPP',
+  inventoryItems:'Inventario (artículos)', inventoryMovements:'Inventario (movimientos)', segurosEmpresa:'Seguros', induccionesSeguridad:'Inducción de seguridad',
+  cesesRegistro:'Ceses y liquidaciones', vacacionesRegistro:'Vacaciones', horasExtraRegistro:'Horas extra', planillasSemanales:'Planilla semanal',
+  boletasSemanales:'Boletas de pago', aportesPagos:'Pagos de aportes', menuEntries:'Alimentación', documentosSunafil:'Documentos SUNAFIL', firmasDigitales:'Firmas',
+  eppKits:'Kits de EPP', procesosCese:'Procesos de cese (antiguos)', eventos:'Bienestar (eventos)', capacitaciones:'Capacitaciones', reconocimientos:'Reconocimientos'};
+const AUDITORIA_MAX_POR_DOC = 3000, AUDITORIA_MAX_POR_GUARDADO = 150;
+function auditoriaHuella(o){ const {creadoPor, creadoFecha, modificadoPor, modificadoFecha, ...resto} = o; return JSON.stringify(resto); }
+function auditoriaDetalle(o){
+  if(!o) return '';
+  const e = o.empId && employees.find(x=>x.id===o.empId);
+  const quien = o.nombre || (e && e.nombre) || '';
+  const fecha = o.fecha ? docsFechaCorta(o.fecha) : '';
+  return [o.numero, quien, fecha, o.tipo || o.categoria || o.concepto || o.motivo].filter(Boolean).join(' · ').slice(0, 160);
+}
+function marcarAuditoria(key, valor){
+  if(AUDITORIA_EXCLUIR.has(key) || key.startsWith('auditoria') || !Array.isArray(valor)) return [];
+  let previo = [];
+  try{ previo = JSON.parse(cloudCache.get(key) || '[]'); }catch(e){}
+  if(!Array.isArray(previo)) previo = [];
+  const prevPorId = new Map(previo.filter(o=>o && typeof o==='object' && o.id).map(o=>[o.id, o]));
+  const ahora = new Date().toISOString(), quien = usuarioActualNombre(), vistos = new Set(), cambios = [];
+  valor.forEach(o=>{
+    if(!o || typeof o!=='object' || !o.id) return;
+    vistos.add(o.id);
+    const p = prevPorId.get(o.id);
+    if(!p){
+      if(!o.creadoPor){ o.creadoPor = quien; o.creadoFecha = ahora; }
+      cambios.push(['Registró', o]);
+    } else if(auditoriaHuella(o) !== auditoriaHuella(p)){
+      o.modificadoPor = quien; o.modificadoFecha = ahora;
+      cambios.push(['Modificó', o]);
+    }
+  });
+  prevPorId.forEach((p, id)=>{ if(!vistos.has(id)) cambios.push(['Eliminó', p]); });
+  const seccion = AUDITORIA_SECCIONES[key] || key;
+  if(cambios.length > AUDITORIA_MAX_POR_GUARDADO){
+    const n = a => cambios.filter(c=>c[0]===a).length;
+    return [{fecha:ahora, usuario:quien, seccion, clave:key, accion:'Cambio masivo', id:'', detalle:`${n('Registró')} registrados, ${n('Modificó')} modificados, ${n('Eliminó')} eliminados`}];
+  }
+  return cambios.map(([accion, o])=>({fecha:ahora, usuario:quien, seccion, clave:key, accion, id:o.id, detalle:auditoriaDetalle(o)}));
+}
+async function registrarAuditoria(eventos){
+  const correo = usuarioActualCorreo() || 'local';
+  const clave = 'auditoria_' + hoyISO().slice(0,7) + '_' + correo.split('@')[0].replace(/[^a-z0-9]/gi,'');
+  let log = [];
+  try{ log = JSON.parse(cloudCache.get(clave) || '[]'); }catch(e){}
+  log = log.concat(eventos).slice(-AUDITORIA_MAX_POR_DOC);
+  try{ await window.storage.set(clave, JSON.stringify(log), false); }catch(e){ console.warn('No se pudo guardar el historial de cambios', e); }
+}
+// ---------- Respaldo semanal (solo administrador) ----------
+// Al entrar, si pasaron 7 días o más desde el último respaldo, se pide descargarlo.
+function verificarRespaldoSemanal(){
+  if(!esAdmin()) return false;
+  const dias = ultimoRespaldoFecha ? Math.round((new Date(hoyISO()+'T00:00:00') - new Date(ultimoRespaldoFecha+'T00:00:00'))/86400000) : null;
+  if(dias!==null && dias < 7) return false;
+  try{ if(localStorage.getItem('rrhhRespaldoPospuesto')===hoyISO()) return false; }catch(e){}
+  document.getElementById('respaldoSemanalTexto').innerHTML = dias===null
+    ? 'Todavía <b>no tienes ningún respaldo</b> del sistema. Descárgalo ahora para no perder información.'
+    : `Tu último respaldo fue hace <b>${dias} días</b> (${fmtDate(ultimoRespaldoFecha)}). Descarga uno nuevo para tener tu información segura.`;
+  document.getElementById('respaldoSemanalOverlay').classList.add('active');
+  return true;
+}
+async function hacerRespaldoSemanal(){
+  document.getElementById('respaldoSemanalOverlay').classList.remove('active');
+  await guardarRespaldo();
+}
+function posponerRespaldoSemanal(){
+  try{ localStorage.setItem('rrhhRespaldoPospuesto', hoyISO()); }catch(e){}
+  document.getElementById('respaldoSemanalOverlay').classList.remove('active');
+}
+function fechaHoraCorta(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  return isNaN(d) ? '' : d.toLocaleString('es-PE', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
+}
+function historialCambios(desde, hasta){
+  const L = [];
+  cloudCache.forEach((v, k)=>{
+    if(!k.startsWith('auditoria_')) return;
+    try{ JSON.parse(v).forEach(ev=>{ const f = (ev.fecha||'').slice(0,10); if((!desde || f>=desde) && (!hasta || f<=hasta)) L.push(ev); }); }catch(e){}
+  });
+  return L.sort((a,b)=>b.fecha.localeCompare(a.fecha));
 }
 
 // ---------- Archivos guardados por separado ----------
@@ -3586,8 +3708,17 @@ function openEmployeeModal(id){
       document.getElementById('empFotoPreview').style.display = 'none';
       document.getElementById('empFotoPlaceholder').style.display = 'flex';
     }
-    document.getElementById('empDeleteBtn').style.display = 'inline-flex';
+    document.getElementById('empDeleteBtn').style.display = esAdmin() ? 'inline-flex' : 'none';
+    document.getElementById('empSueldoDiario').readOnly = !esAdmin();
+    document.getElementById('empSueldoDiario').title = esAdmin() ? '' : 'Solo el Administrador puede cambiar el jornal';
+    document.getElementById('empAuditoria').textContent = [
+      e.creadoPor ? `Registrado por ${e.creadoPor} el ${fechaHoraCorta(e.creadoFecha)}` : '',
+      e.modificadoPor ? `Última modificación: ${e.modificadoPor}, ${fechaHoraCorta(e.modificadoFecha)}` : ''
+    ].filter(Boolean).join(' · ');
   } else {
+    document.getElementById('empAuditoria').textContent = '';
+    document.getElementById('empSueldoDiario').readOnly = false;
+    document.getElementById('empSueldoDiario').title = '';
     renderFichaDocsBlock(null);
     document.getElementById('employeeModalTitle').textContent = 'Nuevo colaborador';
     EMP_FIELD_IDS.forEach(id2=>document.getElementById(id2).value='');
@@ -3670,6 +3801,12 @@ async function saveEmployee(){
   if(!nombre || !dni){ showToast('Nombre y DNI/RUC son obligatorios'); return; }
   const id = document.getElementById('empId').value;
   const sueldoDiario = parseFloat(document.getElementById('empSueldoDiario').value) || 0;
+  // El asistente puede registrar el jornal de un trabajador nuevo, pero no cambiar el de uno existente.
+  const existente = id && employees.find(x=>x.id===id);
+  if(existente && (existente.sueldoDiario||0) !== sueldoDiario && !soloAdmin('cambiar el jornal de un trabajador')){
+    document.getElementById('empSueldoDiario').value = existente.sueldoDiario || '';
+    return;
+  }
   const data = {
     id: id || ('e'+Date.now()),
     nombre, dni,
@@ -4030,6 +4167,7 @@ function downloadEmployeePdfAnterior(id){
 async function deleteEmployeeFromModal(){
   const id = document.getElementById('empId').value;
   if(!id) return;
+  if(!soloAdmin('eliminar trabajadores definitivamente')) return;
   if(!confirm('Esto elimina PERMANENTEMENTE al colaborador y no se puede deshacer. Si solo quieres registrar su salida, cierra este mensaje y usa "Dar de baja" en la tabla en su lugar.\n\n¿Eliminar definitivamente?')) return;
   employees = employees.filter(e=>e.id!==id);
   await saveData('employees', employees);
@@ -4916,6 +5054,7 @@ async function generarAdendaProrroga(){
 async function generarAdendaAumento(){
   const e = employees.find(x=>x.id===document.getElementById('docsTrabEmpId').value);
   if(!e) return;
+  if(!soloAdmin('generar adendas de aumento de jornal')) return;
   const f = docsLeerFormulario();
   const nuevo = parseFloat(document.getElementById('docsJornalNuevo').value)||0;
   const vigencia = document.getElementById('docsVigenciaAumento').value;
@@ -6025,6 +6164,7 @@ async function restaurarDocPapelera(id){
   showToast('Documento restaurado');
 }
 async function eliminarDocDefinitivo(id){
+  if(!soloAdmin("eliminar documentos de forma permanente")) return;
   if(!confirm('Esto elimina el documento de forma permanente y no se puede deshacer. ¿Continuar?')) return;
   workerDocs = workerDocs.filter(x=>x.id!==id);
   await saveData('workerDocs', workerDocs);
@@ -6690,6 +6830,7 @@ async function savePrestamoAnterior(){
 }
 function savePrestamo(){ return guardarPrestamoFormal(); }
 async function deletePrestamo(id){
+  if(!soloAdmin("eliminar préstamos o adelantos")) return;
   if(!confirm('¿Eliminar este préstamo/adelanto y todos sus pagos registrados?')) return;
   prestamos = prestamos.filter(p=>p.id!==id);
   await saveData('prestamos', prestamos);
@@ -7375,6 +7516,7 @@ async function saveReembolso(){
   showToast(`${r.numero} registrado. Imprime el formato para la firma.`);
 }
 async function deleteReembolso(id){
+  if(!soloAdmin("eliminar reembolsos")) return;
   const r = reembolsos.find(x=>x.id===id);
   if(!r || !confirm(`¿Eliminar el reembolso ${r.numero}?`)) return;
   reembolsos = reembolsos.filter(x=>x.id!==id);
@@ -7410,6 +7552,7 @@ function reembolsoToggleEstadoCampos(){
 async function guardarEstadoReembolso(){
   const r = reembolsos.find(x=>x.id===reembolsoEstadoActualId);
   if(!r) return;
+  if(!soloAdmin("aprobar, rechazar o marcar como pagado un reembolso")) return;
   const est = document.getElementById('reembolsoEstadoNuevo').value;
   const comentario = document.getElementById('reembolsoComentarioRrhh').value.trim();
   if(est==='Rechazado' && !comentario){ showToast('Escribe el motivo del rechazo en el comentario'); return; }
@@ -9870,6 +10013,7 @@ async function guardarRespaldo(){
 
 function restaurarRespaldo(file){
   if(!file) return;
+  if(!soloAdmin("restaurar un respaldo")){ document.getElementById("restoreBackupFile").value = ""; return; }
   const reader = new FileReader();
   reader.onload = async (ev)=>{
     try{
@@ -10884,6 +11028,12 @@ const REPORTES = [
      return {subtitulo: repRangoActual().texto+' · '+L.length+' boletas', archivo:'control-boletas',
        columnas:[{t:'Semana',w:1.9},{t:'Trabajador',w:2.6},{t:'DNI',w:1},{t:'Neto S/',w:1,tipo:'m'},{t:'Fecha pago',w:1},{t:'Entregar hasta',w:1},{t:'Entregada',w:1},{t:'Firmada',w:0.7},{t:'Estado',w:2.4}],
        filas: L, total:null}; }},
+  {id:'historial', titulo:'Historial de cambios (quién hizo qué)', icono:'🕵️', rango:true,
+   desc:'Qué registró, modificó o eliminó cada usuario (Administrador o Asistente), con fecha, hora y sección.',
+   fn:()=>{ const r = repRangoActual(), L = historialCambios(r.desde, r.hasta);
+     return {subtitulo: r.texto+' · '+L.length+' cambios', archivo:'historial-cambios',
+       columnas:[{t:'Fecha y hora',w:1.4},{t:'Usuario',w:1.4},{t:'Acción',w:1},{t:'Sección',w:1.8},{t:'Detalle',w:4}],
+       filas: L.map(ev=>[fechaHoraCorta(ev.fecha), ev.usuario, ev.accion, ev.seccion, ev.detalle]), total:null}; }},
   {id:'constseg', titulo:'Constancias de Seguridad en el Trabajo', icono:'🦺', rango:false,
    desc:'Estado de la constancia de seguridad de cada trabajador activo: vencidas, por vencer, sin registro y vigentes.',
    fn:()=>{ const f = (document.getElementById('constSegFiltro')||{}).value || 'todas';
@@ -12735,6 +12885,7 @@ async function arrancarSistema(){
   setTimeout(async ()=>{
     try{ await migrarArchivosANube(); }catch(err){ console.error('Migración de archivos', err); }
     try{ await optimizarFotosPersonal(); }catch(err){ console.error('Optimización de fotos', err); }
+    try{ verificarRespaldoSemanal(); }catch(err){ console.error('Respaldo semanal', err); }
   }, 2500);
 }
 
@@ -12755,6 +12906,8 @@ async function arrancarSistema(){
       if(!USUARIOS_SISTEMA[(user.email||'').toLowerCase()]){ firebase.auth().signOut(); return; }
       const ses = document.getElementById('sesionUsuario');
       if(ses) ses.textContent = '👤 ' + USUARIOS_SISTEMA[user.email.toLowerCase()];
+      const btnRest = document.getElementById('btnRestaurarRespaldo');
+      if(btnRest) btnRest.style.display = user.email.toLowerCase()===ADMIN_EMAIL ? '' : 'none';
       arrancarSistema();
     } else if(!user){
       if(sistemaIniciado){ location.reload(); return; }
