@@ -12691,6 +12691,8 @@ function induccionPill(r){
   if(d<=30) return `<span class="pill pill-warn">Vence en ${d}d</span>`;
   return `<span class="pill pill-ok">Vigente</span>`;
 }
+let induccionFiltroEstado = 'faltan';
+function filtrarInduccionEstado(clave){ induccionFiltroEstado = clave; renderInduccion(); }
 function renderInduccion(){
   const statsEl = document.getElementById('induccionStats');
   if(!statsEl) return;
@@ -12712,9 +12714,9 @@ function renderInduccion(){
 
   statsEl.innerHTML = `
     <div class="stat-card"><div class="num">${new Set(induccionesSeguridad.map(r=>r.sesionId)).size}</div><div class="label">Inducciones registradas</div></div>
-    <div class="stat-card ok"><div class="num">${vigentesTrab.length - sinInduccion.length}</div><div class="label">Trabajadores con inducción vigente</div></div>
+    <div class="stat-card ok" style="cursor:pointer;" title="Ver quiénes tienen inducción vigente" onclick="filtrarInduccionEstado('vigentes')"><div class="num">${vigentesTrab.length - sinInduccion.length}</div><div class="label">Trabajadores con inducción vigente</div></div>
     <div class="stat-card warn"><div class="num">${porVencer.length}</div><div class="label">Por vencer (30 días)</div></div>
-    <div class="stat-card warn"><div class="num">${sinInduccion.length}</div><div class="label">Trabajadores sin inducción vigente</div></div>
+    <div class="stat-card warn" style="cursor:pointer;" title="Ver quiénes faltan" onclick="filtrarInduccionEstado('faltan')"><div class="num">${sinInduccion.length}</div><div class="label">Trabajadores sin inducción vigente</div></div>
   `;
   let avisoHtml = '';
   if(vencidas.length){
@@ -12725,10 +12727,20 @@ function renderInduccion(){
     avisoHtml += `<div class="aviso-box warn"><div class="aviso-title">Inducciones por vencer</div>
       <div class="aviso-list">${porVencer.map(r=>`<span class="aviso-chip">${escHtml((empById.get(r.empId)||{}).nombre||'—')} — ${escHtml(r.tipo)} vence en ${daysUntil(r.vence)} día(s)</span>`).join('')}</div></div>`;
   }
-  if(sinInduccion.length){
-    avisoHtml += `<div class="aviso-box warn"><div class="aviso-title">Trabajadores vigentes sin inducción registrada (o con inducción vencida)</div>
-      <div class="aviso-list">${sinInduccion.map(e=>`<span class="aviso-chip">${escHtml(e.nombre)}</span>`).join('')}</div></div>`;
-  }
+  // Lista filtrable: los que faltan, los que ya tienen inducción vigente o todos.
+  const conInduccion = vigentesTrab.filter(e=>tieneInduccionVigente(e.id));
+  const f = induccionFiltroEstado;
+  const listaFiltro = f==='faltan' ? sinInduccion : f==='vigentes' ? conInduccion : vigentesTrab;
+  const venceDe = e => { const L = induccionesSeguridad.filter(r=>r.empId===e.id && induccionVigente(r)); if(!L.length) return ''; if(L.some(r=>!r.vence)) return 'sin vencimiento'; return 'hasta ' + fmtDate(L.map(r=>r.vence).sort().pop()); };
+  const boton = (clave, texto, n)=>`<button class="tab-sub-btn ${f===clave?'active':''}" onclick="filtrarInduccionEstado('${clave}')">${texto} (${n})</button>`;
+  avisoHtml += `<div class="panel" style="padding:14px 18px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+      <div style="font-weight:600;">Trabajadores activos de obra</div>
+      <div class="tabs-sub" style="margin:0;">${boton('faltan','🔴 Faltan', sinInduccion.length)}${boton('vigentes','🟢 Con inducción vigente', conInduccion.length)}${boton('todos','Todos', vigentesTrab.length)}</div>
+    </div>
+    ${listaFiltro.length ? `<div class="aviso-list">${listaFiltro.map(e=>{ const ok = tieneInduccionVigente(e.id); return `<span class="aviso-chip" style="${ok ? 'background:var(--success-light);color:var(--success,#2F6B4F);' : ''}">${ok ? '✓ ' : ''}${escHtml(e.nombre)}${ok ? ` <span style="font-weight:400;">· ${venceDe(e)}</span>` : ''}</span>`; }).join('')}</div>`
+      : `<div class="empty" style="padding:10px;">${f==='faltan' ? '✅ Nadie falta: todos tienen su inducción vigente.' : f==='vigentes' ? 'Todavía nadie tiene una inducción vigente registrada.' : 'No hay trabajadores activos.'}</div>`}
+  </div>`;
   document.getElementById('induccionAviso').innerHTML = avisoHtml;
 
   const selTrab = document.getElementById('induccionFiltroTrabajador');
