@@ -12607,8 +12607,10 @@ function trabajadoresVigentesInduccion(){
   return employees.filter(e=>e.estado==='activo' && !(e.fechaFin && e.fechaFin < hoy))
     .sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
 }
+// El examen de inducción de seguridad registrado en la ficha (constanciaSeg) también cuenta como inducción vigente.
+function examenInduccionVigente(e){ return !!(e && e.constanciaSeg && daysUntil(e.constanciaSeg) >= 0); }
 function tieneInduccionVigente(empId){
-  return induccionesSeguridad.some(r=>r.empId===empId && induccionVigente(r));
+  return induccionesSeguridad.some(r=>r.empId===empId && induccionVigente(r)) || examenInduccionVigente(employees.find(x=>x.id===empId));
 }
 function induccionSeleccionar(modo){
   document.querySelectorAll('#induccionTrabajadores input[type=checkbox]').forEach(cb=>{
@@ -12721,6 +12723,10 @@ function imprimirListaInduccion(){
     L.map((e,i)=>{
       const R = induccionesSeguridad.filter(r=>r.empId===e.id).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
       const u = R[0], vig = R.filter(r=>induccionVigente(r));
+      // Sin charla vigente registrada, se usa el examen de inducción de la ficha.
+      if(!vig.length && e.constanciaSeg && (!u || (e.constanciaSeg > (u.vence||'')))){
+        return [i+1, e.nombre, e.dni||'', e.cargo||'', `Examen de inducción${e.constanciaSegInicio ? ' · '+docsFechaCorta(e.constanciaSegInicio) : ''}`, docsFechaCorta(e.constanciaSeg), examenInduccionVigente(e) ? 'Vigente' : 'Vencida'];
+      }
       const vence = vig.some(r=>!r.vence) ? 'No vence' : vig.length ? docsFechaCorta(vig.map(r=>r.vence).sort().pop()) : (u && u.vence ? docsFechaCorta(u.vence) : '—');
       const estado = tieneInduccionVigente(e.id) ? 'Vigente' : u ? 'Vencida' : 'Sin registro';
       return [i+1, e.nombre, e.dni||'', e.cargo||'', u ? `${docsFechaCorta(u.fecha)} · ${u.tipo||''}${u.cliente ? ' ('+u.cliente+')' : ''}` : '—', vence, estado];
@@ -12762,7 +12768,7 @@ function renderInduccion(){
   statsEl.innerHTML = `
     <div class="stat-card"><div class="num">${new Set(induccionesSeguridad.map(r=>r.sesionId)).size}</div><div class="label">Inducciones registradas</div></div>
     <div class="stat-card ok" style="cursor:pointer;" title="Ver quiénes tienen inducción vigente" onclick="filtrarInduccionEstado('vigentes')"><div class="num">${vigentesTrab.length - sinInduccion.length}</div><div class="label">Trabajadores con inducción vigente</div></div>
-    <div class="stat-card warn"><div class="num">${porVencer.length}</div><div class="label">Por vencer (30 días)</div></div>
+    <div class="stat-card warn"><div class="num">${porVencer.length + vigentesTrab.filter(e=>!induccionesSeguridad.some(r=>r.empId===e.id && induccionVigente(r)) && examenInduccionVigente(e) && daysUntil(e.constanciaSeg) <= 30).length}</div><div class="label">Por vencer (30 días)</div></div>
     <div class="stat-card warn" style="cursor:pointer;" title="Ver quiénes faltan" onclick="filtrarInduccionEstado('faltan')"><div class="num">${sinInduccion.length}</div><div class="label">Trabajadores sin inducción vigente</div></div>
   `;
   let avisoHtml = '';
@@ -12778,7 +12784,7 @@ function renderInduccion(){
   const conInduccion = vigentesTrab.filter(e=>tieneInduccionVigente(e.id));
   const f = induccionFiltroEstado;
   const listaFiltro = f==='faltan' ? sinInduccion : f==='vigentes' ? conInduccion : vigentesTrab;
-  const venceDe = e => { const L = induccionesSeguridad.filter(r=>r.empId===e.id && induccionVigente(r)); if(!L.length) return ''; if(L.some(r=>!r.vence)) return 'sin vencimiento'; return 'hasta ' + fmtDate(L.map(r=>r.vence).sort().pop()); };
+  const venceDe = e => { const L = induccionesSeguridad.filter(r=>r.empId===e.id && induccionVigente(r)); if(!L.length) return examenInduccionVigente(e) ? 'examen de inducción hasta ' + fmtDate(e.constanciaSeg) : ''; if(L.some(r=>!r.vence)) return 'sin vencimiento'; return 'hasta ' + fmtDate(L.map(r=>r.vence).sort().pop()); };
   const boton = (clave, texto, n)=>`<button class="tab-sub-btn ${f===clave?'active':''}" onclick="filtrarInduccionEstado('${clave}')">${texto} (${n})</button>`;
   avisoHtml += `<div class="panel" style="padding:14px 18px;">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
