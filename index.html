@@ -201,27 +201,29 @@ tr:hover td{background:#FAF9F6;}
     <div class="nav-item" data-view="reportes"><span class="nav-icon">&#128202;</span> Centro de reportes</div>
     <div class="nav-section-label">Personal</div>
     <div class="nav-item" data-view="personal"><span class="nav-icon">&#9782;</span> Personal</div>
-    <div class="nav-item" data-view="cesados"><span class="nav-icon">&#128682;</span> Trabajadores cesados</div>
+    <div class="nav-item" data-view="contratos"><span class="nav-icon">&#128196;</span> Contratos</div>
     <div class="nav-item" data-view="vacaciones"><span class="nav-icon">&#127958;</span> Vacaciones</div>
-    <div class="nav-section-label">Cumplimiento</div>
-    <div class="nav-item" data-view="legajosunafil"><span class="nav-icon">&#9878;</span> Legajo SUNAFIL</div>
+    <div class="nav-item" data-view="cesados"><span class="nav-icon">&#128682;</span> Ceses y liquidaciones</div>
+    <div class="nav-section-label">Asistencia y pagos</div>
+    <div class="nav-item" data-view="asistencia"><span class="nav-icon">&#128203;</span> Asistencia</div>
+    <div class="nav-item" data-view="horasextra"><span class="nav-icon">&#9201;</span> Horas extra</div>
+    <div class="nav-item" data-view="planillasem"><span class="nav-icon">&#128181;</span> Planilla semanal</div>
+    <div class="nav-item" data-view="boletaspago"><span class="nav-icon">&#128179;</span> Boletas de pago</div>
+    <div class="nav-item" data-view="prestamos"><span class="nav-icon">&#129309;</span> Préstamos y reembolsos</div>
+    <div class="nav-section-label">Seguridad y salud (SST)</div>
+    <div class="nav-item" data-view="epp"><span class="nav-icon">&#129508;</span> EPP</div>
     <div class="nav-item" data-view="emo"><span class="nav-icon">&#127973;</span> EMO</div>
     <div class="nav-item" data-view="induccion"><span class="nav-icon">&#9937;</span> Inducción de seguridad</div>
-    <div class="nav-section-label">Documentos</div>
-    <div class="nav-item" data-view="contratos"><span class="nav-icon">&#128196;</span> Contratos</div>
-    <div class="nav-item" data-view="boletaspago"><span class="nav-icon">&#128179;</span> Boletas de pago</div>
-    <div class="nav-item" data-view="papelera"><span class="nav-icon">&#128465;</span> Papelera</div>
-    <div class="nav-section-label">Operaciones</div>
-    <div class="nav-item" data-view="menus"><span class="nav-icon">&#9749;</span> Alimentación general</div>
-    <div class="nav-item" data-view="asistencia"><span class="nav-icon">&#128203;</span> Asistencia y Horarios</div>
-    <div class="nav-item" data-view="horasextra"><span class="nav-icon">&#9201;</span> Horas extra</div>
-    <div class="nav-item" data-view="planillasem"><span class="nav-icon">&#128181;</span> Planilla semanal (pagos)</div>
-    <div class="nav-item" data-view="inventario"><span class="nav-icon">&#128230;</span> Inventario</div>
-    <div class="nav-item" data-view="bienestar"><span class="nav-icon">&#127807;</span> Bienestar</div>
-    <div class="nav-item" data-view="epp"><span class="nav-icon">&#129508;</span> EPP</div>
-    <div class="nav-item" data-view="constancias"><span class="nav-icon">&#128450;</span> Constancias de EPPs</div>
-    <div class="nav-item" data-view="seguros"><span class="nav-icon">&#128737;</span> Seguros</div>
-    <div class="nav-item" data-view="planilla"><span class="nav-icon">&#127974;</span> Planilla y Cuentas Bancarias</div>
+    <div class="nav-item" data-view="seguros"><span class="nav-icon">&#128737;</span> Seguros (SCTR / Vida Ley)</div>
+    <div class="nav-section-label">Cumplimiento</div>
+    <div class="nav-item" data-view="legajosunafil"><span class="nav-icon">&#9878;</span> Legajo SUNAFIL</div>
+    <div class="nav-section-label nav-otros-toggle" style="cursor:pointer;" onclick="toggleNavOtros()">Otros <span id="navOtrosFlecha">&#9662;</span></div>
+    <div id="navOtros">
+      <div class="nav-item" data-view="inventario"><span class="nav-icon">&#128230;</span> Inventario</div>
+      <div class="nav-item" data-view="menus"><span class="nav-icon">&#9749;</span> Alimentación</div>
+      <div class="nav-item" data-view="bienestar"><span class="nav-icon">&#127807;</span> Bienestar</div>
+      <div class="nav-item" data-view="papelera"><span class="nav-icon">&#128465;</span> Papelera</div>
+    </div>
     <div class="sidebar-footer">Datos guardados en la nube (Firebase), solo accesibles con tu usuario.</div>
     <div style="padding:12px 14px 4px;display:flex;flex-direction:column;gap:8px;">
       <button class="sidebar-action-btn" onclick="toggleDarkMode()"><span id="darkModeIcon">&#9789;</span> <span id="darkModeLabel">Modo noche</span></button>
@@ -344,7 +346,7 @@ tr:hover td{background:#FAF9F6;}
 
       <div class="tabs-sub">
         <button class="tab-sub-btn active" data-legajo-tab="checklist" onclick="switchLegajoTab('checklist')">Checklist y alertas</button>
-        <button class="tab-sub-btn" data-legajo-tab="cese" onclick="switchLegajoTab('cese')">Cese paso a paso</button>
+        <button class="tab-sub-btn" data-legajo-tab="cese" id="tabLegajoCese" style="display:none;" onclick="switchLegajoTab('cese')">Procesos de cese (antiguos)</button>
         <button class="tab-sub-btn" data-legajo-tab="documentos" onclick="switchLegajoTab('documentos')">Documentos obligatorios</button>
       </div>
 
@@ -368,15 +370,12 @@ tr:hover td{background:#FAF9F6;}
 
       <!-- CESE PASO A PASO -->
       <div id="legajoCeseBlock" style="display:none;">
-        <div class="panel">
-          <div class="panel-head"><h3>Iniciar o continuar un proceso de cese</h3></div>
-          <div style="padding:16px 18px;">
-            <div class="field-row">
-              <div class="field"><label>Colaborador</label><select id="ceseEmployeeSelect"></select></div>
-              <div class="field" style="display:flex;align-items:flex-end;"><button class="btn btn-accent btn-sm" onclick="iniciarCese()">Iniciar / abrir proceso de cese</button></div>
-            </div>
-          </div>
+        <div class="aviso-box warn" style="margin-bottom:14px;">
+          <div class="aviso-title">Los ceses nuevos se registran en "Ceses y liquidaciones"</div>
+          <div style="font-size:13px;margin-top:4px;">Ahí se registra el cese con su motivo, liquidación, certificado de trabajo y baja en T-Registro, con los plazos legales. Aquí solo quedan los procesos registrados antes, para consultarlos o terminarlos.</div>
+          <button class="btn btn-accent btn-sm" style="margin-top:10px;" onclick="switchView('cesados')">Ir a Ceses y liquidaciones</button>
         </div>
+        <select id="ceseEmployeeSelect" style="display:none;"></select>
         <div id="ceseWizard"></div>
         <div class="panel">
           <div class="panel-head"><h3>Procesos de cese registrados</h3></div>
@@ -541,9 +540,10 @@ tr:hover td{background:#FAF9F6;}
     <div class="view" id="view-constancias">
       <div class="view-header">
         <div>
-          <h2>Constancias de EPPs</h2>
+          <h2>Constancias de EPP firmadas</h2>
           <p>Registra y consulta la entrega de Equipos de Protección Personal (EPP) a cada colaborador, mes a mes</p>
         </div>
+        <button class="btn btn-ghost btn-sm" onclick="switchView('epp')">← Volver a EPP</button>
       </div>
 
       <div class="stat-grid" id="constanciasStats"></div>
@@ -705,8 +705,6 @@ tr:hover td{background:#FAF9F6;}
         <button class="tab-sub-btn" data-asist-tab="permisos" onclick="switchAsistTab('permisos')">Permisos</button>
         <button class="tab-sub-btn" data-asist-tab="descansos" onclick="switchAsistTab('descansos')">Descansos médicos</button>
         <button class="tab-sub-btn" data-asist-tab="reportes" onclick="switchAsistTab('reportes')">2. Reporte mensual</button>
-        <button class="tab-sub-btn" data-asist-tab="prestamos" onclick="switchAsistTab('prestamos')">Préstamos y adelantos</button>
-        <button class="tab-sub-btn" data-asist-tab="reembolsos" onclick="switchAsistTab('reembolsos')">Reembolsos</button>
         <button class="tab-sub-btn" data-asist-tab="registro" id="tabRegistroAntiguo" style="display:none;" onclick="switchAsistTab('registro')">Registro detallado (antiguo)</button>
       </div>
 
@@ -978,6 +976,21 @@ tr:hover td{background:#FAF9F6;}
       </div>
     </div>
 
+    <!-- PRÉSTAMOS Y REEMBOLSOS (los bloques se traen desde Asistencia al iniciar) -->
+    <div class="view" id="view-prestamos">
+      <div class="view-header">
+        <div>
+          <h2>Préstamos y reembolsos</h2>
+          <p>Préstamos, adelantos y descuentos por EPP con su convenio firmado y cronograma; reembolsos de gastos (EPP, pasajes y otros)</p>
+        </div>
+      </div>
+      <div class="tabs-sub">
+        <button class="tab-sub-btn active" data-prest-tab="prestamos" onclick="switchPrestTab('prestamos')">Préstamos y adelantos</button>
+        <button class="tab-sub-btn" data-prest-tab="reembolsos" onclick="switchPrestTab('reembolsos')">Reembolsos</button>
+      </div>
+      <div id="prestamosVistaCont"></div>
+    </div>
+
     <!-- PLANILLA SEMANAL (PAGOS) -->
     <div class="view" id="view-reportes">
       <div class="view-header">
@@ -1007,6 +1020,7 @@ tr:hover td{background:#FAF9F6;}
           <h2>Planilla semanal (pagos)</h2>
           <p>Sube la trama semanal de pagos en Excel y controla cuánto se gasta en planilla por semana, mes, concepto y trabajador</p>
         </div>
+        <button class="btn btn-ghost btn-sm" onclick="switchView('planilla')">🏦 Cuentas bancarias y régimen</button>
       </div>
 
       <div class="stat-grid" id="plsStats"></div>
@@ -1270,6 +1284,7 @@ tr:hover td{background:#FAF9F6;}
         <button class="tab-sub-btn" data-epp-tab="kits" onclick="switchEppTab('kits')">Kits por puesto</button>
         <button class="tab-sub-btn" data-epp-tab="formato" onclick="switchEppTab('formato')">Formato físico semanal</button>
         <button class="tab-sub-btn" data-epp-tab="compras" onclick="switchEppTab('compras')">Lista de compras</button>
+        <button class="tab-sub-btn" id="btnConstanciasAntiguas" onclick="switchView('constancias')" title="Sube las constancias firmadas escaneadas y consulta las constancias mensuales">📎 Constancias firmadas (escaneadas)</button>
         <button class="tab-sub-btn" data-epp-tab="rm050" onclick="switchEppTab('rm050')">Registro R.M. 050</button>
       </div>
 
@@ -1593,7 +1608,7 @@ tr:hover td{background:#FAF9F6;}
     <div class="view" id="view-cesados">
       <div class="view-header">
         <div>
-          <h2>Trabajadores cesados</h2>
+          <h2>Ceses y liquidaciones</h2>
           <p>Bitácora de ceses: fecha, motivo, liquidación, baja en T-Registro y certificado de trabajo</p>
         </div>
       </div>
@@ -1843,6 +1858,7 @@ tr:hover td{background:#FAF9F6;}
           <h2>Planilla y Cuentas Bancarias</h2>
           <p>Régimen de planilla (MYPE / General) y datos bancarios para el abono de sueldo de cada trabajador</p>
         </div>
+        <button class="btn btn-ghost btn-sm" onclick="switchView('planillasem')">← Volver a Planilla semanal</button>
       </div>
 
       <div class="stat-grid" id="planillaStats"></div>
@@ -2934,6 +2950,8 @@ async function init(){
   document.querySelectorAll('.nav-item').forEach(el=>{
     el.addEventListener('click', ()=>switchView(el.dataset.view));
   });
+  moverSeccionPrestamos();
+  try{ if(localStorage.getItem('rrhhNavOtros')==='0') toggleNavOtros(false); }catch(e){}
   document.querySelectorAll('.tab-sub-btn[data-filter]').forEach(el=>{
     el.addEventListener('click', ()=>{
       document.querySelectorAll('.tab-sub-btn[data-filter]').forEach(b=>b.classList.remove('active'));
@@ -2973,7 +2991,20 @@ function switchView(name){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
-  document.querySelector('.nav-item[data-view="'+name+'"]').classList.add('active');
+  // Algunas secciones ya no están en el menú (se abren desde botones); si no tiene ítem, no se marca nada.
+  const navItem = document.querySelector('.nav-item[data-view="'+name+'"]');
+  if(navItem){
+    navItem.classList.add('active');
+    if(navItem.closest('#navOtros')) toggleNavOtros(true);
+  }
+  if(name==='legajosunafil'){
+    const t = document.getElementById('tabLegajoCese');
+    if(t) t.style.display = procesosCese.length ? '' : 'none';
+  }
+  if(name==='prestamos'){
+    const act = document.querySelector('[data-prest-tab].active');
+    switchPrestTab(act ? act.dataset.prestTab : 'prestamos');
+  }
   if(name==='reportes') renderReportes();
   if(name==='dashboard') renderPendientes();
   if(name==='boletaspago') renderBoletasSemanales();
@@ -6161,6 +6192,30 @@ function exportDatabaseCsv(){
 }
 
 // ---------- Asistencia: Faltas y descansos médicos ----------
+// Préstamos, adelantos y reembolsos tienen su propia sección (antes estaban dentro de Asistencia).
+function switchPrestTab(tab){
+  document.querySelectorAll('[data-prest-tab]').forEach(b=>b.classList.toggle('active', b.dataset.prestTab===tab));
+  document.getElementById('asistPrestamosBlock').style.display = tab==='prestamos' ? 'block':'none';
+  document.getElementById('asistReembolsosBlock').style.display = tab==='reembolsos' ? 'block':'none';
+  if(tab==='prestamos') prestamoVistaPrevia();
+  if(tab==='reembolsos') initReembolsoForm();
+}
+// Los bloques de préstamos y reembolsos están escritos dentro de Asistencia; se pasan a su propia sección.
+function moverSeccionPrestamos(){
+  const cont = document.getElementById('prestamosVistaCont');
+  const p = document.getElementById('asistPrestamosBlock'), r = document.getElementById('asistReembolsosBlock');
+  if(!cont || !p || !r || cont.contains(p)) return;
+  cont.append(p, r);
+  p.style.display = 'block'; r.style.display = 'none';
+}
+document.addEventListener('DOMContentLoaded', moverSeccionPrestamos);
+function toggleNavOtros(forzar){
+  const cont = document.getElementById('navOtros');
+  const abrir = typeof forzar==='boolean' ? forzar : cont.style.display==='none';
+  cont.style.display = abrir ? '' : 'none';
+  document.getElementById('navOtrosFlecha').innerHTML = abrir ? '&#9662;' : '&#9656;';
+  try{ localStorage.setItem('rrhhNavOtros', abrir ? '1' : '0'); }catch(e){}
+}
 function switchAsistTab(tab){
   document.querySelectorAll('[data-asist-tab]').forEach(b=>b.classList.remove('active'));
   document.querySelector(`[data-asist-tab="${tab}"]`).classList.add('active');
@@ -6168,10 +6223,6 @@ function switchAsistTab(tab){
   document.getElementById('asistFaltasBlock').style.display = tab==='faltas' ? 'block':'none';
   document.getElementById('asistPermisosBlock').style.display = tab==='permisos' ? 'block':'none';
   document.getElementById('asistDescansosBlock').style.display = tab==='descansos' ? 'block':'none';
-  document.getElementById('asistPrestamosBlock').style.display = tab==='prestamos' ? 'block':'none';
-  document.getElementById('asistReembolsosBlock').style.display = tab==='reembolsos' ? 'block':'none';
-  if(tab==='prestamos') prestamoVistaPrevia();
-  if(tab==='reembolsos') initReembolsoForm();
   document.getElementById('asistFormatoManualBlock').style.display = tab==='formatomanual' ? 'block':'none';
   document.getElementById('asistReportesBlock').style.display = tab==='reportes' ? 'block':'none';
   if(tab==='reportes') renderReporteMensual();
@@ -9236,7 +9287,7 @@ async function reportarPerdidaEpp(entregaId){
     pagos: []
   });
   await saveData('prestamos', prestamos);
-  showToast(`Descuento registrado en Préstamos y Adelantos — revísalo en Asistencia y Horarios`);
+  showToast(`Descuento registrado — revísalo en Préstamos y reembolsos`);
 }
 
 function descargarFormatoAnualEppPdf(){
@@ -11885,7 +11936,7 @@ function calcularPendientes(){
   const M = apCalcularAnio(mesAnt.slice(0,4)).find(m=>m.mes===mesAnt);
   if(M && M.pendiente > 1) add('warn', `Aportes de ${apNombreMes(mesAnt)} (AFP, ONP, EsSalud) sin pago registrado: ${soles(M.pendiente)}`, null, 'Registrar pago', "switchView('dashboard'); document.getElementById('aportesContenido').scrollIntoView({behavior:'smooth'})");
   const reePend = reembolsos.filter(r=>r.estado==='Pendiente' || r.estado==='Aprobado');
-  add('warn', `${reePend.length} reembolso(s) de gastos por aprobar o pagar: ${soles(reembolsoPendienteTotal())}`, reePend.map(r=>{ const e = employees.find(x=>x.id===r.empId); return (e ? e.nombre : '—')+' ('+r.numero+', '+r.estado.toLowerCase()+')'; }), 'Ver reembolsos', "switchView('asistencia'); switchAsistTab('reembolsos')");
+  add('warn', `${reePend.length} reembolso(s) de gastos por aprobar o pagar: ${soles(reembolsoPendienteTotal())}`, reePend.map(r=>{ const e = employees.find(x=>x.id===r.empId); return (e ? e.nombre : '—')+' ('+r.numero+', '+r.estado.toLowerCase()+')'; }), 'Ver reembolsos', "switchView('prestamos'); switchPrestTab('reembolsos')");
   const compras = eppListaCompras();
   if(compras.length) add('info', `EPP por comprar: ${compras.reduce((s,f)=>s+f.comprar,0)} unidades en ${compras.length} artículo(s)`, null, 'Ver lista de compras', "switchView('epp'); switchEppTab('compras')");
   const orden = {danger:0, warn:1, info:2};
