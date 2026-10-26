@@ -1844,15 +1844,8 @@ tr:hover td{background:#FAF9F6;}
 
       <div class="panel">
         <div class="panel-head">
-          <h3>Inducciones registradas</h3>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <select class="search-box" id="induccionFiltroTrabajador" style="width:220px;" onchange="renderInduccion()">
-              <option value="todos">Todos los trabajadores</option>
-            </select>
-            <select class="search-box" id="induccionFiltroTipo" style="width:200px;" onchange="renderInduccion()">
-              <option value="todos">Todos los tipos</option>
-            </select>
-          </div>
+          <h3>Bitácora de inducciones</h3>
+
         </div>
         <div id="induccionTable"></div>
       </div>
@@ -12832,43 +12825,234 @@ function renderInduccion(){
   </div>`;
   document.getElementById('induccionAviso').innerHTML = avisoHtml;
 
-  const selTrab = document.getElementById('induccionFiltroTrabajador');
-  const selTipo = document.getElementById('induccionFiltroTipo');
-  const valTrab = selTrab.value || 'todos', valTipo = selTipo.value || 'todos';
-  const conRegistro = [...new Set(induccionesSeguridad.map(r=>r.empId))].map(id=>empById.get(id)).filter(Boolean).sort((a,b)=>a.nombre.localeCompare(b.nombre));
-  selTrab.innerHTML = `<option value="todos">Todos los trabajadores</option>` + conRegistro.map(e=>`<option value="${escHtml(e.id)}">${escHtml(e.nombre)}</option>`).join('');
-  selTrab.value = conRegistro.some(e=>e.id===valTrab) ? valTrab : 'todos';
-  const tipos = [...new Set(induccionesSeguridad.map(r=>r.tipo))];
-  selTipo.innerHTML = `<option value="todos">Todos los tipos</option>` + tipos.map(t=>`<option value="${escHtml(t)}">${escHtml(t)}</option>`).join('');
-  selTipo.value = tipos.includes(valTipo) ? valTipo : 'todos';
-
-  let lista = [...induccionesSeguridad];
-  if(selTrab.value!=='todos') lista = lista.filter(r=>r.empId===selTrab.value);
-  if(selTipo.value!=='todos') lista = lista.filter(r=>r.tipo===selTipo.value);
-  lista.sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
-  const sesionesConArchivo = new Set(induccionesSeguridad.filter(r=>r.fileData).map(r=>r.sesionId));
-
-  const rows = lista.map(r=>{
-    const e = empById.get(r.empId);
-    return `<tr>
-      <td><b>${escHtml(e ? e.nombre : '(trabajador eliminado)')}</b>${e && e.dni ? `<div class="mono" style="font-size:11px;color:var(--ink-soft);">${escHtml(e.dni)}</div>` : ''}</td>
-      <td>${escHtml(r.tipo)}<div style="font-size:11px;color:var(--ink-soft);">${escHtml(r.cliente||'')}</div></td>
-      <td>${fmtDate(r.fecha)}</td>
-      <td>${r.vence ? fmtDate(r.vence) : '—'}</td>
-      <td>${induccionPill(r)}</td>
-      <td style="font-size:12px;">${escHtml(r.expositor||'—')}${r.horas ? ` · ${r.horas} h` : ''}${r.notas ? `<div style="color:var(--ink-soft);">${escHtml(r.notas)}</div>` : ''}</td>
-      <td class="actions-cell">
-        ${sesionesConArchivo.has(r.sesionId) ? `<button class="btn btn-ghost btn-sm" onclick="downloadInduccionFile('${escHtml(r.sesionId)}')">Constancia</button>` : ''}
-        <button class="btn btn-danger btn-sm" onclick="deleteInduccion('${escHtml(r.id)}')">Eliminar</button>
-      </td>
-    </tr>`;
-  }).join('');
-  document.getElementById('induccionTable').innerHTML = lista.length ? `
-    <div class="table-scroll">
-    <table><thead><tr><th>Trabajador</th><th>Tipo / cliente</th><th>Fecha</th><th>Vence</th><th>Estado</th><th>Expositor / notas</th><th></th></tr></thead>
-    <tbody>${rows}</tbody></table>
-    </div>` : `<div class="empty">Aún no hay inducciones registradas.</div>`;
+  renderBitacora('inducciones');
 }
+
+
+
+// ---------- Bitácora dinámica (componente reutilizable) ----------
+// Una sola forma de mostrar registros en todas las secciones: búsqueda, rango de fechas, filtros,
+// estados con contador, orden por columna (lo urgente primero por defecto), grupos que se despliegan,
+// "Cargar más" de 50 en 50 y exportación de lo filtrado a PDF o Excel. Cada sección solo da su configuración.
+const BITACORAS = {};
+const BITACORA_ESTADOS = [
+  {clave:'vencido', label:'🔴 Vencidos', fondo:'var(--danger-light)', color:'var(--danger)', orden:0},
+  {clave:'porvencer', label:'⚠ Por vencer', fondo:'var(--danger-light)', color:'var(--danger)', orden:1},
+  {clave:'vigente', label:'🟢 Vigentes', fondo:'var(--success-light)', color:'var(--success,#2F6B4F)', orden:2},
+  {clave:'otro', label:'Otros', fondo:'#F3F1EA', color:'var(--ink-soft)', orden:3}
+];
+const BITACORA_PASO = 50;
+function bitacoraEstadoDef(c){ return BITACORA_ESTADOS.find(x=>x.clave===c) || BITACORA_ESTADOS[3]; }
+function bitacoraPill(est){
+  const d = bitacoraEstadoDef(est.clave);
+  return `<span class="pill" style="background:${d.fondo};color:${d.color};font-weight:${est.clave==='vigente' || est.clave==='otro' ? 500 : 700};">${escHtml(est.texto)}</span>`;
+}
+function registrarBitacora(cfg){
+  let g = {};
+  try{ g = JSON.parse(localStorage.getItem('rrhhBitacora_'+cfg.id) || '{}') || {}; }catch(e){}
+  BITACORAS[cfg.id] = {cfg, q:'', desde:g.desde||'', hasta:g.hasta||'', estado:g.estado||'todos', ordenCol:g.ordenCol||null, ordenDir:g.ordenDir||'desc', filtros:g.filtros||{}, limite:BITACORA_PASO, abiertos:new Set()};
+}
+function bitacoraGuardar(id){
+  const b = BITACORAS[id];
+  try{ localStorage.setItem('rrhhBitacora_'+id, JSON.stringify({desde:b.desde, hasta:b.hasta, estado:b.estado, ordenCol:b.ordenCol, ordenDir:b.ordenDir, filtros:b.filtros})); }catch(e){}
+}
+function bitacoraSet(id, campo, valor){ const b = BITACORAS[id]; b[campo] = valor; b.limite = BITACORA_PASO; bitacoraGuardar(id); renderBitacoraCuerpo(id); }
+function bitacoraFiltro(id, fid, valor){ const b = BITACORAS[id]; b.filtros[fid] = valor; b.limite = BITACORA_PASO; bitacoraGuardar(id); renderBitacoraCuerpo(id); }
+function bitacoraOrdenar(id, col){
+  const b = BITACORAS[id];
+  if(b.ordenCol===col) b.ordenDir = b.ordenDir==='asc' ? 'desc' : 'asc';
+  else { b.ordenCol = col; b.ordenDir = (col==='fecha' || col==='por') ? 'desc' : 'asc'; }
+  bitacoraGuardar(id); renderBitacoraCuerpo(id);
+}
+function bitacoraOrdenUrgencia(id){ BITACORAS[id].ordenCol = null; bitacoraGuardar(id); renderBitacoraCuerpo(id); }
+function bitacoraLimpiar(id){ const b = BITACORAS[id]; b.q=''; b.desde=''; b.hasta=''; b.estado='todos'; b.filtros={}; b.ordenCol=null; bitacoraGuardar(id); const c = document.getElementById(b.cfg.contenedor); if(c) c.innerHTML=''; renderBitacora(id); }
+function bitacoraToggleGrupo(id, k){ const b = BITACORAS[id]; b.abiertos.has(k) ? b.abiertos.delete(k) : b.abiertos.add(k); renderBitacoraCuerpo(id); }
+function bitacoraMas(id){ BITACORAS[id].limite += BITACORA_PASO; renderBitacoraCuerpo(id); }
+let bitacoraBuscarTimer = null;
+function bitacoraBuscar(id, v){
+  clearTimeout(bitacoraBuscarTimer);
+  bitacoraBuscarTimer = setTimeout(()=>{ BITACORAS[id].q = v; BITACORAS[id].limite = BITACORA_PASO; renderBitacoraCuerpo(id); }, 200);
+}
+function renderBitacora(id){
+  const b = BITACORAS[id]; if(!b) return;
+  const cont = document.getElementById(b.cfg.contenedor); if(!cont) return;
+  // La barra de herramientas se dibuja una sola vez: así no se pierde lo que se está escribiendo en la búsqueda.
+  if(!cont.querySelector('[data-bitacora-cuerpo]')){
+    cont.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;padding:12px 18px 0;">
+      <div class="field" style="margin:0;flex:1;min-width:200px;"><label>Buscar</label><input type="search" data-bitacora-q placeholder="${escHtml(b.cfg.placeholder || 'Nombre, DNI…')}" value="${escHtml(b.q)}" oninput="bitacoraBuscar('${id}', this.value)"></div>
+      <div class="field" style="margin:0;"><label>Desde</label><input type="date" value="${b.desde}" onchange="bitacoraSet('${id}','desde',this.value)"></div>
+      <div class="field" style="margin:0;"><label>Hasta</label><input type="date" value="${b.hasta}" onchange="bitacoraSet('${id}','hasta',this.value)"></div>
+      ${(b.cfg.filtros||[]).map(f=>`<div class="field" style="margin:0;"><label>${escHtml(f.label)}</label><select data-bitacora-filtro="${f.id}" onchange="bitacoraFiltro('${id}','${f.id}',this.value)"></select></div>`).join('')}
+      <button class="btn btn-ghost btn-sm" onclick="bitacoraLimpiar('${id}')" title="Quitar búsqueda y filtros">Limpiar</button>
+      <button class="btn btn-ghost btn-sm" onclick="bitacoraExportar('${id}','pdf')">📄 PDF</button>
+      <button class="btn btn-ghost btn-sm" onclick="bitacoraExportar('${id}','excel')">📊 Excel</button>
+    </div><div data-bitacora-cuerpo></div>`;
+  }
+  const items = b.cfg.items();
+  (b.cfg.filtros||[]).forEach(f=>{
+    const sel = cont.querySelector(`[data-bitacora-filtro="${f.id}"]`);
+    const ops = [...new Set(items.map(f.valor).filter(Boolean))].sort();
+    if(b.filtros[f.id] && !ops.includes(b.filtros[f.id])) b.filtros[f.id] = '';
+    sel.innerHTML = `<option value="">Todos</option>` + ops.map(o=>`<option ${o===b.filtros[f.id] ? 'selected' : ''}>${escHtml(o)}</option>`).join('');
+  });
+  renderBitacoraCuerpo(id);
+}
+function bitacoraFiltrar(id){
+  const b = BITACORAS[id], cfg = b.cfg, q = plsNorm(b.q);
+  return cfg.items().map(it=>({it, est: cfg.estado(it)})).filter(({it})=>{
+    const f = cfg.fecha(it) || '';
+    if(b.desde && (!f || f < b.desde)) return false;
+    if(b.hasta && (!f || f > b.hasta)) return false;
+    if(q && !plsNorm(cfg.texto(it)).includes(q)) return false;
+    for(const fl of (cfg.filtros||[])){ const v = b.filtros[fl.id]; if(v && fl.valor(it)!==v) return false; }
+    return true;
+  });
+}
+function bitacoraOrdenarLista(b, L){
+  const cfg = b.cfg;
+  if(!b.ordenCol) return L.slice().sort((x,y)=>bitacoraEstadoDef(x.est.clave).orden - bitacoraEstadoDef(y.est.clave).orden || String(cfg.fecha(y.it)||'').localeCompare(String(cfg.fecha(x.it)||'')));
+  const col = cfg.columnas.find(c=>c.id===b.ordenCol);
+  if(!col || !col.orden) return L;
+  const s = b.ordenDir==='asc' ? 1 : -1;
+  return L.slice().sort((x,y)=>{
+    const a = col.orden(x.it, x.est), c = col.orden(y.it, y.est);
+    return (typeof a==='number' && typeof c==='number' ? a - c : String(a==null ? '' : a).localeCompare(String(c==null ? '' : c))) * s;
+  });
+}
+function renderBitacoraCuerpo(id){
+  const b = BITACORAS[id], cfg = b.cfg;
+  const cont = document.getElementById(cfg.contenedor);
+  const cuerpo = cont && cont.querySelector('[data-bitacora-cuerpo]');
+  if(!cuerpo) return;
+  const base = bitacoraFiltrar(id);
+  const cuenta = c => base.filter(x=>x.est.clave===c).length;
+  const chips = [{clave:'todos', label:'Todos', n:base.length}, ...BITACORA_ESTADOS.filter(e=>e.clave!=='otro' || cuenta('otro')).map(e=>({clave:e.clave, label:e.clave==='otro' ? (cfg.etiquetaOtros || 'Otros') : e.label, n:cuenta(e.clave)}))];
+  const L = bitacoraOrdenarLista(b, b.estado==='todos' ? base : base.filter(x=>x.est.clave===b.estado));
+  const colOrden = b.ordenCol && cfg.columnas.find(c=>c.id===b.ordenCol);
+  const agrupar = !!cfg.grupo && !b.q && !(colOrden && colOrden.sinAgrupar);
+  const bloques = [], idx = new Map();
+  L.forEach(x=>{
+    const k = agrupar ? cfg.grupo(x.it) : null;
+    if(k && idx.has(k)) idx.get(k).items.push(x);
+    else { const blk = {k, items:[x]}; if(k) idx.set(k, blk); bloques.push(blk); }
+  });
+  const cols = cfg.columnas.filter(c=>!c.soloExportar), ncol = cols.length + 1;
+  const th = cols.map(c=>{
+    const activo = b.ordenCol===c.id;
+    return `<th style="white-space:nowrap;${c.orden ? 'cursor:pointer;user-select:none;' : ''}" ${c.orden ? `onclick="bitacoraOrdenar('${id}','${c.id}')" title="Ordenar por ${escHtml(c.t)}"` : ''}>${escHtml(c.t)}${c.orden ? (activo ? (b.ordenDir==='asc' ? ' ▲' : ' ▼') : ' <span style="opacity:.3;">▲▼</span>') : ''}</th>`;
+  }).join('') + '<th></th>';
+  const alerta = x => x.est.clave==='vencido' || x.est.clave==='porvencer';
+  const fila = (x, dentro)=>`<tr style="${alerta(x) ? 'background:var(--danger-light);' : ''}">${cols.map((c,i)=>`<td${i===0 && dentro ? ' style="padding-left:30px;"' : ''}>${c.html(x.it, x.est)}</td>`).join('')}<td class="actions-cell">${cfg.acciones ? cfg.acciones(x.it, x.est) : ''}</td></tr>`;
+  const visibles = bloques.slice(0, b.limite);
+  const filas = visibles.map(blk=>{
+    if(!blk.k || blk.items.length===1) return blk.items.map(x=>fila(x, false)).join('');
+    const abierto = b.abiertos.has(blk.k);
+    const peor = blk.items.reduce((m,x)=>bitacoraEstadoDef(x.est.clave).orden < bitacoraEstadoDef(m.est.clave).orden ? x : m, blk.items[0]);
+    const nAlerta = blk.items.filter(alerta).length;
+    return `<tr style="cursor:pointer;background:${nAlerta ? 'var(--danger-light)' : '#FAF9F6'};" onclick="bitacoraToggleGrupo('${id}','${escHtml(blk.k)}')"><td colspan="${ncol}">
+        <span style="display:inline-block;width:18px;font-weight:700;">${abierto ? '▾' : '▸'}</span>${cfg.grupoResumen(blk.items.map(x=>x.it))} · <b>${blk.items.length}</b> trabajador(es) ${bitacoraPill(peor.est)}${nAlerta && nAlerta < blk.items.length ? ` <span style="font-size:12px;color:var(--danger);font-weight:600;">(${nAlerta} con alerta)</span>` : ''}
+        <span class="hint" style="margin-left:8px;">${abierto ? 'clic para cerrar' : 'clic para ver'}</span></td></tr>` + (abierto ? blk.items.map(x=>fila(x, true)).join('') : '');
+  }).join('');
+  const hayFiltro = b.q || b.desde || b.hasta || Object.values(b.filtros).some(Boolean);
+  cuerpo.innerHTML = `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:10px 18px;">
+      ${chips.map(c=>`<button class="tab-sub-btn ${b.estado===c.clave ? 'active' : ''}" onclick="bitacoraSet('${id}','estado','${c.clave}')">${escHtml(c.label)} (${c.n})</button>`).join('')}
+      ${b.ordenCol ? `<button class="btn btn-ghost btn-sm" onclick="bitacoraOrdenUrgencia('${id}')">↺ Volver al orden por urgencia</button>` : '<span class="hint" style="margin-left:6px;">Orden: lo urgente primero, luego lo más reciente. Clic en una columna para ordenar.</span>'}
+    </div>` + (L.length
+    ? `<div class="table-scroll"><table><thead><tr>${th}</tr></thead><tbody>${filas}</tbody></table></div>
+       <div class="hint" style="padding:8px 18px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+         <span>Mostrando ${Math.min(b.limite, bloques.length)} de ${bloques.length} fila(s)${agrupar && bloques.length < L.length ? ' agrupadas por sesión' : ''} · ${L.length} registro(s)</span>
+         ${bloques.length > b.limite ? `<button class="btn btn-ghost btn-sm" onclick="bitacoraMas('${id}')">Cargar ${BITACORA_PASO} más</button>` : ''}
+       </div>`
+    : `<div class="empty">${hayFiltro || b.estado!=='todos' ? 'Ningún registro coincide con la búsqueda o los filtros.' : escHtml(cfg.vacio || 'Aún no hay registros.')}</div>`);
+}
+// Exporta exactamente lo que se ve filtrado (sin el límite de "Cargar más").
+function bitacoraExportar(id, tipo){
+  const b = BITACORAS[id], cfg = b.cfg;
+  const base = bitacoraFiltrar(id);
+  const L = bitacoraOrdenarLista(b, b.estado==='todos' ? base : base.filter(x=>x.est.clave===b.estado));
+  if(!L.length){ showToast('No hay registros para exportar con estos filtros'); return; }
+  const cols = cfg.columnas.filter(c=>c.exportar);
+  if(tipo==='excel'){
+    const ws = XLSX.utils.json_to_sheet(L.map(x=>Object.fromEntries(cols.map(c=>[c.t, c.exportar(x.it, x.est)]))));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Bitacora');
+    XLSX.writeFile(wb, `${cfg.archivo}-${hoyISO()}.xlsx`);
+    showToast('Excel descargado');
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const o = pdfFormal(doc);
+  const numero = (cfg.prefijo || 'BIT') + '-' + hoyISO().replace(/-/g,'');
+  o.encabezado(cfg.tituloPdf, numero, hoyISO());
+  const filtrosTxt = [
+    b.estado!=='todos' ? 'Estado: ' + bitacoraEstadoDef(b.estado).label.replace(/^\S+\s/, '') : '',
+    b.desde ? 'desde ' + docsFechaCorta(b.desde) : '', b.hasta ? 'hasta ' + docsFechaCorta(b.hasta) : '',
+    b.q ? `búsqueda "${b.q}"` : '',
+    ...(cfg.filtros||[]).map(f=>b.filtros[f.id] ? f.label + ': ' + b.filtros[f.id] : '')
+  ].filter(Boolean).join(' · ');
+  const n = c => L.filter(x=>x.est.clave===c).length;
+  o.fila([['Registros', String(L.length)], ['Filtros', filtrosTxt || 'Ninguno (todos los registros)']]);
+  o.fila([['Vencidos', String(n('vencido'))], ['Por vencer', String(n('porvencer'))], ['Vigentes', String(n('vigente'))]]);
+  o.seccion('DETALLE');
+  o.tabla([{t:'N°', w:0.35}, ...cols.map(c=>({t:c.t, w:c.w || 1}))], L.map((x,i)=>{
+    const r = [i+1, ...cols.map(c=>c.exportar(x.it, x.est))];
+    if(x.est.clave==='vencido' || x.est.clave==='porvencer') r.rojo = true;
+    return r;
+  }));
+  o.pie(numero);
+  doc.save(`${numero}-${cfg.archivo}.pdf`);
+  showToast('PDF descargado');
+}
+
+// ---------- Bitácora de inducciones de seguridad ----------
+// Une las charlas registradas en esta sección con el examen de inducción de la ficha de cada trabajador.
+function induccionBitacoraItems(){
+  const L = induccionesSeguridad.map(r=>({...r, origen:'charla'}));
+  employees.filter(e=>e.constanciaSeg).forEach(e=>L.push({id:'ex_'+e.id, empId:e.id, tipo:'Examen de inducción (ficha)', cliente:'', fecha:e.constanciaSegInicio || '', vence:e.constanciaSeg, origen:'ficha', creadoPor:e.modificadoPor || e.creadoPor || ''}));
+  return L;
+}
+function induccionBitacoraEstado(r){
+  const e = employees.find(x=>x.id===r.empId);
+  if(e && e.estado!=='activo') return {clave:'otro', texto:'Trabajador cesado'};
+  if(!r.vence) return {clave:'vigente', texto:'Vigente (no vence)'};
+  const d = daysUntil(r.vence);
+  if(d < 0) return tieneInduccionVigente(r.empId) ? {clave:'otro', texto:'Renovada'} : {clave:'vencido', texto:`Vencida hace ${-d} d`};
+  if(d <= INDUCCION_DIAS_ALERTA){
+    // Si el trabajador tiene otra inducción vigente que dura más, este registro ya no es una alerta.
+    const mejor = e ? diasParaVencerInduccion(e) : d;
+    if(mejor===null || mejor > INDUCCION_DIAS_ALERTA) return {clave:'vigente', texto:'Vigente (cubierta por otra)'};
+    return {clave:'porvencer', texto: d===0 ? 'Vence hoy' : `Vence en ${d} d`};
+  }
+  return {clave:'vigente', texto:'Vigente'};
+}
+registrarBitacora({
+  id:'inducciones', contenedor:'induccionTable', vacio:'Aún no hay inducciones registradas.',
+  placeholder:'Nombre, DNI, cliente, expositor, notas…', etiquetaOtros:'Renovadas / cesados',
+  tituloPdf:'BITÁCORA DE INDUCCIONES DE SEGURIDAD', prefijo:'BIT-IND', archivo:'bitacora-inducciones',
+  items: induccionBitacoraItems,
+  estado: induccionBitacoraEstado,
+  fecha: r=>r.fecha,
+  texto: r=>{ const e = employees.find(x=>x.id===r.empId) || {}; return [e.nombre, e.dni, r.tipo, r.cliente, r.expositor, r.notas, r.creadoPor].join(' '); },
+  grupo: r=>r.origen==='charla' ? r.sesionId : null,
+  grupoResumen: L=>{ const r = L[0]; return `<b>${fmtDate(r.fecha)}</b> · ${escHtml(r.tipo||'')}${r.cliente ? ' — '+escHtml(r.cliente) : ''}${r.expositor ? ' · '+escHtml(r.expositor) : ''}${L.some(x=>x.fileData) ? ' · 📎 constancia' : ''}`; },
+  filtros:[{id:'tipo', label:'Tipo', valor:r=>r.tipo}],
+  columnas:[
+    {id:'trabajador', t:'Trabajador', sinAgrupar:true, w:2.0, orden:r=>((employees.find(x=>x.id===r.empId)||{}).nombre||''),
+     html:r=>{ const e = employees.find(x=>x.id===r.empId); return `<b>${escHtml(e ? e.nombre : '(trabajador eliminado)')}</b>${e && e.dni ? `<div class="mono" style="font-size:11px;color:var(--ink-soft);">${escHtml(e.dni)}</div>` : ''}`; },
+     exportar:r=>((employees.find(x=>x.id===r.empId)||{}).nombre||'—')},
+    {id:'dni', t:'DNI', soloExportar:true, w:1.05, exportar:r=>((employees.find(x=>x.id===r.empId)||{}).dni||'')},
+    {id:'tipo', t:'Tipo / cliente', w:1.55, orden:r=>r.tipo||'', html:r=>`${escHtml(r.tipo||'')}${r.cliente ? `<div style="font-size:11px;color:var(--ink-soft);">${escHtml(r.cliente)}</div>` : ''}`, exportar:r=>(r.tipo||'') + (r.cliente ? ' — '+r.cliente : '')},
+    {id:'fecha', t:'Fecha', w:1.1, orden:r=>r.fecha||'', html:r=>fmtDate(r.fecha), exportar:r=>docsFechaCorta(r.fecha)||'—'},
+    {id:'vence', t:'Vence', w:1.1, orden:r=>r.vence||'9999-12-31', html:r=>r.vence ? fmtDate(r.vence) : 'No vence', exportar:r=>r.vence ? docsFechaCorta(r.vence) : 'No vence'},
+    {id:'estado', t:'Estado', w:1.15, orden:(r,est)=>bitacoraEstadoDef(est.clave).orden, html:(r,est)=>bitacoraPill(est), exportar:(r,est)=>est.texto},
+    {id:'notas', t:'Expositor', w:1.15, html:r=>`<span style="font-size:12px;">${escHtml(r.expositor||'—')}${r.horas ? ` · ${r.horas} h` : ''}${r.notas ? `<div style="color:var(--ink-soft);">${escHtml(r.notas)}</div>` : ''}</span>`, exportar:r=>[r.expositor, r.notas].filter(Boolean).join(' · ')},
+    {id:'por', t:'Registrado por', w:1.05, orden:r=>r.creadoPor||'', html:r=>`<span style="font-size:12px;">${escHtml(r.creadoPor||'—')}</span>`, exportar:r=>r.creadoPor||''}
+  ],
+  acciones: r=> r.origen==='ficha'
+    ? `<button class="btn btn-ghost btn-sm" onclick="openEmployeeModal('${escHtml(r.empId)}')">Ver ficha</button>`
+    : `${induccionesSeguridad.some(x=>x.sesionId===r.sesionId && x.fileData) ? `<button class="btn btn-ghost btn-sm" onclick="downloadInduccionFile('${escHtml(r.sesionId)}')">Constancia</button>` : ''}<button class="btn btn-danger btn-sm" onclick="deleteInduccion('${escHtml(r.id)}')">Eliminar</button>`
+});
 
 // ---------- Cobertura SCTR / Vida Ley por trabajador (actualización masiva) ----------
 const COB_TIPOS = {
