@@ -913,11 +913,9 @@ tr:hover td{background:#FAF9F6;}
         <div class="panel">
           <div class="panel-head">
             <h3>Reembolsos registrados</h3>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <select id="reembolsoFiltro" onchange="renderReembolsos()" style="width:auto;"><option value="">Todos</option><option>Pendiente</option><option>Aprobado</option><option>Pagado</option><option>Rechazado</option></select>
-            </div>
           </div>
           <div class="stat-grid" id="reembolsosResumen" style="padding:16px 18px 0;"></div>
+          <div id="reembolsosAntiguos"></div>
           <div id="reembolsosTable"></div>
         </div>
       </div>
@@ -1130,19 +1128,6 @@ tr:hover td{background:#FAF9F6;}
       <div class="panel">
         <div class="panel-head">
           <h3>Bitácora de movimientos</h3>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <select class="search-box" id="invMovFiltroTipo" style="width:150px;">
-              <option value="todos">Entradas y salidas</option>
-              <option value="entrada">Solo entradas</option>
-              <option value="salida">Solo salidas</option>
-              <option value="ajuste">Solo ajustes</option>
-            </select>
-            <select class="search-box" id="invMovFiltroArticulo" style="width:200px;">
-              <option value="todos">Todos los artículos</option>
-            </select>
-            <input class="search-box" id="invMovSearch" placeholder="Buscar por entregado a / responsable...">
-            <button class="btn btn-ghost btn-sm" onclick="exportInventoryMovPdf()">Exportar PDF</button>
-          </div>
         </div>
         <div id="invMovTable"></div>
       </div>
@@ -1368,10 +1353,7 @@ tr:hover td{background:#FAF9F6;}
         </div>
         <div class="panel">
           <div class="panel-head">
-            <h3>Entregas registradas</h3>
-            <select class="search-box" id="eppFiltroColaborador" style="width:260px;">
-              <option value="todos">Todos los colaboradores</option>
-            </select>
+            <h3>Bitácora de entregas de EPP</h3>
           </div>
           <div id="eppAsignacionesTable"></div>
         </div>
@@ -1678,16 +1660,7 @@ tr:hover td{background:#FAF9F6;}
 
       <div class="panel">
         <div class="panel-head">
-          <h3>Ceses registrados</h3>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <input class="search-box" id="cesadosBuscar" placeholder="Buscar nombre o DNI" style="width:200px;" oninput="renderCesados()">
-            <select class="search-box" id="cesadosFiltroMotivo" style="width:200px;" onchange="renderCesados()">
-              <option value="todos">Todos los motivos</option>
-            </select>
-            <select class="search-box" id="cesadosFiltroAnio" style="width:120px;" onchange="renderCesados()">
-              <option value="todos">Todos los años</option>
-            </select>
-          </div>
+          <h3>Bitácora de ceses</h3>
         </div>
         <div id="cesadosTable"></div>
       </div>
@@ -3131,9 +3104,6 @@ async function init(){
     renderPersonalTable(active ? active.dataset.filter : 'todos');
   });
   document.getElementById('invSearch').addEventListener('input', renderInventory);
-  document.getElementById('invMovFiltroTipo').addEventListener('change', renderInventory);
-  document.getElementById('invMovFiltroArticulo').addEventListener('change', renderInventory);
-  document.getElementById('invMovSearch').addEventListener('input', renderInventory);
   document.getElementById('invHistAnio').addEventListener('change', renderInventarioHistoricoMensual);
   document.getElementById('boletaPagoFiltroColaborador').addEventListener('change', renderBoletasPago);
   document.getElementById('boletaPagoFiltroPeriodo').addEventListener('change', renderBoletasPago);
@@ -4654,7 +4624,7 @@ function renderEmo(){
     avisoHtml += `<div class="aviso-box danger" style="border:2px solid var(--danger);">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
         <div class="aviso-title" style="color:var(--danger);font-size:14px;">⚠ ${vencidos.length ? `${vencidos.length} EMO vencido(s)${porVencer.length ? ' y ' : ''}` : ''}${porVencer.length ? `${porVencer.length} EMO vence(n) en los próximos ${EMO_DIAS_ALERTA} días` : ''}:</div>
-        <button class="btn btn-danger btn-sm" onclick="imprimirAvisoEmo()">📄 Descargar aviso (PDF)</button>
+        <button class="btn btn-sm" style="background:var(--danger);color:#fff;" onclick="imprimirAvisoEmo()">📄 Descargar aviso (PDF)</button>
       </div>
       <div class="aviso-list" style="margin-top:8px;">${chips}</div></div>`;
   }
@@ -7221,8 +7191,6 @@ async function generarConstanciaPrestamoPdfAnterior(id){
 }
 
 function renderPrestamos(){
-  const sorted = [...prestamos].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
-
   const saldoPorTipo = (tipos) => prestamos.filter(p=>tipos.includes(p.tipo)).reduce((s,p)=>s+saldoPrestamo(p),0);
   const resumenEl = document.getElementById('prestamosResumen');
   if(resumenEl){
@@ -7234,31 +7202,7 @@ function renderPrestamos(){
     `;
   }
 
-  const rows = sorted.map(p=>{
-    const e = employees.find(x=>x.id===p.empId);
-    const saldo = saldoPrestamo(p);
-    const estado = saldo<=0 ? '<span class="pill pill-ok">Pagado</span>' : '<span class="pill pill-warn">Pendiente</span>';
-    return `<tr>
-      <td>${e ? e.nombre : '(colaborador eliminado)'}</td>
-      <td><span class="pill pill-muted">${p.tipo}</span>${p.numero ? `<div class="mono" style="font-size:11px;color:var(--muted);margin-top:3px;">${p.numero}</div>` : ''}</td>
-      <td class="mono">S/ ${p.monto.toFixed(2)}</td>
-      <td>${fmtDate(p.fecha)}</td>
-      <td class="mono">${p.cuotas}</td>
-      <td class="mono">S/ ${saldo.toFixed(2)}</td>
-      <td>${estado}</td>
-      <td>${escHtml(p.motivo||'—')}</td>
-      <td class="actions-cell">
-        ${saldo>0 ? `<button class="btn btn-accent btn-sm" onclick="openPrestamoPagosModal('${p.id}')">Registrar descuento</button>` : ''}
-        <button class="btn btn-primary btn-sm" onclick="generarConstanciaPrestamoPdf('${p.id}')">📄 Formato PDF</button>
-        <button class="btn btn-danger btn-sm" onclick="deletePrestamo('${p.id}')">Eliminar</button>
-      </td>
-    </tr>`;
-  }).join('');
-  document.getElementById('prestamosTable').innerHTML = sorted.length ? `
-    <div class="table-scroll">
-    <table><thead><tr><th>Colaborador</th><th>Tipo / N°</th><th>Monto</th><th>Fecha</th><th>Cuotas</th><th>Saldo</th><th>Estado</th><th>Motivo / comentario</th><th></th></tr></thead>
-    <tbody>${rows}</tbody></table>
-    </div>` : `<div class="empty">Aún no registras préstamos ni adelantos.</div>`;
+  renderBitacora('prestamos');
 }
 
 // ---------- Informe formal para gerencia: vencimientos de EMO e inducción de seguridad ----------
@@ -7435,7 +7379,7 @@ async function guardarConstSegRapido(empId){
 // ---------- Formatos formales en PDF (préstamos, adelantos, reembolsos) ----------
 // Pequeño "maquetador" A4: encabezado con N°, secciones, filas etiqueta/valor, tablas con texto ajustado y firmas.
 function pdfFormal(doc){
-  const W = doc.internal.pageSize.getWidth(), M = 42, ancho = W - 2*M, TOPE = 790;
+  const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 42, ancho = W - 2*M, TOPE = H - 52;
   const o = {doc, W, M, ancho, y:40};
   o.salto = h => { if(o.y + h > TOPE){ doc.addPage(); o.y = 50; } };
   o.encabezado = (titulo, numero, fecha) => {
@@ -7554,7 +7498,7 @@ function pdfFormal(doc){
     const emp = window._empresaData || {}, n = doc.getNumberOfPages();
     for(let i=1; i<=n; i++){
       doc.setPage(i); doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(130);
-      doc.text(`${emp.razonSocial || ''} · Documento ${numero} · Página ${i} de ${n}`, W/2, 825, {align:'center'});
+      doc.text(`${emp.razonSocial || ''} · Documento ${numero} · Página ${i} de ${n}`, W/2, H - 17, {align:'center'});
       doc.setTextColor(0);
     }
   };
@@ -7830,7 +7774,6 @@ async function guardarEstadoReembolso(){
 function renderReembolsos(){
   const cont = document.getElementById('reembolsosTable');
   if(!cont) return;
-  const filtro = document.getElementById('reembolsoFiltro').value;
   const mes = hoyISO().slice(0,7);
   const suma = L => L.reduce((s,r)=>s+reembolsoMontoFinal(r), 0);
   const pend = reembolsos.filter(r=>r.estado==='Pendiente'), apr = reembolsos.filter(r=>r.estado==='Aprobado');
@@ -7840,30 +7783,8 @@ function renderReembolsos(){
     <div class="stat-card warn"><div class="num">${soles(suma(pend))}</div><div class="label">${pend.length} por aprobar</div></div>
     <div class="stat-card warn"><div class="num">${soles(suma(apr))}</div><div class="label">${apr.length} aprobado(s) por pagar</div></div>
     <div class="stat-card"><div class="num">${soles(suma(pagMes))}</div><div class="label">Pagado este mes (${pagMes.length})</div></div>`;
-  const L = reembolsos.filter(r=>!filtro || r.estado===filtro).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'') || (b.numero||'').localeCompare(a.numero||''));
-  const rows = L.map(r=>{
-    const e = employees.find(x=>x.id===r.empId);
-    const conceptos = [...new Set(r.lineas.map(l=>l.concepto))].join(', ');
-    const detalle = r.lineas.map(l=>escHtml(l.detalle)).join(' · ');
-    const montoTxt = r.montoAprobado!=null && r.montoAprobado!==r.total ? `${soles(r.montoAprobado)}<div style="font-size:11px;color:var(--muted);">pidió ${soles(r.total)}</div>` : soles(r.total);
-    return `<tr>
-      <td class="mono">${r.numero}</td>
-      <td>${e ? e.nombre : '(colaborador eliminado)'}</td>
-      <td>${fmtDate(r.fecha)}</td>
-      <td><strong>${conceptos}</strong><div style="font-size:12px;color:var(--muted);">${detalle}</div></td>
-      <td class="mono">${montoTxt}</td>
-      <td><span class="pill ${REEMBOLSO_PILL[r.estado] || 'pill-muted'}">${r.estado}</span>${r.estado==='Pagado' ? `<div style="font-size:11px;color:var(--muted);margin-top:3px;">${fmtDate(r.pagoFecha)} · ${r.pagoForma}</div>` : ''}</td>
-      <td style="font-size:12px;">${r.comentario ? escHtml(r.comentario) : ''}${r.comentarioRrhh ? `<div style="color:var(--muted);margin-top:3px;">RRHH: ${escHtml(r.comentarioRrhh)}</div>` : ''}${!r.comentario && !r.comentarioRrhh ? '—' : ''}</td>
-      <td class="actions-cell">
-        ${r.estado!=='Pagado' && r.estado!=='Rechazado' ? `<button class="btn btn-accent btn-sm" onclick="openReembolsoEstadoModal('${r.id}')">${r.estado==='Pendiente' ? 'Aprobar / rechazar' : 'Marcar pagado'}</button>` : `<button class="btn btn-ghost btn-sm" onclick="openReembolsoEstadoModal('${r.id}')">Editar</button>`}
-        <button class="btn btn-primary btn-sm" onclick="descargarReembolsoPdf('${r.id}')">📄 Formato PDF</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteReembolso('${r.id}')">Eliminar</button>
-      </td>
-    </tr>`;
-  }).join('');
-  cont.innerHTML = (antiguos.length ? `<div class="hint" style="padding:10px 18px 0;">Hay ${antiguos.length} reembolso(s) antiguo(s) pendientes registrados en “Préstamos y adelantos” (${soles(antiguos.reduce((s,p)=>s+saldoPrestamo(p),0))}).</div>` : '')
-    + (L.length ? `<div class="table-scroll"><table><thead><tr><th>N°</th><th>Colaborador</th><th>Fecha</th><th>Concepto / detalle</th><th>Monto</th><th>Estado</th><th>Comentario</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
-      : `<div class="empty">${filtro ? 'No hay reembolsos con este estado.' : 'Aún no registras reembolsos.'}</div>`);
+  document.getElementById('reembolsosAntiguos').innerHTML = antiguos.length ? `<div class="hint" style="padding:10px 18px 0;">Hay ${antiguos.length} reembolso(s) antiguo(s) pendientes registrados en “Préstamos y adelantos” (${soles(antiguos.reduce((s,p)=>s+saldoPrestamo(p),0))}).</div>` : '';
+  renderBitacora('reembolsos');
 }
 async function descargarReembolsoPdf(id){
   const r = reembolsos.find(x=>x.id===id);
@@ -8653,30 +8574,7 @@ function renderInventory(){
     <table><thead><tr><th>Artículo</th><th>Stock</th><th>Mínimo</th><th>Estado</th><th></th></tr></thead>
     <tbody>${itemRows}</tbody></table>` : `<div class="empty">Aún no registras artículos en el inventario.</div>`;
 
-  const filtroArticuloSel = document.getElementById('invMovFiltroArticulo');
-  if(filtroArticuloSel){
-    const seleccionActual = filtroArticuloSel.value;
-    filtroArticuloSel.innerHTML = `<option value="todos">Todos los artículos</option>` + inventoryItems.map(it=>`<option value="${it.id}">${it.nombre}</option>`).join('');
-    filtroArticuloSel.value = seleccionActual;
-  }
-  const sortedMov = getInventoryMovFiltrados();
-  const movRows = sortedMov.map(m=>{
-    const it = inventoryItems.find(x=>x.id===m.itemId);
-    return `<tr>
-      <td>${fmtDate(m.fecha)}</td>
-      <td>${it ? it.nombre : '(artículo eliminado)'}</td>
-      <td>${m.tipo==='entrada' ? '<span class="pill pill-ok">Entrada</span>' : m.tipo==='ajuste' ? '<span class="pill pill-muted">Ajuste</span>' : '<span class="pill pill-warn">Salida</span>'}</td>
-      <td class="mono">${m.cantidad}</td>
-      <td class="mono">${m.saldoResultante}</td>
-      <td>${m.entregadoA||'—'}</td>
-      <td>${m.motivo||'—'}</td>
-      <td>${m.responsable||'—'}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="deleteMovement('${m.id}')">Eliminar</button></td>
-    </tr>`;
-  }).join('');
-  document.getElementById('invMovTable').innerHTML = sortedMov.length ? `
-    <table><thead><tr><th>Fecha</th><th>Artículo</th><th>Tipo</th><th>Cantidad</th><th>Saldo</th><th>Entregado a</th><th>Motivo</th><th>Responsable</th><th></th></tr></thead>
-    <tbody>${movRows}</tbody></table>` : `<div class="empty">${inventoryMovements.length ? 'Ningún movimiento coincide con el filtro.' : 'Aún no registras movimientos de inventario.'}</div>`;
+  renderBitacora('inventario');
 
   renderInventarioHistoricoMensual();
 }
@@ -8713,17 +8611,6 @@ function renderInventarioHistoricoMensual(){
     <tbody>${filas}</tbody></table>`;
 }
 
-function getInventoryMovFiltrados(){
-  const filtroTipo = document.getElementById('invMovFiltroTipo').value;
-  const filtroArticulo = document.getElementById('invMovFiltroArticulo').value;
-  const busq = (document.getElementById('invMovSearch').value||'').toLowerCase();
-  let movFiltrados = [...inventoryMovements];
-  if(filtroTipo!=='todos') movFiltrados = movFiltrados.filter(m=>m.tipo===filtroTipo);
-  if(filtroArticulo!=='todos') movFiltrados = movFiltrados.filter(m=>m.itemId===filtroArticulo);
-  if(busq) movFiltrados = movFiltrados.filter(m=>(m.entregadoA||'').toLowerCase().includes(busq) || (m.responsable||'').toLowerCase().includes(busq));
-  return movFiltrados.sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
-}
-
 function exportInventoryCsv(){
   if(!inventoryMovements.length){ showToast('No hay movimientos registrados'); return; }
   const headers = ['Fecha','Artículo','Tipo','Cantidad','SaldoResultante','EntregadoA','Motivo','Responsable'];
@@ -8739,122 +8626,6 @@ function exportInventoryCsv(){
   a.href = url; a.download = 'bitacora_inventario_serving.csv';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
-}
-
-function exportInventoryMovPdf(){
-  const movFiltrados = getInventoryMovFiltrados();
-  if(!movFiltrados.length){ showToast('No hay movimientos que coincidan con el filtro'); return; }
-  const emp = window._empresaData || {};
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({unit:'pt', format:'a4', orientation:'landscape'});
-  const marginX = 40; let y = 50;
-  addLogoToPdf(doc, marginX, y-25, 45);
-  doc.setFont('helvetica','bold'); doc.setFontSize(13);
-  doc.text('BITÁCORA DE MOVIMIENTOS DE INVENTARIO', marginX+60, y); y += 16;
-  doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
-  if(emp.razonSocial) doc.text(emp.razonSocial, marginX+60, y);
-  y += 22;
-  doc.setFontSize(9);
-  doc.text(`Generado el ${fmtDate(hoyISO())} — ${movFiltrados.length} movimiento(s)`, marginX, y);
-  y += 18;
-
-  const cols = [
-    {label:'Fecha', x:marginX, w:60},
-    {label:'Artículo', x:marginX+60, w:150},
-    {label:'Tipo', x:marginX+210, w:55},
-    {label:'Cantidad', x:marginX+265, w:55},
-    {label:'Saldo', x:marginX+320, w:50},
-    {label:'Entregado a', x:marginX+370, w:120},
-    {label:'Motivo', x:marginX+490, w:150},
-    {label:'Responsable', x:marginX+640, w:112},
-  ];
-  const tableW = 712, rowH = 18;
-  doc.setFillColor(31,75,63);
-  doc.rect(marginX, y, tableW, 20, 'F');
-  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
-  cols.forEach(c=>doc.text(c.label, c.x+3, y+13));
-  doc.setTextColor(0,0,0); doc.setFont('helvetica','normal'); doc.setFontSize(8);
-  y += 20;
-
-  movFiltrados.forEach(m=>{
-    if(y>560){ doc.addPage('a4','landscape'); y=50; }
-    const it = inventoryItems.find(x=>x.id===m.itemId);
-    doc.rect(marginX, y, tableW, rowH);
-    doc.text(fmtDate(m.fecha), cols[0].x+3, y+13);
-    doc.text(String(it?it.nombre:'(eliminado)'), cols[1].x+3, y+13, {maxWidth:cols[1].w-6});
-    doc.text(m.tipo==='entrada'?'Entrada':m.tipo==='ajuste'?'Ajuste':'Salida', cols[2].x+3, y+13);
-    doc.text(String(m.cantidad), cols[3].x+3, y+13);
-    doc.text(String(m.saldoResultante), cols[4].x+3, y+13);
-    doc.text(m.entregadoA||'—', cols[5].x+3, y+13, {maxWidth:cols[5].w-6});
-    doc.text(m.motivo||'—', cols[6].x+3, y+13, {maxWidth:cols[6].w-6});
-    doc.text(m.responsable||'—', cols[7].x+3, y+13, {maxWidth:cols[7].w-6});
-    y += rowH;
-  });
-  doc.save('bitacora_inventario_serving.pdf');
-}
-
-// ---------- Plantilla de artículos de oficina ----------
-const OFFICE_TEMPLATE_ITEMS = [
-  // Papelería básica → Oficina
-  {nombre:'Hojas bond A4', categoria:'Oficina', unidad:'Resma', stockMinimo:5},
-  {nombre:'Hojas oficio', categoria:'Oficina', unidad:'Resma', stockMinimo:2},
-  {nombre:'Cuadernos', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:10},
-  {nombre:'Agendas', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:10},
-  {nombre:'Carpetas manila', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:50},
-  {nombre:'Separadores', categoria:'Oficina', unidad:'Paquete (PQ)', stockMinimo:5},
-  // Escritura y corrección → Oficina
-  {nombre:'Lapiceros (azul, negro, rojo)', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:30},
-  {nombre:'Lápices', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:20},
-  {nombre:'Resaltadores', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:15},
-  {nombre:'Correctores', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:10},
-  // Organización → Oficina
-  {nombre:'Clips', categoria:'Oficina', unidad:'Caja (CJ)', stockMinimo:5},
-  {nombre:'Ganchos', categoria:'Oficina', unidad:'Caja (CJ)', stockMinimo:5},
-  {nombre:'Grapadoras', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:5},
-  {nombre:'Grapas', categoria:'Oficina', unidad:'Caja (CJ)', stockMinimo:10},
-  {nombre:'Perforadoras', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:2},
-  {nombre:'Cinta adhesiva y dispensadores', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:10},
-  {nombre:'Sujetapapeles y bandejas organizadoras', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:5},
-  // Equipos y accesorios → Oficina
-  {nombre:'Impresora', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:2},
-  {nombre:'Cartuchos / tóner', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:4},
-  {nombre:'Calculadora', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:5},
-  {nombre:'Teléfono fijo o inalámbrico', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:1},
-  {nombre:'Reloj de pared', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:1},
-  {nombre:'Tijeras', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:5},
-  {nombre:'Cutter', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:5},
-  // Almacenamiento → Oficina
-  {nombre:'Archivadores', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:10},
-  {nombre:'Cajas archivadoras', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:5},
-  {nombre:'Carpetas colgantes', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:50},
-  {nombre:'Etiquetas adhesivas', categoria:'Oficina', unidad:'Rollo', stockMinimo:5},
-  {nombre:'Libreros o estantes', categoria:'Oficina', unidad:'Unidad (UND)', stockMinimo:2},
-  // Limpieza y mantenimiento
-  {nombre:'Paños de microfibra', categoria:'Limpieza y mantenimiento', unidad:'Unidad (UND)', stockMinimo:10},
-  {nombre:'Alcohol', categoria:'Limpieza y mantenimiento', unidad:'Litro (L)', stockMinimo:5},
-  {nombre:'Desinfectante', categoria:'Limpieza y mantenimiento', unidad:'Litro (L)', stockMinimo:5},
-  {nombre:'Basureros', categoria:'Limpieza y mantenimiento', unidad:'Unidad (UND)', stockMinimo:5},
-  {nombre:'Bolsas de basura', categoria:'Limpieza y mantenimiento', unidad:'Caja (CJ)', stockMinimo:1},
-  {nombre:'Ambientadores', categoria:'Limpieza y mantenimiento', unidad:'Unidad (UND)', stockMinimo:5}
-];
-
-
-async function loadOfficeTemplate(){
-  if(!confirm('Esto agrega los artículos típicos de oficina (papelería, organización, equipos, almacenamiento, limpieza) a tu inventario, con stock inicial en 0 y el mínimo sugerido. Los artículos que ya tengas registrados (mismo nombre) no se duplican. ¿Continuar?')) return;
-  const existentes = new Set(inventoryItems.map(it=>it.nombre.toLowerCase().trim()));
-  let agregados = 0;
-  OFFICE_TEMPLATE_ITEMS.forEach(tpl=>{
-    if(existentes.has(tpl.nombre.toLowerCase().trim())) return;
-    inventoryItems.push({
-      id:'i'+Date.now()+Math.random().toString(36).slice(2,7),
-      nombre: tpl.nombre, categoria: tpl.categoria, unidad: tpl.unidad,
-      stock: 0, stockMinimo: tpl.stockMinimo, ubicacion:'', notas:''
-    });
-    agregados++;
-  });
-  await saveData('inventoryItems', inventoryItems);
-  renderInventory();
-  showToast(agregados ? `${agregados} artículo(s) agregado(s)` : 'Esos artículos ya estaban registrados');
 }
 
 function printInventoryActa(){
@@ -9568,77 +9339,7 @@ function eppEstadoPill(estado){
   if(estado==='Vencido') return `<span class="pill pill-danger">Vencido</span>`;
   return `<span class="pill pill-warn">Usado</span>`;
 }
-let currentEppFiltroColaborador = 'todos';
-function poblarEppFiltroColaborador(){
-  const sel = document.getElementById('eppFiltroColaborador');
-  if(!sel) return;
-  const valorActual = sel.value || 'todos';
-  const idsConEntregas = Array.from(new Set(eppAsignaciones.map(a=>a.empId)));
-  const opts = idsConEntregas.map(id=>{
-    const e = employees.find(x=>x.id===id);
-    return e ? `<option value="${id}">${e.nombre}</option>` : '';
-  }).join('');
-  sel.innerHTML = `<option value="todos">Todos los colaboradores</option>${opts}`;
-  sel.value = idsConEntregas.includes(valorActual) ? valorActual : 'todos';
-}
-function renderAsignacionesEpp(){
-  poblarEppFiltroColaborador();
-  const grupos = {};
-  eppAsignaciones.forEach(a=>{
-    if(currentEppFiltroColaborador!=='todos' && a.empId!==currentEppFiltroColaborador) return;
-    const key = a.entregaId || a.id;
-    if(!grupos[key]) grupos[key] = [];
-    grupos[key].push(a);
-  });
-  const lotes = Object.entries(grupos).sort((x,y)=>(y[1][0].fecha||'').localeCompare(x[1][0].fecha||''));
-
-  let resumenHtml = '';
-  if(currentEppFiltroColaborador!=='todos'){
-    const e = employees.find(x=>x.id===currentEppFiltroColaborador);
-    const entregasColaborador = eppAsignaciones.filter(a=>a.empId===currentEppFiltroColaborador);
-    if(entregasColaborador.length){
-      const chips = entregasColaborador.map(a=>{
-        const it = inventoryItems.find(x=>x.id===a.itemId);
-        const d = daysUntil(a.fechaVencimiento);
-        const vigente = d!==null && d>=0;
-        return `<span class="pill ${vigente?'pill-ok':'pill-danger'}">${it?it.nombre:'—'}${a.talla?' (talla '+a.talla+')':''} — ${vigente ? 'vigente hasta '+fmtDate(a.fechaVencimiento) : 'vencido'}</span>`;
-      }).join('');
-      resumenHtml = `<div style="padding:14px 18px;background:var(--primary-light);border-bottom:1px solid var(--border);">
-        <p class="hint" style="margin:0 0 8px;font-weight:600;color:var(--primary);">Resumen de EPP entregado a ${e?e.nombre:''}:</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">${chips}</div>
-      </div>`;
-    } else {
-      resumenHtml = `<div style="padding:14px 18px;background:var(--primary-light);border-bottom:1px solid var(--border);"><p class="hint" style="margin:0;">Este colaborador aún no tiene ningún EPP registrado.</p></div>`;
-    }
-  }
-
-  const rows = lotes.map(([entregaId, items])=>{
-    const a0 = items[0];
-    const e = employees.find(x=>x.id===a0.empId);
-    const itemsTexto = items.map(a=>{
-      const it = inventoryItems.find(x=>x.id===a.itemId);
-      return `${it?it.nombre:'—'}${a.talla?' (talla '+a.talla+')':''} ×${a.cantidad}`;
-    }).join(', ');
-    return `<tr>
-      <td>${e ? e.nombre : '(colaborador eliminado)'}</td>
-      <td>${itemsTexto}</td>
-      <td>${fmtDate(a0.fecha)}</td>
-      <td>${eppVencimientoPill(a0)}</td>
-      <td>${eppEstadoPill(a0.estado)}</td>
-      <td>${a0.responsableEntrega||'—'}</td>
-      <td class="actions-cell">
-        <button class="btn btn-accent btn-sm" onclick="generarConstanciaEppPdf('${entregaId}')">Descargar PDF</button>
-        <button class="btn btn-ghost btn-sm" onclick="reportarPerdidaEpp('${entregaId}')">Reportar pérdida/daño</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteEntregaEpp('${entregaId}')">Eliminar</button>
-      </td>
-    </tr>`;
-  }).join('');
-  document.getElementById('eppAsignacionesTable').innerHTML = resumenHtml + (lotes.length ? `
-    <div class="table-scroll">
-    <table><thead><tr><th>Colaborador</th><th>Equipos entregados</th><th>Fecha</th><th>Vigencia</th><th>Estado</th><th>Responsable</th><th></th></tr></thead>
-    <tbody>${rows}</tbody></table>
-    </div>` : `<div class="empty">${currentEppFiltroColaborador==='todos' ? 'Aún no registras entregas de EPP.' : 'No hay entregas para este colaborador.'}</div>`);
-}
+function renderAsignacionesEpp(){ renderBitacora('epp'); }
 
 async function reportarPerdidaEpp(entregaId){
   const items = eppAsignaciones.filter(a=>(a.entregaId||a.id)===entregaId);
@@ -10192,8 +9893,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const f = document.getElementById('eppFecha'), v = document.getElementById('eppVidaUtil');
   if(f) f.addEventListener('change', updateEppVencimientoPreview);
   if(v) v.addEventListener('input', updateEppVencimientoPreview);
-  const filtroCol = document.getElementById('eppFiltroColaborador');
-  if(filtroCol) filtroCol.addEventListener('change', ()=>{ currentEppFiltroColaborador = filtroCol.value; renderAsignacionesEpp(); });
   const filtroVenc = document.getElementById('eppVencFiltroColaborador');
   if(filtroVenc) filtroVenc.addEventListener('change', ()=>{ currentEppVencFiltro = filtroVenc.value; renderEppStock(); });
 });
@@ -12588,45 +12287,7 @@ function renderCesados(){
   }
   document.getElementById('cesadosAviso').innerHTML = aviso;
 
-  const selMot = document.getElementById('cesadosFiltroMotivo'), selAnio = document.getElementById('cesadosFiltroAnio');
-  const vMot = selMot.value || 'todos', vAnio = selAnio.value || 'todos';
-  const motivos = [...new Set(cesesRegistro.map(c=>c.motivo).filter(Boolean))].sort();
-  const anios = [...new Set(cesesRegistro.map(c=>(c.fechaCese||'').slice(0,4)).filter(Boolean))].sort().reverse();
-  selMot.innerHTML = `<option value="todos">Todos los motivos</option>` + motivos.map(m=>`<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('');
-  selMot.value = motivos.includes(vMot) ? vMot : 'todos';
-  selAnio.innerHTML = `<option value="todos">Todos los años</option>` + anios.map(a=>`<option value="${a}">${a}</option>`).join('');
-  selAnio.value = anios.includes(vAnio) ? vAnio : 'todos';
-
-  const q = (document.getElementById('cesadosBuscar').value||'').trim().toLowerCase();
-  let lista = [...cesesRegistro];
-  if(selMot.value!=='todos') lista = lista.filter(c=>c.motivo===selMot.value);
-  if(selAnio.value!=='todos') lista = lista.filter(c=>(c.fechaCese||'').startsWith(selAnio.value));
-  if(q) lista = lista.filter(c=>(c.nombre||'').toLowerCase().includes(q) || String(c.dni||'').includes(q));
-  lista.sort((a,b)=>(b.fechaCese||'').localeCompare(a.fechaCese||''));
-  const recon = {si:'<span class="pill pill-ok">Sí</span>', evaluar:'<span class="pill pill-warn">Evaluar</span>', no:'<span class="pill pill-danger">No</span>'};
-
-  const rows = lista.map(c=>`<tr>
-      <td><b>${escHtml(c.nombre)}</b><div class="mono" style="font-size:11px;color:var(--ink-soft);">${escHtml(c.dni||'')} · ${escHtml(c.cargo||'')}</div></td>
-      <td style="white-space:nowrap;">${c.fechaIngreso ? fmtDate(c.fechaIngreso) : '—'} → ${fmtDate(c.fechaCese)}<div style="font-size:11px;color:var(--ink-soft);">${tiempoServicio(c.fechaIngreso, c.fechaCese)}</div></td>
-      <td>${escHtml(c.motivo||'—')}${c.notas ? `<div style="font-size:11px;color:var(--ink-soft);">${escHtml(c.notas)}</div>` : ''}
-        ${eppEnPoder(c.empId).length ? `<div><span class="pill pill-warn" style="margin-top:4px;">EPP sin devolver: ${eppEnPoder(c.empId).length}</span></div>` : ''}</td>
-      <td>${c.liqMonto!=null ? `<div class="mono">S/ ${Number(c.liqMonto).toFixed(2)}</div>` : ''}${cesePasoPill(c.liqFecha, c.fechaCese, 2)}</td>
-      <td>${cesePasoPill(c.tregistroFecha, c.fechaCese, 1)}</td>
-      <td>${cesePasoPill(c.certificadoFecha, c.fechaCese, 2)}</td>
-      <td>${recon[c.recontratable] || '—'}</td>
-      <td class="actions-cell">
-        <button class="btn btn-accent btn-sm" onclick="abrirLiquidacion('${escHtml(c.id)}')">Liquidación</button>
-        <button class="btn btn-primary btn-sm" onclick="generarCertificadoTrabajo('${escHtml(c.id)}')">Certificado</button>
-        <button class="btn btn-ghost btn-sm" onclick="editarCese('${escHtml(c.id)}')">Editar</button>
-        ${c.fileData ? `<button class="btn btn-ghost btn-sm" onclick="downloadCeseFile('${escHtml(c.id)}')">Documento</button>` : ''}
-        <button class="btn btn-danger btn-sm" onclick="anularCese('${escHtml(c.id)}')">Anular</button>
-      </td>
-    </tr>`).join('');
-  document.getElementById('cesadosTable').innerHTML = lista.length ? `
-    <div class="table-scroll">
-    <table><thead><tr><th>Trabajador</th><th>Ingreso → Cese</th><th>Motivo</th><th>Liquidación</th><th>Baja T-Registro</th><th>Certificado</th><th>Recontratable</th><th></th></tr></thead>
-    <tbody>${rows}</tbody></table>
-    </div>` : `<div class="empty">${cesesRegistro.length ? 'Ningún cese coincide con el filtro.' : 'Aún no hay ceses registrados.'}</div>`;
+  renderBitacora('ceses');
 }
 
 // ---------- Inducción de seguridad ----------
@@ -12827,7 +12488,7 @@ function renderInduccion(){
   const vencidas = ultimasVig.filter(r=>r.vence && daysUntil(r.vence)<0);
 
   statsEl.innerHTML = `
-    <div class="stat-card"><div class="num">${new Set(induccionesSeguridad.map(r=>r.sesionId)).size}</div><div class="label">Inducciones registradas</div></div>
+    <div class="stat-card"><div class="num">${induccionBitacoraItems().length}</div><div class="label">Inducciones y exámenes registrados</div><div class="hint" style="margin-top:4px;">${new Set(induccionesSeguridad.map(r=>r.sesionId)).size} charla(s) · ${employees.filter(e=>e.constanciaSeg).length} examen(es) en ficha</div></div>
     <div class="stat-card ok" style="cursor:pointer;" title="Ver quiénes tienen inducción vigente" onclick="filtrarInduccionEstado('vigentes')"><div class="num">${vigentesTrab.length - sinInduccion.length}</div><div class="label">Trabajadores con inducción vigente</div></div>
     <div class="stat-card warn" style="cursor:pointer;" title="Ver quiénes vencen pronto" onclick="filtrarInduccionEstado('porvencer')"><div class="num">${vigentesTrab.filter(e=>{ if(!tieneInduccionVigente(e.id)) return false; const d = diasParaVencerInduccion(e); return d!==null && d <= INDUCCION_DIAS_ALERTA; }).length}</div><div class="label">Por vencer (${INDUCCION_DIAS_ALERTA} días)</div></div>
     <div class="stat-card warn" style="cursor:pointer;" title="Ver quiénes faltan" onclick="filtrarInduccionEstado('faltan')"><div class="num">${sinInduccion.length}</div><div class="label">Trabajadores sin inducción vigente</div></div>
@@ -12848,7 +12509,7 @@ function renderInduccion(){
     avisoHtml += `<div class="aviso-box danger" style="border:2px solid var(--danger);">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
         <div class="aviso-title" style="color:var(--danger);font-size:14px;">⚠ En los próximos ${INDUCCION_DIAS_ALERTA} días va a vencer la inducción de ${orden.length} trabajador(es):</div>
-        <button class="btn btn-danger btn-sm" onclick="imprimirListaInduccion('porvencer')">📄 Descargar aviso (PDF)</button>
+        <button class="btn btn-sm" style="background:var(--danger);color:#fff;" onclick="imprimirListaInduccion('porvencer')">📄 Descargar aviso (PDF)</button>
       </div>
       <div class="aviso-list" style="margin-top:8px;">${orden.map(({e, d})=>`<span class="aviso-chip" style="background:var(--danger-light);color:var(--danger);border:1px solid var(--danger);font-weight:700;">${escHtml(e.nombre)} — ${d===0 ? 'VENCE HOY' : 'vence en '+d+' día(s)'}</span>`).join('')}</div>
     </div>`;
@@ -12891,9 +12552,19 @@ const BITACORA_ESTADOS = [
 ];
 const BITACORA_PASO = 50;
 function bitacoraEstadoDef(c){ return BITACORA_ESTADOS.find(x=>x.clave===c) || BITACORA_ESTADOS[3]; }
+// Colores de aviso (amarillo) para estados que piden atención pero no son una alerta roja.
+const BITACORA_AVISO = {fondo:'var(--accent-light)', color:'#8a5c15', alerta:false};
 function bitacoraPill(est){
   const d = bitacoraEstadoDef(est.clave);
-  return `<span class="pill" style="background:${d.fondo};color:${d.color};font-weight:${est.clave==='vigente' || est.clave==='otro' ? 500 : 700};">${escHtml(est.texto)}</span>`;
+  return `<span class="pill" style="background:${est.fondo || d.fondo};color:${est.color || d.color};font-weight:${est.clave==='vigente' || est.clave==='otro' ? 500 : 700};">${escHtml(est.texto)}</span>`;
+}
+// Fila en rojo solo para vencidos / por vencer, salvo que el estado diga lo contrario (alerta:false).
+function bitacoraEsAlerta(est){ return est.alerta!==undefined ? est.alerta : (est.clave==='vencido' || est.clave==='porvencer'); }
+// Cada sección puede renombrar los estados (cfg.etiquetas) u ocultar los que no usa (etiqueta null).
+function bitacoraEtiqueta(cfg, clave){
+  const et = cfg.etiquetas || {};
+  if(clave in et) return et[clave];
+  return clave==='otro' ? (cfg.etiquetaOtros || 'Otros') : bitacoraEstadoDef(clave).label;
 }
 function registrarBitacora(cfg){
   let g = {};
@@ -12958,7 +12629,8 @@ function bitacoraFiltrar(id){
 }
 function bitacoraOrdenarLista(b, L){
   const cfg = b.cfg;
-  if(!b.ordenCol) return L.slice().sort((x,y)=>bitacoraEstadoDef(x.est.clave).orden - bitacoraEstadoDef(y.est.clave).orden || String(cfg.fecha(y.it)||'').localeCompare(String(cfg.fecha(x.it)||'')));
+  const porFecha = (x,y)=>String(cfg.fecha(y.it)||'').localeCompare(String(cfg.fecha(x.it)||''));
+  if(!b.ordenCol) return L.slice().sort((x,y)=>(cfg.ordenPorFecha ? 0 : bitacoraEstadoDef(x.est.clave).orden - bitacoraEstadoDef(y.est.clave).orden) || porFecha(x,y));
   const col = cfg.columnas.find(c=>c.id===b.ordenCol);
   if(!col || !col.orden) return L;
   const s = b.ordenDir==='asc' ? 1 : -1;
@@ -12974,7 +12646,7 @@ function renderBitacoraCuerpo(id){
   if(!cuerpo) return;
   const base = bitacoraFiltrar(id);
   const cuenta = c => base.filter(x=>x.est.clave===c).length;
-  const chips = [{clave:'todos', label:'Todos', n:base.length}, ...BITACORA_ESTADOS.filter(e=>e.clave!=='otro' || cuenta('otro')).map(e=>({clave:e.clave, label:e.clave==='otro' ? (cfg.etiquetaOtros || 'Otros') : e.label, n:cuenta(e.clave)}))];
+  const chips = [{clave:'todos', label:'Todos', n:base.length}, ...BITACORA_ESTADOS.filter(e=>bitacoraEtiqueta(cfg, e.clave)!==null && (e.clave!=='otro' || cuenta('otro'))).map(e=>({clave:e.clave, label:bitacoraEtiqueta(cfg, e.clave), n:cuenta(e.clave)}))];
   const L = bitacoraOrdenarLista(b, b.estado==='todos' ? base : base.filter(x=>x.est.clave===b.estado));
   const colOrden = b.ordenCol && cfg.columnas.find(c=>c.id===b.ordenCol);
   const agrupar = !!cfg.grupo && !b.q && !(colOrden && colOrden.sinAgrupar);
@@ -12989,26 +12661,27 @@ function renderBitacoraCuerpo(id){
     const activo = b.ordenCol===c.id;
     return `<th style="white-space:nowrap;${c.orden ? 'cursor:pointer;user-select:none;' : ''}" ${c.orden ? `onclick="bitacoraOrdenar('${id}','${c.id}')" title="Ordenar por ${escHtml(c.t)}"` : ''}>${escHtml(c.t)}${c.orden ? (activo ? (b.ordenDir==='asc' ? ' ▲' : ' ▼') : ' <span style="opacity:.3;">▲▼</span>') : ''}</th>`;
   }).join('') + '<th></th>';
-  const alerta = x => x.est.clave==='vencido' || x.est.clave==='porvencer';
-  const fila = (x, dentro)=>`<tr style="${alerta(x) ? 'background:var(--danger-light);' : ''}">${cols.map((c,i)=>`<td${i===0 && dentro ? ' style="padding-left:30px;"' : ''}>${c.html(x.it, x.est)}</td>`).join('')}<td class="actions-cell">${cfg.acciones ? cfg.acciones(x.it, x.est) : ''}</td></tr>`;
+  const alerta = x => bitacoraEsAlerta(x.est);
+  const fila = (x, dentro)=>`<tr style="${alerta(x) ? 'background:var(--danger-light);' : ''}">${cols.map((c,i)=>`<td${i===0 && dentro ? ' style="padding-left:30px;"' : ''}>${c.html(x.it, x.est)}</td>`).join('')}<td class="actions-cell">${cfg.acciones ? cfg.acciones(x.it, x.est, dentro) : ''}</td></tr>`;
   const visibles = bloques.slice(0, b.limite);
   const filas = visibles.map(blk=>{
     if(!blk.k || blk.items.length===1) return blk.items.map(x=>fila(x, false)).join('');
     const abierto = b.abiertos.has(blk.k);
     const peor = blk.items.reduce((m,x)=>bitacoraEstadoDef(x.est.clave).orden < bitacoraEstadoDef(m.est.clave).orden ? x : m, blk.items[0]);
     const nAlerta = blk.items.filter(alerta).length;
-    return `<tr style="cursor:pointer;background:${nAlerta ? 'var(--danger-light)' : '#FAF9F6'};" onclick="bitacoraToggleGrupo('${id}','${escHtml(blk.k)}')"><td colspan="${ncol}">
-        <span style="display:inline-block;width:18px;font-weight:700;">${abierto ? '▾' : '▸'}</span>${cfg.grupoResumen(blk.items.map(x=>x.it))} · <b>${blk.items.length}</b> trabajador(es) ${bitacoraPill(peor.est)}${nAlerta && nAlerta < blk.items.length ? ` <span style="font-size:12px;color:var(--danger);font-weight:600;">(${nAlerta} con alerta)</span>` : ''}
-        <span class="hint" style="margin-left:8px;">${abierto ? 'clic para cerrar' : 'clic para ver'}</span></td></tr>` + (abierto ? blk.items.map(x=>fila(x, true)).join('') : '');
+    const accG = cfg.accionesGrupo ? cfg.accionesGrupo(blk.items.map(x=>x.it)) : '';
+    return `<tr style="cursor:pointer;background:${nAlerta ? 'var(--danger-light)' : '#FAF9F6'};" onclick="bitacoraToggleGrupo('${id}','${escHtml(blk.k)}')"><td colspan="${accG ? ncol-1 : ncol}">
+        <span style="display:inline-block;width:18px;font-weight:700;">${abierto ? '▾' : '▸'}</span>${cfg.grupoResumen(blk.items.map(x=>x.it))} · <b>${blk.items.length}</b> ${cfg.grupoUnidad || 'trabajador(es)'} ${bitacoraPill(peor.est)}${nAlerta && nAlerta < blk.items.length ? ` <span style="font-size:12px;color:var(--danger);font-weight:600;">(${nAlerta} con alerta)</span>` : ''}
+        <span class="hint" style="margin-left:8px;">${abierto ? 'clic para cerrar' : 'clic para ver'}</span></td>${accG ? `<td class="actions-cell" onclick="event.stopPropagation()">${accG}</td>` : ''}</tr>` + (abierto ? blk.items.map(x=>fila(x, true)).join('') : '');
   }).join('');
   const hayFiltro = b.q || b.desde || b.hasta || Object.values(b.filtros).some(Boolean);
   cuerpo.innerHTML = `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:10px 18px;">
       ${chips.map(c=>`<button class="tab-sub-btn ${b.estado===c.clave ? 'active' : ''}" onclick="bitacoraSet('${id}','estado','${c.clave}')">${escHtml(c.label)} (${c.n})</button>`).join('')}
-      ${b.ordenCol ? `<button class="btn btn-ghost btn-sm" onclick="bitacoraOrdenUrgencia('${id}')">↺ Volver al orden por urgencia</button>` : '<span class="hint" style="margin-left:6px;">Orden: lo urgente primero, luego lo más reciente. Clic en una columna para ordenar.</span>'}
+      ${b.ordenCol ? `<button class="btn btn-ghost btn-sm" onclick="bitacoraOrdenUrgencia('${id}')">↺ ${cfg.ordenPorFecha ? 'Volver al orden por fecha' : 'Volver al orden por urgencia'}</button>` : `<span class="hint" style="margin-left:6px;">Orden: ${cfg.ordenPorFecha ? 'lo más reciente primero' : 'lo urgente primero, luego lo más reciente'}. Clic en una columna para ordenar.</span>`}
     </div>` + (L.length
     ? `<div class="table-scroll"><table><thead><tr>${th}</tr></thead><tbody>${filas}</tbody></table></div>
        <div class="hint" style="padding:8px 18px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-         <span>Mostrando ${Math.min(b.limite, bloques.length)} de ${bloques.length} fila(s)${agrupar && bloques.length < L.length ? ' agrupadas por sesión' : ''} · ${L.length} registro(s)</span>
+         <span>Mostrando ${Math.min(b.limite, bloques.length)} de ${bloques.length} fila(s)${agrupar && bloques.length < L.length ? ' agrupadas por ' + (cfg.grupoNombre || 'sesión') : ''} · ${L.length} registro(s)${cfg.totalTexto ? ' · ' + cfg.totalTexto(L.map(x=>x.it)) : ''}</span>
          ${bloques.length > b.limite ? `<button class="btn btn-ghost btn-sm" onclick="bitacoraMas('${id}')">Cargar ${BITACORA_PASO} más</button>` : ''}
        </div>`
     : `<div class="empty">${hayFiltro || b.estado!=='todos' ? 'Ningún registro coincide con la búsqueda o los filtros.' : escHtml(cfg.vacio || 'Aún no hay registros.')}</div>`);
@@ -13029,25 +12702,30 @@ function bitacoraExportar(id, tipo){
     return;
   }
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({unit:'pt', format:'a4'});
+  // Con muchas columnas la hoja va horizontal para que no se encimen los títulos.
+  const doc = new jsPDF({unit:'pt', format:'a4', orientation: cols.length >= 8 ? 'landscape' : 'portrait'});
   const o = pdfFormal(doc);
   const numero = (cfg.prefijo || 'BIT') + '-' + hoyISO().replace(/-/g,'');
   o.encabezado(cfg.tituloPdf, numero, hoyISO());
+  const sinIcono = t => String(t).replace(/^[^\wÁÉÍÓÚÑáéíóúñ(]+\s*/, '');
   const filtrosTxt = [
-    b.estado!=='todos' ? 'Estado: ' + bitacoraEstadoDef(b.estado).label.replace(/^\S+\s/, '') : '',
+    b.estado!=='todos' ? 'Estado: ' + sinIcono(bitacoraEtiqueta(cfg, b.estado)) : '',
     b.desde ? 'desde ' + docsFechaCorta(b.desde) : '', b.hasta ? 'hasta ' + docsFechaCorta(b.hasta) : '',
     b.q ? `búsqueda "${b.q}"` : '',
     ...(cfg.filtros||[]).map(f=>b.filtros[f.id] ? f.label + ': ' + b.filtros[f.id] : '')
   ].filter(Boolean).join(' · ');
   const n = c => L.filter(x=>x.est.clave===c).length;
   o.fila([['Registros', String(L.length)], ['Filtros', filtrosTxt || 'Ninguno (todos los registros)']]);
-  o.fila([['Vencidos', String(n('vencido'))], ['Por vencer', String(n('porvencer'))], ['Vigentes', String(n('vigente'))]]);
+  const resumen = ['vencido','porvencer','vigente','otro'].filter(k=>bitacoraEtiqueta(cfg, k)!==null && (k!=='otro' || n(k))).map(k=>[sinIcono(bitacoraEtiqueta(cfg, k)), String(n(k))]);
+  for(let i=0; i<resumen.length; i+=3) o.fila(resumen.slice(i, i+3));
   o.seccion('DETALLE');
-  o.tabla([{t:'N°', w:0.35}, ...cols.map(c=>({t:c.t, w:c.w || 1}))], L.map((x,i)=>{
+  const filasPdf = L.map((x,i)=>{
     const r = [i+1, ...cols.map(c=>c.exportar(x.it, x.est))];
-    if(x.est.clave==='vencido' || x.est.clave==='porvencer') r.rojo = true;
+    if(bitacoraEsAlerta(x.est)) r.rojo = true;
     return r;
-  }));
+  });
+  if(cfg.filaTotal){ const t = ['', ...cfg.filaTotal(L.map(x=>x.it), cols)]; t.negrita = true; filasPdf.push(t); }
+  o.tabla([{t:'N°', w:0.35}, ...cols.map(c=>({t:c.t, w:c.w || 1, al:c.al}))], filasPdf);
   o.pie(numero);
   doc.save(`${numero}-${cfg.archivo}.pdf`);
   showToast('PDF descargado');
@@ -13100,6 +12778,200 @@ registrarBitacora({
   acciones: r=> r.origen==='ficha'
     ? `<button class="btn btn-ghost btn-sm" onclick="openEmployeeModal('${escHtml(r.empId)}')">Ver ficha</button>`
     : `${induccionesSeguridad.some(x=>x.sesionId===r.sesionId && x.fileData) ? `<button class="btn btn-ghost btn-sm" onclick="downloadInduccionFile('${escHtml(r.sesionId)}')">Constancia</button>` : ''}<button class="btn btn-danger btn-sm" onclick="deleteInduccion('${escHtml(r.id)}')">Eliminar</button>`
+});
+
+// ---------- Bitácoras de EPP, préstamos, reembolsos, ceses e inventario (mismo componente) ----------
+function bitEmp(id){ return employees.find(x=>x.id===id); }
+function bitEmpHtml(id, extra){
+  const e = bitEmp(id);
+  return `<b>${escHtml(e ? e.nombre : '(colaborador eliminado)')}</b>${e && (e.dni || extra) ? `<div class="mono" style="font-size:11px;color:var(--ink-soft);">${escHtml([e.dni, extra].filter(Boolean).join(' · '))}</div>` : ''}`;
+}
+function bitPorHtml(r){ return `<span style="font-size:12px;">${escHtml(r.creadoPor||'—')}</span>`; }
+const bitColPor = {id:'por', t:'Registrado por', w:1.05, orden:r=>r.creadoPor||'', html:bitPorHtml, exportar:r=>r.creadoPor||''};
+const bitColDni = getId=>({id:'dni', t:'DNI', soloExportar:true, w:1, exportar:r=>((bitEmp(getId(r))||{}).dni||'')});
+
+// EPP: una fila por artículo entregado; los artículos de una misma entrega se agrupan.
+let eppBitActuales = new Set();
+function eppAccionesEntrega(entregaId){
+  const k = escHtml(entregaId);
+  return `<button class="btn btn-accent btn-sm" onclick="generarConstanciaEppPdf('${k}')">Descargar PDF</button>
+    <button class="btn btn-ghost btn-sm" onclick="reportarPerdidaEpp('${k}')">Reportar pérdida/daño</button>
+    <button class="btn btn-danger btn-sm" onclick="deleteEntregaEpp('${k}')">Eliminar entrega</button>`;
+}
+function eppArticuloTexto(a){ const it = inventoryItems.find(x=>x.id===a.itemId); return `${it ? it.nombre : '—'}${a.talla ? ' (talla '+a.talla+')' : ''} ×${a.cantidad||1}`; }
+registrarBitacora({
+  id:'epp', contenedor:'eppAsignacionesTable', vacio:'Aún no registras entregas de EPP.',
+  placeholder:'Nombre, DNI, artículo, talla, responsable…', etiquetaOtros:'Repuestos / devueltos / cesados',
+  tituloPdf:'BITÁCORA DE ENTREGAS DE EPP', prefijo:'BIT-EPP', archivo:'bitacora-epp',
+  items: ()=>{ eppBitActuales = new Set(eppAsignacionesActuales().map(a=>a.id)); return eppAsignaciones; },
+  estado: a=>{
+    const e = bitEmp(a.empId);
+    if(a.devolucion) return {clave:'otro', texto:'Devuelto'};
+    if(!e || e.estado!=='activo') return {clave:'otro', texto:'Trabajador cesado'};
+    if(!eppBitActuales.has(a.id)) return {clave:'otro', texto:'Repuesto (hay entrega más nueva)'};
+    const d = daysUntil(a.fechaVencimiento);
+    if(d===null) return {clave:'vigente', texto:'Sin vencimiento'};
+    if(d < 0) return {clave:'vencido', texto:'Vencido / a reponer'};
+    if(d <= 30) return {clave:'porvencer', texto: d===0 ? 'Vence hoy' : `Vence en ${d} d`};
+    return {clave:'vigente', texto:'Vigente'};
+  },
+  fecha: a=>a.fecha,
+  texto: a=>{ const e = bitEmp(a.empId) || {}; return [e.nombre, e.dni, eppArticuloTexto(a), a.codigo, a.responsableEntrega, a.notas, a.creadoPor].join(' '); },
+  grupo: a=>a.entregaId || null, grupoUnidad:'artículo(s)', grupoNombre:'entrega',
+  grupoResumen: L=>{ const a = L[0], e = bitEmp(a.empId); return `<b>${fmtDate(a.fecha)}</b> · ${escHtml(e ? e.nombre : '(colaborador eliminado)')}${a.responsableEntrega ? ' · entregó '+escHtml(a.responsableEntrega) : ''}`; },
+  accionesGrupo: L=>eppAccionesEntrega(L[0].entregaId || L[0].id),
+  filtros:[
+    {id:'trabajador', label:'Trabajador', valor:a=>(bitEmp(a.empId)||{}).nombre},
+    {id:'articulo', label:'Artículo', valor:a=>(inventoryItems.find(x=>x.id===a.itemId)||{}).nombre}
+  ],
+  columnas:[
+    {id:'trabajador', t:'Trabajador', sinAgrupar:true, w:1.9, orden:a=>((bitEmp(a.empId)||{}).nombre||''), html:a=>bitEmpHtml(a.empId), exportar:a=>((bitEmp(a.empId)||{}).nombre||'—')},
+    bitColDni(a=>a.empId),
+    {id:'articulo', t:'Artículo', w:1.9, orden:a=>eppArticuloTexto(a), html:a=>escHtml(eppArticuloTexto(a)), exportar:eppArticuloTexto},
+    {id:'fecha', t:'Entregado', w:1, orden:a=>a.fecha||'', html:a=>fmtDate(a.fecha), exportar:a=>docsFechaCorta(a.fecha)||'—'},
+    {id:'vence', t:'Vence', w:1, orden:a=>a.fechaVencimiento||'9999-12-31', html:a=>a.fechaVencimiento ? fmtDate(a.fechaVencimiento) : '—', exportar:a=>docsFechaCorta(a.fechaVencimiento)||'—'},
+    {id:'estado', t:'Estado', w:1.3, orden:(a,est)=>bitacoraEstadoDef(est.clave).orden, html:(a,est)=>bitacoraPill(est), exportar:(a,est)=>est.texto},
+    {id:'condicion', t:'Condición', w:0.8, orden:a=>a.estado||'', html:a=>eppEstadoPill(a.estado), exportar:a=>a.estado||''},
+    {id:'responsable', t:'Entregó', w:1, orden:a=>a.responsableEntrega||'', html:a=>`<span style="font-size:12px;">${escHtml(a.responsableEntrega||'—')}</span>`, exportar:a=>a.responsableEntrega||''},
+    bitColPor
+  ],
+  acciones: (a, est, dentro)=> dentro ? '' : eppAccionesEntrega(a.entregaId || a.id)
+});
+
+// Préstamos y adelantos
+registrarBitacora({
+  id:'prestamos', contenedor:'prestamosTable', vacio:'Aún no registras préstamos ni adelantos.',
+  placeholder:'Nombre, DNI, N°, motivo…',
+  etiquetas:{vencido:'🔴 Cesados con saldo', porvencer:'🟡 Por descontar', vigente:'🟢 Pagados', otro:null},
+  tituloPdf:'BITÁCORA DE PRÉSTAMOS Y ADELANTOS', prefijo:'BIT-PRE', archivo:'bitacora-prestamos',
+  items: ()=>prestamos,
+  estado: p=>{
+    const saldo = saldoPrestamo(p), e = bitEmp(p.empId);
+    if(saldo<=0) return {clave:'vigente', texto:'Pagado'};
+    if(!e || e.estado!=='activo') return {clave:'vencido', texto:'Cesado con saldo: descontar en liquidación'};
+    return {clave:'porvencer', texto:'Por descontar', ...BITACORA_AVISO};
+  },
+  fecha: p=>p.fecha,
+  texto: p=>{ const e = bitEmp(p.empId) || {}; return [e.nombre, e.dni, p.tipo, p.numero, p.motivo, p.creadoPor].join(' '); },
+  filtros:[{id:'tipo', label:'Tipo', valor:p=>p.tipo}, {id:'colaborador', label:'Colaborador', valor:p=>(bitEmp(p.empId)||{}).nombre}],
+  totalTexto: L=>`saldo por descontar ${soles(L.reduce((s,p)=>s+saldoPrestamo(p),0))}`,
+  filaTotal: (L, cols)=>cols.map(c=>c.id==='colaborador' ? 'TOTAL' : c.id==='monto' ? soles(L.reduce((s,p)=>s+p.monto,0)) : c.id==='saldo' ? soles(L.reduce((s,p)=>s+saldoPrestamo(p),0)) : ''),
+  columnas:[
+    {id:'colaborador', t:'Colaborador', w:1.9, orden:p=>((bitEmp(p.empId)||{}).nombre||''), html:p=>bitEmpHtml(p.empId), exportar:p=>((bitEmp(p.empId)||{}).nombre||'—')},
+    bitColDni(p=>p.empId),
+    {id:'tipo', t:'Tipo / N°', w:1.15, orden:p=>p.tipo||'', html:p=>`<span class="pill pill-muted">${escHtml(p.tipo)}</span>${p.numero ? `<div class="mono" style="font-size:11px;color:var(--muted);margin-top:3px;">${escHtml(p.numero)}</div>` : ''}`, exportar:p=>p.tipo + (p.numero ? ' '+p.numero : '')},
+    {id:'monto', t:'Monto', w:0.9, al:'r', orden:p=>p.monto, html:p=>`<span class="mono">${soles(p.monto)}</span>`, exportar:p=>soles(p.monto)},
+    {id:'fecha', t:'Fecha', w:0.9, orden:p=>p.fecha||'', html:p=>fmtDate(p.fecha), exportar:p=>docsFechaCorta(p.fecha)||'—'},
+    {id:'cuotas', t:'Cuotas', w:0.55, orden:p=>Number(p.cuotas)||0, html:p=>`<span class="mono">${p.cuotas}</span>`, exportar:p=>String(p.cuotas)},
+    {id:'saldo', t:'Saldo', w:0.9, al:'r', orden:p=>saldoPrestamo(p), html:p=>`<span class="mono">${soles(saldoPrestamo(p))}</span>`, exportar:p=>soles(saldoPrestamo(p))},
+    {id:'estado', t:'Estado', w:1.2, orden:(p,est)=>bitacoraEstadoDef(est.clave).orden, html:(p,est)=>bitacoraPill(est), exportar:(p,est)=>est.texto},
+    {id:'motivo', t:'Motivo / comentario', w:1.4, html:p=>`<span style="font-size:12px;">${escHtml(p.motivo||'—')}</span>`, exportar:p=>p.motivo||''},
+    bitColPor
+  ],
+  acciones: p=>`${saldoPrestamo(p)>0 ? `<button class="btn btn-accent btn-sm" onclick="openPrestamoPagosModal('${escHtml(p.id)}')">Registrar descuento</button>` : ''}
+    <button class="btn btn-primary btn-sm" onclick="generarConstanciaPrestamoPdf('${escHtml(p.id)}')">📄 Formato PDF</button>
+    <button class="btn btn-danger btn-sm" onclick="deletePrestamo('${escHtml(p.id)}')">Eliminar</button>`
+});
+
+// Reembolsos de gastos
+registrarBitacora({
+  id:'reembolsos', contenedor:'reembolsosTable', vacio:'Aún no registras reembolsos.',
+  placeholder:'Nombre, DNI, N°, concepto, detalle, comentario…',
+  etiquetas:{vencido:'💰 Por pagar', porvencer:'⏳ Por aprobar', vigente:'✅ Pagados', otro:'Rechazados'},
+  tituloPdf:'BITÁCORA DE REEMBOLSOS DE GASTOS', prefijo:'BIT-REE', archivo:'bitacora-reembolsos',
+  items: ()=>reembolsos,
+  estado: r=> r.estado==='Aprobado' ? {clave:'vencido', texto:'Aprobado · por pagar', ...BITACORA_AVISO}
+    : r.estado==='Pendiente' ? {clave:'porvencer', texto:'Por aprobar', ...BITACORA_AVISO}
+    : r.estado==='Pagado' ? {clave:'vigente', texto:'Pagado'} : {clave:'otro', texto:r.estado || 'Rechazado'},
+  fecha: r=>r.fecha,
+  texto: r=>{ const e = bitEmp(r.empId) || {}; return [e.nombre, e.dni, r.numero, ...r.lineas.map(l=>l.concepto+' '+l.detalle), r.comentario, r.comentarioRrhh, r.creadoPor].join(' '); },
+  filtros:[{id:'colaborador', label:'Colaborador', valor:r=>(bitEmp(r.empId)||{}).nombre}, {id:'forma', label:'Forma de pago', valor:r=>r.pagoForma}],
+  totalTexto: L=>`total ${soles(L.reduce((s,r)=>s+reembolsoMontoFinal(r),0))}`,
+  filaTotal: (L, cols)=>cols.map(c=>c.id==='colaborador' ? 'TOTAL' : c.id==='monto' ? soles(L.reduce((s,r)=>s+reembolsoMontoFinal(r),0)) : ''),
+  columnas:[
+    {id:'numero', t:'N°', w:1, orden:r=>r.numero||'', html:r=>`<span class="mono">${escHtml(r.numero)}</span>`, exportar:r=>r.numero||''},
+    {id:'colaborador', t:'Colaborador', w:1.8, orden:r=>((bitEmp(r.empId)||{}).nombre||''), html:r=>bitEmpHtml(r.empId), exportar:r=>((bitEmp(r.empId)||{}).nombre||'—')},
+    bitColDni(r=>r.empId),
+    {id:'fecha', t:'Fecha', w:0.85, orden:r=>r.fecha||'', html:r=>fmtDate(r.fecha), exportar:r=>docsFechaCorta(r.fecha)||'—'},
+    {id:'concepto', t:'Concepto / detalle', w:1.9, html:r=>`<strong>${escHtml([...new Set(r.lineas.map(l=>l.concepto))].join(', '))}</strong><div style="font-size:12px;color:var(--muted);">${r.lineas.map(l=>escHtml(l.detalle)).join(' · ')}</div>`, exportar:r=>[...new Set(r.lineas.map(l=>l.concepto))].join(', ') + ': ' + r.lineas.map(l=>l.detalle).join(' · ')},
+    {id:'monto', t:'Monto', w:0.9, al:'r', orden:r=>reembolsoMontoFinal(r), html:r=>`<span class="mono">${r.montoAprobado!=null && r.montoAprobado!==r.total ? `${soles(r.montoAprobado)}<div style="font-size:11px;color:var(--muted);">pidió ${soles(r.total)}</div>` : soles(r.total)}</span>`, exportar:r=>soles(reembolsoMontoFinal(r))},
+    {id:'estado', t:'Estado', w:1.2, orden:(r,est)=>bitacoraEstadoDef(est.clave).orden, html:(r,est)=>bitacoraPill(est) + (r.estado==='Pagado' ? `<div style="font-size:11px;color:var(--muted);margin-top:3px;">${fmtDate(r.pagoFecha)} · ${escHtml(r.pagoForma||'')}</div>` : ''), exportar:(r,est)=>est.texto + (r.estado==='Pagado' ? ' ' + (docsFechaCorta(r.pagoFecha)||'') + ' · ' + (r.pagoForma||'') : '')},
+    {id:'comentario', t:'Comentario', w:1.3, html:r=>`<span style="font-size:12px;">${r.comentario ? escHtml(r.comentario) : ''}${r.comentarioRrhh ? `<div style="color:var(--muted);margin-top:3px;">RRHH: ${escHtml(r.comentarioRrhh)}</div>` : ''}${!r.comentario && !r.comentarioRrhh ? '—' : ''}</span>`, exportar:r=>[r.comentario, r.comentarioRrhh ? 'RRHH: '+r.comentarioRrhh : ''].filter(Boolean).join(' · ')},
+    bitColPor
+  ],
+  acciones: r=>`${r.estado!=='Pagado' && r.estado!=='Rechazado' ? `<button class="btn btn-accent btn-sm" onclick="openReembolsoEstadoModal('${escHtml(r.id)}')">${r.estado==='Pendiente' ? 'Aprobar / rechazar' : 'Marcar pagado'}</button>` : `<button class="btn btn-ghost btn-sm" onclick="openReembolsoEstadoModal('${escHtml(r.id)}')">Editar</button>`}
+    <button class="btn btn-primary btn-sm" onclick="descargarReembolsoPdf('${escHtml(r.id)}')">📄 Formato PDF</button>
+    <button class="btn btn-danger btn-sm" onclick="deleteReembolso('${escHtml(r.id)}')">Eliminar</button>`
+});
+
+// Ceses: el estado sale de los trámites (liquidación 2 días, baja T-Registro 1 día, certificado 2 días).
+const CESE_TRAMITES = [{campo:'liqFecha', nombre:'liquidación', plazo:2}, {campo:'tregistroFecha', nombre:'baja T-Registro', plazo:1}, {campo:'certificadoFecha', nombre:'certificado', plazo:2}];
+const CESE_RECON = {si:'Sí', evaluar:'Evaluar', no:'No'};
+registrarBitacora({
+  id:'ceses', contenedor:'cesadosTable', vacio:'Aún no hay ceses registrados.',
+  placeholder:'Nombre, DNI, cargo, motivo, notas…',
+  etiquetas:{vencido:'🔴 Trámites fuera de plazo', porvencer:'⚠ Trámites pendientes', vigente:'🟢 Completos', otro:null},
+  tituloPdf:'BITÁCORA DE CESES', prefijo:'BIT-CES', archivo:'bitacora-ceses',
+  items: ()=>cesesRegistro,
+  estado: c=>{
+    const pend = CESE_TRAMITES.filter(t=>!c[t.campo]);
+    if(!pend.length) return {clave:'vigente', texto:'Trámites completos'};
+    const dias = diasDesde(c.fechaCese);
+    const fuera = pend.filter(t=>dias!==null && dias > t.plazo);
+    if(fuera.length) return {clave:'vencido', texto:'Fuera de plazo: ' + fuera.map(t=>t.nombre).join(', ')};
+    return {clave:'porvencer', texto:'Pendiente: ' + pend.map(t=>t.nombre).join(', ')};
+  },
+  fecha: c=>c.fechaCese,
+  texto: c=>[c.nombre, c.dni, c.cargo, c.motivo, c.notas, c.creadoPor].join(' '),
+  filtros:[
+    {id:'motivo', label:'Motivo', valor:c=>c.motivo},
+    {id:'anio', label:'Año', valor:c=>(c.fechaCese||'').slice(0,4)},
+    {id:'recon', label:'Recontratable', valor:c=>CESE_RECON[c.recontratable]}
+  ],
+  columnas:[
+    {id:'trabajador', t:'Trabajador', w:1.8, orden:c=>c.nombre||'', html:c=>`<b>${escHtml(c.nombre)}</b><div class="mono" style="font-size:11px;color:var(--ink-soft);">${escHtml(c.dni||'')} · ${escHtml(c.cargo||'')}</div>`, exportar:c=>c.nombre||''},
+    {id:'dni', t:'DNI', soloExportar:true, w:0.95, exportar:c=>c.dni||''},
+    {id:'fecha', t:'Ingreso / cese', w:1.5, orden:c=>c.fechaCese||'', html:c=>`<span style="white-space:nowrap;">${c.fechaIngreso ? fmtDate(c.fechaIngreso) : '—'} → ${fmtDate(c.fechaCese)}</span><div style="font-size:11px;color:var(--ink-soft);">${tiempoServicio(c.fechaIngreso, c.fechaCese)}</div>`, exportar:c=>(docsFechaCorta(c.fechaIngreso)||'—') + ' al ' + (docsFechaCorta(c.fechaCese)||'—')},
+    {id:'motivo', t:'Motivo', w:1.3, orden:c=>c.motivo||'', html:c=>`${escHtml(c.motivo||'—')}${c.notas ? `<div style="font-size:11px;color:var(--ink-soft);">${escHtml(c.notas)}</div>` : ''}${eppEnPoder(c.empId).length ? `<div><span class="pill pill-warn" style="margin-top:4px;">EPP sin devolver: ${eppEnPoder(c.empId).length}</span></div>` : ''}`, exportar:c=>c.motivo||''},
+    {id:'liq', t:'Liquidación', w:1, orden:c=>c.liqFecha||'', html:c=>`${c.liqMonto!=null ? `<div class="mono">${soles(c.liqMonto)}</div>` : ''}${cesePasoPill(c.liqFecha, c.fechaCese, 2)}`, exportar:c=>(c.liqMonto!=null ? soles(c.liqMonto)+' ' : '') + (docsFechaCorta(c.liqFecha)||'Pendiente')},
+    {id:'treg', t:'Baja T-Registro', w:0.95, orden:c=>c.tregistroFecha||'', html:c=>cesePasoPill(c.tregistroFecha, c.fechaCese, 1), exportar:c=>docsFechaCorta(c.tregistroFecha)||'Pendiente'},
+    {id:'cert', t:'Certificado', w:0.95, orden:c=>c.certificadoFecha||'', html:c=>cesePasoPill(c.certificadoFecha, c.fechaCese, 2), exportar:c=>docsFechaCorta(c.certificadoFecha)||'Pendiente'},
+    {id:'recon', t:'Recontratable', w:0.85, orden:c=>c.recontratable||'', html:c=>({si:'<span class="pill pill-ok">Sí</span>', evaluar:'<span class="pill pill-warn">Evaluar</span>', no:'<span class="pill pill-danger">No</span>'})[c.recontratable] || '—', exportar:c=>CESE_RECON[c.recontratable]||'—'},
+    {id:'estado', t:'Trámites', w:1.3, orden:(c,est)=>bitacoraEstadoDef(est.clave).orden, html:(c,est)=>bitacoraPill(est), exportar:(c,est)=>est.texto},
+    bitColPor
+  ],
+  acciones: c=>`<button class="btn btn-accent btn-sm" onclick="abrirLiquidacion('${escHtml(c.id)}')">Liquidación</button>
+    <button class="btn btn-primary btn-sm" onclick="generarCertificadoTrabajo('${escHtml(c.id)}')">Certificado</button>
+    <button class="btn btn-ghost btn-sm" onclick="editarCese('${escHtml(c.id)}')">Editar</button>
+    ${c.fileData ? `<button class="btn btn-ghost btn-sm" onclick="downloadCeseFile('${escHtml(c.id)}')">Documento</button>` : ''}
+    <button class="btn btn-danger btn-sm" onclick="anularCese('${escHtml(c.id)}')">Anular</button>`
+});
+
+// Movimientos de inventario: aquí no hay vencimientos, el orden por defecto es por fecha.
+const INV_TIPO_TXT = {entrada:'Entrada', salida:'Salida', ajuste:'Ajuste'};
+function invArticulo(m){ return inventoryItems.find(x=>x.id===m.itemId); }
+registrarBitacora({
+  id:'inventario', contenedor:'invMovTable', vacio:'Aún no registras movimientos de inventario.',
+  placeholder:'Artículo, código, entregado a, motivo, responsable…', ordenPorFecha:true,
+  etiquetas:{vencido:null, porvencer:'🟠 Salidas', vigente:'🟢 Entradas', otro:'Ajustes'},
+  tituloPdf:'BITÁCORA DE MOVIMIENTOS DE INVENTARIO', prefijo:'BIT-INV', archivo:'bitacora-inventario',
+  items: ()=>inventoryMovements,
+  estado: m=> m.tipo==='entrada' ? {clave:'vigente', texto:'Entrada'} : m.tipo==='ajuste' ? {clave:'otro', texto:'Ajuste'} : {clave:'porvencer', texto:'Salida', ...BITACORA_AVISO},
+  fecha: m=>m.fecha,
+  texto: m=>{ const it = invArticulo(m) || {}; return [it.nombre, it.codigo, it.familia, m.entregadoA, m.motivo, m.responsable, m.creadoPor].join(' '); },
+  filtros:[{id:'articulo', label:'Artículo', valor:m=>(invArticulo(m)||{}).nombre}, {id:'familia', label:'Familia', valor:m=>(invArticulo(m)||{}).familia}],
+  columnas:[
+    {id:'fecha', t:'Fecha', w:0.9, orden:m=>m.fecha||'', html:m=>fmtDate(m.fecha), exportar:m=>docsFechaCorta(m.fecha)||'—'},
+    {id:'articulo', t:'Artículo', w:1.9, orden:m=>((invArticulo(m)||{}).nombre||''), html:m=>{ const it = invArticulo(m); return it ? `${it.codigo ? `<span class="mono" style="font-size:11.5px;color:var(--primary);font-weight:700;margin-right:6px;">${escHtml(it.codigo)}</span>` : ''}${escHtml(it.nombre)}` : '(artículo eliminado)'; }, exportar:m=>((invArticulo(m)||{}).nombre||'(eliminado)')},
+    {id:'tipo', t:'Tipo', w:0.75, orden:m=>m.tipo||'', html:(m,est)=>bitacoraPill(est), exportar:m=>INV_TIPO_TXT[m.tipo]||m.tipo||''},
+    {id:'cantidad', t:'Cantidad', w:0.7, al:'r', orden:m=>Number(m.cantidad)||0, html:m=>`<span class="mono">${m.cantidad}</span>`, exportar:m=>String(m.cantidad)},
+    {id:'saldo', t:'Saldo', w:0.6, al:'r', orden:m=>Number(m.saldoResultante)||0, html:m=>`<span class="mono">${m.saldoResultante}</span>`, exportar:m=>String(m.saldoResultante==null ? '' : m.saldoResultante)},
+    {id:'entregado', t:'Entregado a', w:1.3, orden:m=>m.entregadoA||'', html:m=>escHtml(m.entregadoA||'—'), exportar:m=>m.entregadoA||''},
+    {id:'motivo', t:'Motivo', w:1.3, html:m=>`<span style="font-size:12px;">${escHtml(m.motivo||'—')}</span>`, exportar:m=>m.motivo||''},
+    {id:'responsable', t:'Responsable', w:1, orden:m=>m.responsable||'', html:m=>escHtml(m.responsable||'—'), exportar:m=>m.responsable||''},
+    bitColPor
+  ],
+  acciones: m=>`<button class="btn btn-danger btn-sm" onclick="deleteMovement('${escHtml(m.id)}')">Eliminar</button>`
 });
 
 // ---------- Cobertura SCTR / Vida Ley por trabajador (actualización masiva) ----------
