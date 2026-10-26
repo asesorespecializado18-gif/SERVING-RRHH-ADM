@@ -4589,30 +4589,78 @@ function emoPill(e){
   const d = daysUntil(e.fechaEmo);
   if(d===null) return `<span class="pill pill-muted">Sin registro</span>`;
   if(d<0) return `<span class="pill pill-danger">Vencido</span>`;
+  if(d<=EMO_DIAS_ALERTA) return `<span class="pill pill-danger" style="font-weight:700;">⚠ Vence en ${d}d</span>`;
   if(d<=30) return `<span class="pill pill-warn">Vence en ${d}d</span>`;
   return `<span class="pill pill-ok">Vigente</span>`;
 }
+const EMO_DIAS_ALERTA = 15;
+// Personal activo con EMO vencido o que vence en los próximos 15 días, el más urgente primero.
+function emoEnAlerta(){
+  return employees.filter(e=>e.estado==='activo' && e.fechaEmo && daysUntil(e.fechaEmo) <= EMO_DIAS_ALERTA)
+    .sort((a,b)=>a.fechaEmo.localeCompare(b.fechaEmo));
+}
+// PDF formal del aviso de EMO (vencidos y por vencer), para gerencia.
+function imprimirAvisoEmo(){
+  const L = emoEnAlerta();
+  if(!L.length){ showToast('No hay EMO vencidos ni por vencer en los próximos ' + EMO_DIAS_ALERTA + ' días'); return; }
+  const emp = window._empresaData || {};
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const o = pdfFormal(doc);
+  const numero = 'EMO-' + hoyISO().replace(/-/g,'');
+  const nVenc = L.filter(e=>daysUntil(e.fechaEmo)<0).length;
+  o.encabezado(`ALERTA: EXÁMENES MÉDICOS OCUPACIONALES VENCIDOS Y POR VENCER (${EMO_DIAS_ALERTA} DÍAS)`, numero, hoyISO());
+  o.fila([['Dirigido a', 'Gerencia General' + (emp.representanteNombre ? ' — ' + emp.representanteNombre : '')]]);
+  o.fila([['Elaborado por', 'Recursos Humanos'], ['Trabajadores en alerta', String(L.length)]]);
+  o.fila([['EMO vencidos', String(nVenc)], [`Vencen en ${EMO_DIAS_ALERTA} días`, String(L.length - nVenc)]]);
+  o.y += 10;
+  o.texto(`ALERTA: personal activo con Examen Médico Ocupacional vencido o que vence en los próximos ${EMO_DIAS_ALERTA} días, al ${docsFechaLarga(hoyISO())} (Ley N.° 29783 y su reglamento). Se recomienda programar el examen con la clínica antes del vencimiento; con el EMO vencido el trabajador no debe realizar labores de riesgo ni ingresar a obra.`);
+  o.seccion(`RELACIÓN DE PERSONAL (${L.length})`);
+  o.tabla([{t:'N°', w:0.35}, {t:'Trabajador', w:2.4}, {t:'DNI', w:1.05}, {t:'Cargo', w:1.6}, {t:'EMO desde', w:1.1}, {t:'Vence', w:1.1}, {t:'Estado', w:1.6}],
+    L.map((e,i)=>{ const d = daysUntil(e.fechaEmo); const r = [i+1, e.nombre, e.dni||'', e.cargo||'', docsFechaCorta(e.fechaEmoInicio) || '—', docsFechaCorta(e.fechaEmo), d<0 ? `VENCIDO (hace ${-d} d)` : d===0 ? 'VENCE HOY' : `POR VENCER (${d} d)`]; r.rojo = true; return r; }));
+  o.salto(110);
+  const yL = o.y + 70, cx1 = o.M + 120, cx2 = o.M + o.ancho - 120;
+  doc.setDrawColor(0); doc.setLineWidth(0.6);
+  doc.line(cx1 - 95, yL, cx1 + 95, yL); doc.line(cx2 - 95, yL, cx2 + 95, yL);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
+  doc.text('ELABORADO POR', cx1, yL + 12, {align:'center'}); doc.text('REVISADO POR', cx2, yL + 12, {align:'center'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  doc.text('Recursos Humanos', cx1, yL + 24, {align:'center'});
+  doc.text(emp.representanteNombre || 'Gerencia General', cx2, yL + 24, {align:'center'});
+  if(emp.representanteNombre) doc.text('Gerencia General', cx2, yL + 35, {align:'center'});
+  o.pie(numero);
+  doc.save(`${numero}-aviso-EMO-por-vencer.pdf`);
+  showToast('Aviso descargado');
+}
 function renderEmo(){
   const conEmo = employees.filter(e=>e.fechaEmo);
-  const vencidos = conEmo.filter(e=>daysUntil(e.fechaEmo)<0);
-  const porVencer = conEmo.filter(e=>{ const d=daysUntil(e.fechaEmo); return d>=0 && d<=30; });
+  // Alertas solo del personal activo: vencidos y los que vencen en los próximos 15 días van en rojo.
+  const alertaEmo = emoEnAlerta();
+  const vencidos = alertaEmo.filter(e=>daysUntil(e.fechaEmo)<0);
+  const porVencer = alertaEmo.filter(e=>daysUntil(e.fechaEmo)>=0);
+  const seguimiento = employees.filter(e=>e.estado==='activo' && e.fechaEmo && daysUntil(e.fechaEmo) > EMO_DIAS_ALERTA && daysUntil(e.fechaEmo) <= 30);
   document.getElementById('emoStats').innerHTML = `
     <div class="stat-card"><div class="num">${conEmo.length}</div><div class="label">Con EMO registrado</div></div>
-    <div class="stat-card warn"><div class="num">${porVencer.length}</div><div class="label">Por vencer (30 días)</div></div>
+    <div class="stat-card warn"><div class="num">${porVencer.length}</div><div class="label">Por vencer (${EMO_DIAS_ALERTA} días)</div></div>
     <div class="stat-card warn"><div class="num">${vencidos.length}</div><div class="label">EMO vencido</div></div>
   `;
 
   let avisoHtml = '';
-  if(vencidos.length){
-    const chips = vencidos.map(e=>`<span class="aviso-chip">${e.nombre} — venció ${fmtDate(e.fechaEmo)}</span>`).join('');
-    avisoHtml += `<div class="aviso-box danger"><div class="aviso-title">⚠ EMO vencido</div><div class="aviso-list">${chips}</div></div>`;
-  }
-  if(porVencer.length){
-    const chips = porVencer.map(e=>{
+  if(alertaEmo.length){
+    const chips = alertaEmo.map(e=>{
       const d = daysUntil(e.fechaEmo);
-      return `<span class="aviso-chip">${e.nombre} — vence en ${d} día(s) (${fmtDate(e.fechaEmo)})</span>`;
+      return `<span class="aviso-chip" style="background:var(--danger-light);color:var(--danger);border:1px solid var(--danger);font-weight:700;">${escHtml(e.nombre)} — ${d<0 ? `VENCIDO hace ${-d} día(s)` : d===0 ? 'VENCE HOY' : `vence en ${d} día(s)`} (${fmtDate(e.fechaEmo)})</span>`;
     }).join('');
-    avisoHtml += `<div class="aviso-box warn"><div class="aviso-title">Aviso: EMO por vencer</div><div class="aviso-list">${chips}</div></div>`;
+    avisoHtml += `<div class="aviso-box danger" style="border:2px solid var(--danger);">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div class="aviso-title" style="color:var(--danger);font-size:14px;">⚠ ${vencidos.length ? `${vencidos.length} EMO vencido(s)${porVencer.length ? ' y ' : ''}` : ''}${porVencer.length ? `${porVencer.length} EMO vence(n) en los próximos ${EMO_DIAS_ALERTA} días` : ''}:</div>
+        <button class="btn btn-danger btn-sm" onclick="imprimirAvisoEmo()">📄 Descargar aviso (PDF)</button>
+      </div>
+      <div class="aviso-list" style="margin-top:8px;">${chips}</div></div>`;
+  }
+  if(seguimiento.length){
+    const chips = seguimiento.sort((a,b)=>a.fechaEmo.localeCompare(b.fechaEmo)).map(e=>`<span class="aviso-chip">${escHtml(e.nombre)} — vence en ${daysUntil(e.fechaEmo)} día(s) (${fmtDate(e.fechaEmo)})</span>`).join('');
+    avisoHtml += `<div class="aviso-box warn"><div class="aviso-title">Para programar: EMO que vencen entre ${EMO_DIAS_ALERTA+1} y 30 días</div><div class="aviso-list">${chips}</div></div>`;
   }
   document.getElementById('emoAviso').innerHTML = avisoHtml;
 
