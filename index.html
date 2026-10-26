@@ -12693,6 +12693,53 @@ function induccionPill(r){
 }
 let induccionFiltroEstado = 'faltan';
 function filtrarInduccionEstado(clave){ induccionFiltroEstado = clave; renderInduccion(); }
+// PDF formal con la lista que está filtrada en pantalla (faltan, vigentes o todos).
+function imprimirListaInduccion(){
+  const f = induccionFiltroEstado;
+  const todos = trabajadoresVigentesInduccion().slice().sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const L = todos.filter(e=>f==='todos' || (f==='vigentes') === tieneInduccionVigente(e.id));
+  if(!L.length){ showToast('No hay trabajadores en esta lista'); return; }
+  const titulos = {faltan:'PERSONAL SIN INDUCCIÓN DE SEGURIDAD VIGENTE', vigentes:'PERSONAL CON INDUCCIÓN DE SEGURIDAD VIGENTE', todos:'ESTADO DE LA INDUCCIÓN DE SEGURIDAD DEL PERSONAL'};
+  const emp = window._empresaData || {};
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const o = pdfFormal(doc);
+  const numero = 'IND-' + hoyISO().replace(/-/g,'');
+  o.encabezado(titulos[f], numero, hoyISO());
+  const nVig = todos.filter(e=>tieneInduccionVigente(e.id)).length;
+  o.fila([['Dirigido a', 'Gerencia General' + (emp.representanteNombre ? ' — ' + emp.representanteNombre : '')]]);
+  o.fila([['Elaborado por', 'Recursos Humanos'], ['Trabajadores en esta lista', String(L.length)]]);
+  o.fila([['Con inducción vigente', `${nVig} de ${todos.length}`], ['Sin inducción vigente', `${todos.length - nVig} de ${todos.length}`]]);
+  o.y += 10;
+  o.texto(f==='faltan'
+    ? `Relación del personal activo que no cuenta con inducción de seguridad vigente al ${docsFechaLarga(hoyISO())} (Ley N.° 29783). Se recomienda programar su inducción antes de asignarlos a obra.`
+    : f==='vigentes'
+    ? `Relación del personal activo que cuenta con inducción de seguridad vigente al ${docsFechaLarga(hoyISO())} (Ley N.° 29783).`
+    : `Estado de la inducción de seguridad de todo el personal activo al ${docsFechaLarga(hoyISO())} (Ley N.° 29783).`);
+  o.seccion(`RELACIÓN DE PERSONAL (${L.length})`);
+  o.tabla([{t:'N°', w:0.4}, {t:'Trabajador', w:2.7}, {t:'DNI', w:1}, {t:'Cargo', w:1.7}, {t:'Última inducción', w:1.9}, {t:'Vence', w:1}, {t:'Estado', w:1.2}],
+    L.map((e,i)=>{
+      const R = induccionesSeguridad.filter(r=>r.empId===e.id).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+      const u = R[0], vig = R.filter(r=>induccionVigente(r));
+      const vence = vig.some(r=>!r.vence) ? 'No vence' : vig.length ? docsFechaCorta(vig.map(r=>r.vence).sort().pop()) : (u && u.vence ? docsFechaCorta(u.vence) : '—');
+      const estado = tieneInduccionVigente(e.id) ? 'Vigente' : u ? 'Vencida' : 'Sin registro';
+      return [i+1, e.nombre, e.dni||'', e.cargo||'', u ? `${docsFechaCorta(u.fecha)} · ${u.tipo||''}${u.cliente ? ' ('+u.cliente+')' : ''}` : '—', vence, estado];
+    }));
+  o.salto(110);
+  const yL = o.y + 70, cx1 = o.M + 120, cx2 = o.M + o.ancho - 120;
+  doc.setDrawColor(0); doc.setLineWidth(0.6);
+  doc.line(cx1 - 95, yL, cx1 + 95, yL); doc.line(cx2 - 95, yL, cx2 + 95, yL);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
+  doc.text('ELABORADO POR', cx1, yL + 12, {align:'center'}); doc.text('REVISADO POR', cx2, yL + 12, {align:'center'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  doc.text('Recursos Humanos', cx1, yL + 24, {align:'center'});
+  doc.text(emp.representanteNombre || 'Gerencia General', cx2, yL + 24, {align:'center'});
+  doc.text('Gerencia General', cx2, yL + 35, {align:'center'});
+  o.y = yL + 45;
+  o.pie(numero);
+  doc.save(`${numero}-induccion-${f==='faltan' ? 'personal-que-falta' : f==='vigentes' ? 'personal-vigente' : 'todo-el-personal'}.pdf`);
+  showToast('PDF descargado');
+}
 function renderInduccion(){
   const statsEl = document.getElementById('induccionStats');
   if(!statsEl) return;
@@ -12736,7 +12783,10 @@ function renderInduccion(){
   avisoHtml += `<div class="panel" style="padding:14px 18px;">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
       <div style="font-weight:600;">Trabajadores activos de obra</div>
-      <div class="tabs-sub" style="margin:0;">${boton('faltan','🔴 Faltan', sinInduccion.length)}${boton('vigentes','🟢 Con inducción vigente', conInduccion.length)}${boton('todos','Todos', vigentesTrab.length)}</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <div class="tabs-sub" style="margin:0;">${boton('faltan','🔴 Faltan', sinInduccion.length)}${boton('vigentes','🟢 Con inducción vigente', conInduccion.length)}${boton('todos','Todos', vigentesTrab.length)}</div>
+        <button class="btn btn-primary btn-sm" onclick="imprimirListaInduccion()">🖨️ Imprimir / PDF</button>
+      </div>
     </div>
     ${listaFiltro.length ? `<div class="aviso-list">${listaFiltro.map(e=>{ const ok = tieneInduccionVigente(e.id); return `<span class="aviso-chip" style="${ok ? 'background:var(--success-light);color:var(--success,#2F6B4F);' : ''}">${ok ? '✓ ' : ''}${escHtml(e.nombre)}${ok ? ` <span style="font-weight:400;">· ${venceDe(e)}</span>` : ''}</span>`; }).join('')}</div>`
       : `<div class="empty" style="padding:10px;">${f==='faltan' ? '✅ Nadie falta: todos tienen su inducción vigente.' : f==='vigentes' ? 'Todavía nadie tiene una inducción vigente registrada.' : 'No hay trabajadores activos.'}</div>`}
