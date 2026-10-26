@@ -7457,15 +7457,16 @@ function pdfFormal(doc){
     };
     cab();
     filas.forEach(f=>{
-      const negrita = f.negrita; doc.setFont('helvetica', negrita ? 'bold' : 'normal');
+      const negrita = f.negrita; doc.setFont('helvetica', negrita ? 'bold' : 'normal'); doc.setTextColor(f.rojo ? 178 : 0, f.rojo ? 58 : 0, f.rojo ? 50 : 0);
       const lineas = f.map((v,i)=>doc.splitTextToSize(String(v==null ? '' : v), cols[i].ancho-8));
       const h = Math.max(...lineas.map(l=>l.length))*10 + 6;
       if(o.y + h > TOPE){ doc.addPage(); o.y = 50; cab(); doc.setFont('helvetica', negrita ? 'bold' : 'normal'); }
       doc.setDrawColor(200); doc.setLineWidth(0.5);
+      if(f.rojo){ doc.setFillColor(246,224,221); doc.rect(o.M, o.y, o.ancho, h, 'F'); }
       cols.forEach((c,i)=>{ doc.rect(c.x, o.y, c.ancho, h); doc.text(lineas[i], posX(c), o.y+10.5, {align: c.al==='r' ? 'right' : 'left'}); });
       o.y += h;
     });
-    doc.setFont('helvetica','normal');
+    doc.setFont('helvetica','normal'); doc.setTextColor(0);
   };
   o.parrafos = lista => {
     o.y += 12; doc.setFont('helvetica','normal'); doc.setFontSize(8.6); doc.setTextColor(0);
@@ -12694,14 +12695,26 @@ function induccionPill(r){
   return `<span class="pill pill-ok">Vigente</span>`;
 }
 let induccionFiltroEstado = 'faltan';
+const INDUCCION_DIAS_ALERTA = 15;
+// Días que le quedan a la inducción vigente del trabajador (charla o examen de la ficha); null = no vence o no tiene.
+function diasParaVencerInduccion(e){
+  const L = induccionesSeguridad.filter(r=>r.empId===e.id && induccionVigente(r));
+  if(L.some(r=>!r.vence)) return null;
+  const fechas = L.map(r=>r.vence);
+  if(examenInduccionVigente(e)) fechas.push(e.constanciaSeg);
+  if(!fechas.length) return null;
+  return daysUntil(fechas.sort().pop());
+}
 function filtrarInduccionEstado(clave){ induccionFiltroEstado = clave; renderInduccion(); }
 // PDF formal con la lista que está filtrada en pantalla (faltan, vigentes o todos).
-function imprimirListaInduccion(){
-  const f = induccionFiltroEstado;
+function imprimirListaInduccion(forzar){
+  const f = forzar || induccionFiltroEstado;
   const todos = trabajadoresVigentesInduccion().slice().sort((a,b)=>a.nombre.localeCompare(b.nombre));
-  const L = todos.filter(e=>f==='todos' || (f==='vigentes') === tieneInduccionVigente(e.id));
+  const porVencer = e => { if(!tieneInduccionVigente(e.id)) return false; const d = diasParaVencerInduccion(e); return d!==null && d <= INDUCCION_DIAS_ALERTA; };
+  const L = todos.filter(e=>f==='todos' || (f==='porvencer' ? porVencer(e) : (f==='vigentes') === tieneInduccionVigente(e.id)));
   if(!L.length){ showToast('No hay trabajadores en esta lista'); return; }
-  const titulos = {faltan:'PERSONAL SIN INDUCCIÓN DE SEGURIDAD VIGENTE', vigentes:'PERSONAL CON INDUCCIÓN DE SEGURIDAD VIGENTE', todos:'ESTADO DE LA INDUCCIÓN DE SEGURIDAD DEL PERSONAL'};
+  if(f==='porvencer') L.sort((a,b)=>diasParaVencerInduccion(a) - diasParaVencerInduccion(b));
+  const titulos = {faltan:'PERSONAL SIN INDUCCIÓN DE SEGURIDAD VIGENTE', porvencer:`ALERTA: INDUCCIONES DE SEGURIDAD POR VENCER (${INDUCCION_DIAS_ALERTA} DÍAS)`, vigentes:'PERSONAL CON INDUCCIÓN DE SEGURIDAD VIGENTE', todos:'ESTADO DE LA INDUCCIÓN DE SEGURIDAD DEL PERSONAL'};
   const emp = window._empresaData || {};
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({unit:'pt', format:'a4'});
@@ -12715,12 +12728,16 @@ function imprimirListaInduccion(){
   o.y += 10;
   o.texto(f==='faltan'
     ? `Relación del personal activo que no cuenta con inducción de seguridad vigente al ${docsFechaLarga(hoyISO())} (Ley N.° 29783). Se recomienda programar su inducción antes de asignarlos a obra.`
+    : f==='porvencer'
+    ? `ALERTA: personal activo cuya inducción de seguridad vence en los próximos ${INDUCCION_DIAS_ALERTA} días, al ${docsFechaLarga(hoyISO())} (Ley N.° 29783). Se recomienda programar su renovación antes del vencimiento para no afectar su ingreso a obra.`
     : f==='vigentes'
     ? `Relación del personal activo que cuenta con inducción de seguridad vigente al ${docsFechaLarga(hoyISO())} (Ley N.° 29783).`
     : `Estado de la inducción de seguridad de todo el personal activo al ${docsFechaLarga(hoyISO())} (Ley N.° 29783).`);
   o.seccion(`RELACIÓN DE PERSONAL (${L.length})`);
-  o.tabla([{t:'N°', w:0.4}, {t:'Trabajador', w:2.7}, {t:'DNI', w:1}, {t:'Cargo', w:1.7}, {t:'Última inducción', w:1.9}, {t:'Vence', w:1}, {t:'Estado', w:1.2}],
+  o.tabla([{t:'N°', w:0.4}, {t:'Trabajador', w:2.5}, {t:'DNI', w:0.95}, {t:'Cargo', w:1.5}, {t:'Última inducción', w:1.9}, {t:'Vence', w:1}, {t:'Estado', w:1.65}],
     L.map((e,i)=>{
+      // Por vencer = fila en rojo con los días que quedan.
+      const fila = (() => {
       const R = induccionesSeguridad.filter(r=>r.empId===e.id).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
       const u = R[0], vig = R.filter(r=>induccionVigente(r));
       // Sin charla vigente registrada, se usa el examen de inducción de la ficha.
@@ -12730,6 +12747,9 @@ function imprimirListaInduccion(){
       const vence = vig.some(r=>!r.vence) ? 'No vence' : vig.length ? docsFechaCorta(vig.map(r=>r.vence).sort().pop()) : (u && u.vence ? docsFechaCorta(u.vence) : '—');
       const estado = tieneInduccionVigente(e.id) ? 'Vigente' : u ? 'Vencida' : 'Sin registro';
       return [i+1, e.nombre, e.dni||'', e.cargo||'', u ? `${docsFechaCorta(u.fecha)} · ${u.tipo||''}${u.cliente ? ' ('+u.cliente+')' : ''}` : '—', vence, estado];
+      })();
+      if(porVencer(e)){ const d = diasParaVencerInduccion(e); fila[6] = d===0 ? 'VENCE HOY' : `POR VENCER (${d} d)`; fila.rojo = true; }
+      return fila;
     }));
   o.salto(110);
   const yL = o.y + 70, cx1 = o.M + 120, cx2 = o.M + o.ancho - 120;
@@ -12743,7 +12763,7 @@ function imprimirListaInduccion(){
   doc.text('Gerencia General', cx2, yL + 35, {align:'center'});
   o.y = yL + 45;
   o.pie(numero);
-  doc.save(`${numero}-induccion-${f==='faltan' ? 'personal-que-falta' : f==='vigentes' ? 'personal-vigente' : 'todo-el-personal'}.pdf`);
+  doc.save(`${numero}-induccion-${f==='faltan' ? 'personal-que-falta' : f==='porvencer' ? 'por-vencer' : f==='vigentes' ? 'personal-vigente' : 'todo-el-personal'}.pdf`);
   showToast('PDF descargado');
 }
 function renderInduccion(){
@@ -12768,7 +12788,7 @@ function renderInduccion(){
   statsEl.innerHTML = `
     <div class="stat-card"><div class="num">${new Set(induccionesSeguridad.map(r=>r.sesionId)).size}</div><div class="label">Inducciones registradas</div></div>
     <div class="stat-card ok" style="cursor:pointer;" title="Ver quiénes tienen inducción vigente" onclick="filtrarInduccionEstado('vigentes')"><div class="num">${vigentesTrab.length - sinInduccion.length}</div><div class="label">Trabajadores con inducción vigente</div></div>
-    <div class="stat-card warn"><div class="num">${porVencer.length + vigentesTrab.filter(e=>!induccionesSeguridad.some(r=>r.empId===e.id && induccionVigente(r)) && examenInduccionVigente(e) && daysUntil(e.constanciaSeg) <= 30).length}</div><div class="label">Por vencer (30 días)</div></div>
+    <div class="stat-card warn" style="cursor:pointer;" title="Ver quiénes vencen pronto" onclick="filtrarInduccionEstado('porvencer')"><div class="num">${vigentesTrab.filter(e=>{ if(!tieneInduccionVigente(e.id)) return false; const d = diasParaVencerInduccion(e); return d!==null && d <= INDUCCION_DIAS_ALERTA; }).length}</div><div class="label">Por vencer (${INDUCCION_DIAS_ALERTA} días)</div></div>
     <div class="stat-card warn" style="cursor:pointer;" title="Ver quiénes faltan" onclick="filtrarInduccionEstado('faltan')"><div class="num">${sinInduccion.length}</div><div class="label">Trabajadores sin inducción vigente</div></div>
   `;
   let avisoHtml = '';
@@ -12776,26 +12796,39 @@ function renderInduccion(){
     avisoHtml += `<div class="aviso-box danger"><div class="aviso-title">Inducciones vencidas</div>
       <div class="aviso-list">${vencidas.map(r=>`<span class="aviso-chip">${escHtml((empById.get(r.empId)||{}).nombre||'—')} — ${escHtml(r.tipo)} venció el ${fmtDate(r.vence)}</span>`).join('')}</div></div>`;
   }
-  if(porVencer.length){
-    avisoHtml += `<div class="aviso-box warn"><div class="aviso-title">Inducciones por vencer</div>
-      <div class="aviso-list">${porVencer.map(r=>`<span class="aviso-chip">${escHtml((empById.get(r.empId)||{}).nombre||'—')} — ${escHtml(r.tipo)} vence en ${daysUntil(r.vence)} día(s)</span>`).join('')}</div></div>`;
-  }
   // Lista filtrable: los que faltan, los que ya tienen inducción vigente o todos.
   const conInduccion = vigentesTrab.filter(e=>tieneInduccionVigente(e.id));
   const f = induccionFiltroEstado;
-  const listaFiltro = f==='faltan' ? sinInduccion : f==='vigentes' ? conInduccion : vigentesTrab;
+  const porVencerTrab = conInduccion.filter(e=>{ const d = diasParaVencerInduccion(e); return d!==null && d <= INDUCCION_DIAS_ALERTA; });
+  const listaFiltro = f==='faltan' ? sinInduccion : f==='vigentes' ? conInduccion : f==='porvencer' ? porVencerTrab : vigentesTrab;
+  // Aviso en rojo: quiénes vencen en los próximos días, ordenados del más urgente al menos urgente.
+  if(porVencerTrab.length){
+    const orden = porVencerTrab.map(e=>({e, d: diasParaVencerInduccion(e)})).sort((a,b)=>a.d-b.d || a.e.nombre.localeCompare(b.e.nombre));
+    avisoHtml += `<div class="aviso-box danger" style="border:2px solid var(--danger);">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div class="aviso-title" style="color:var(--danger);font-size:14px;">⚠ En los próximos ${INDUCCION_DIAS_ALERTA} días va a vencer la inducción de ${orden.length} trabajador(es):</div>
+        <button class="btn btn-danger btn-sm" onclick="imprimirListaInduccion('porvencer')">📄 Descargar aviso (PDF)</button>
+      </div>
+      <div class="aviso-list" style="margin-top:8px;">${orden.map(({e, d})=>`<span class="aviso-chip" style="background:var(--danger-light);color:var(--danger);border:1px solid var(--danger);font-weight:700;">${escHtml(e.nombre)} — ${d===0 ? 'VENCE HOY' : 'vence en '+d+' día(s)'}</span>`).join('')}</div>
+    </div>`;
+  }
   const venceDe = e => { const L = induccionesSeguridad.filter(r=>r.empId===e.id && induccionVigente(r)); if(!L.length) return examenInduccionVigente(e) ? 'examen de inducción hasta ' + fmtDate(e.constanciaSeg) : ''; if(L.some(r=>!r.vence)) return 'sin vencimiento'; return 'hasta ' + fmtDate(L.map(r=>r.vence).sort().pop()); };
   const boton = (clave, texto, n)=>`<button class="tab-sub-btn ${f===clave?'active':''}" onclick="filtrarInduccionEstado('${clave}')">${texto} (${n})</button>`;
   avisoHtml += `<div class="panel" style="padding:14px 18px;">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
       <div style="font-weight:600;">Trabajadores activos de obra</div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <div class="tabs-sub" style="margin:0;">${boton('faltan','🔴 Faltan', sinInduccion.length)}${boton('vigentes','🟢 Con inducción vigente', conInduccion.length)}${boton('todos','Todos', vigentesTrab.length)}</div>
+        <div class="tabs-sub" style="margin:0;">${boton('faltan','🔴 Faltan', sinInduccion.length)}${boton('porvencer','⚠ Por vencer', porVencerTrab.length)}${boton('vigentes','🟢 Con inducción vigente', conInduccion.length)}${boton('todos','Todos', vigentesTrab.length)}</div>
         <button class="btn btn-primary btn-sm" onclick="imprimirListaInduccion()">🖨️ Imprimir / PDF</button>
       </div>
     </div>
-    ${listaFiltro.length ? `<div class="aviso-list">${listaFiltro.map(e=>{ const ok = tieneInduccionVigente(e.id); return `<span class="aviso-chip" style="${ok ? 'background:var(--success-light);color:var(--success,#2F6B4F);' : ''}">${ok ? '✓ ' : ''}${escHtml(e.nombre)}${ok ? ` <span style="font-weight:400;">· ${venceDe(e)}</span>` : ''}</span>`; }).join('')}</div>`
-      : `<div class="empty" style="padding:10px;">${f==='faltan' ? '✅ Nadie falta: todos tienen su inducción vigente.' : f==='vigentes' ? 'Todavía nadie tiene una inducción vigente registrada.' : 'No hay trabajadores activos.'}</div>`}
+    ${listaFiltro.length ? `<div class="aviso-list">${listaFiltro.map(e=>{
+        const ok = tieneInduccionVigente(e.id), d = ok ? diasParaVencerInduccion(e) : null;
+        const alerta = d!==null && d <= INDUCCION_DIAS_ALERTA;
+        // Por vencer = alerta en rojo, con los días que quedan.
+        if(alerta) return `<span class="aviso-chip" style="background:var(--danger-light);color:var(--danger);border:1px solid var(--danger);font-weight:700;">⚠ ${escHtml(e.nombre)} <span style="font-weight:600;">· ${d===0 ? 'VENCE HOY' : 'vence en '+d+' día(s)'} (${venceDe(e).replace(/^.*hasta /,'')})</span></span>`;
+        return `<span class="aviso-chip" style="${ok ? 'background:var(--success-light);color:var(--success,#2F6B4F);' : ''}">${ok ? '✓ ' : ''}${escHtml(e.nombre)}${ok ? ` <span style="font-weight:400;">· ${venceDe(e)}</span>` : ''}</span>`; }).join('')}</div>`
+      : `<div class="empty" style="padding:10px;">${f==='faltan' ? '✅ Nadie falta: todos tienen su inducción vigente.' : f==='porvencer' ? `✅ Nadie vence en los próximos ${INDUCCION_DIAS_ALERTA} días.` : f==='vigentes' ? 'Todavía nadie tiene una inducción vigente registrada.' : 'No hay trabajadores activos.'}</div>`}
   </div>`;
   document.getElementById('induccionAviso').innerHTML = avisoHtml;
 
