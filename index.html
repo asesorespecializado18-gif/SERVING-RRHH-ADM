@@ -1480,6 +1480,11 @@ tr:hover td{background:#FAF9F6;}
 
       <div class="stat-grid" id="segurosStats"></div>
       <div id="segurosAviso"></div>
+      <div class="panel">
+        <div class="panel-head"><h3>Pólizas generales de la empresa</h3></div>
+        <p class="hint" style="margin:10px 18px 0;">Cada póliza cubre a todo un grupo. Al registrarla o renovarla, sus fechas se aplican solas a todos los trabajadores activos del grupo. Los que ingresen después aparecen en "Por declarar" hasta que los declares a la aseguradora; los que cesen aparecen en "Por dar de baja".</p>
+        <div id="polizasGenerales" style="padding:14px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;"></div>
+      </div>
 
       <div class="panel">
         <div class="panel-head"><h3>Subir constancia SCTR (PDF de la aseguradora)</h3></div>
@@ -1494,9 +1499,9 @@ tr:hover td{background:#FAF9F6;}
         </div>
       </div>
 
-      <div class="panel">
-        <div class="panel-head"><h3>Cobertura por trabajador — SCTR y Vida Ley (actualización masiva)</h3></div>
-        <div style="padding:16px 18px;">
+      <details class="panel" style="padding:0;">
+        <summary style="padding:14px 18px;cursor:pointer;font-weight:600;">Ajuste manual por trabajador — SCTR y Vida Ley (solo para casos especiales)</summary>
+        <div style="padding:0 18px 16px;">
           <p class="hint" style="margin:0 0 10px;">Cuando llegue la constancia mensual del SCTR o la póliza de Vida Ley, regístrala una sola vez y marca a los trabajadores que cubre: se actualizan sus fechas en Personal.</p>
           <div class="field-row">
             <div class="field">
@@ -1530,7 +1535,7 @@ tr:hover td{background:#FAF9F6;}
           </div>
           <button class="btn btn-accent btn-sm" style="margin-top:10px;" onclick="guardarCoberturaMasiva()">Guardar y actualizar a los trabajadores marcados</button>
         </div>
-      </div>
+      </details>
 
       <div class="panel">
         <div class="panel-head"><h3>Registrar póliza</h3></div>
@@ -1539,10 +1544,10 @@ tr:hover td{background:#FAF9F6;}
             <div class="field">
               <label>Tipo de seguro</label>
               <select id="seguroTipo">
-                <option value="SCTR Salud">SCTR Salud</option>
-                <option value="SCTR Pensión">SCTR Pensión</option>
-                <option value="Seguro Vida Ley">Seguro Vida Ley</option>
-                <option value="Responsabilidad Civil frente a Terceros">Responsabilidad Civil frente a Terceros</option>
+                <option value="sctr_obreros">SCTR Salud y Pensión — personal obrero</option>
+                <option value="sctr_administrativos">SCTR Salud y Pensión — personal administrativo</option>
+                <option value="vidaley">Seguro Vida Ley — todo el personal</option>
+                <option value="rc">Responsabilidad Civil frente a Terceros</option>
               </select>
             </div>
             <div class="field">
@@ -2173,6 +2178,27 @@ tr:hover td{background:#FAF9F6;}
         <button class="btn btn-ghost" onclick="closeEmployeeModal()">Cancelar</button>
         <button class="btn btn-primary" onclick="saveEmployee()">Guardar</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RENOVAR PÓLIZA GENERAL -->
+<div class="modal-overlay" id="renovarPolizaOverlay">
+  <div class="modal" style="max-width:520px;">
+    <h3 id="renovarPolizaTitulo">Renovar póliza</h3>
+    <p class="hint" id="renovarPolizaResumen" style="margin:-6px 0 14px;"></p>
+    <div class="field-row">
+      <div class="field"><label>Aseguradora</label><input id="renovarAseguradora" list="cobAseguradorasList"></div>
+      <div class="field"><label>N° de póliza / constancia</label><input id="renovarNumero"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Inicio de vigencia</label><input type="date" id="renovarInicio"></div>
+      <div class="field"><label>Fin de vigencia</label><input type="date" id="renovarFin"></div>
+    </div>
+    <div class="field"><label>Constancia de la póliza (opcional, PDF o imagen)</label><input type="file" id="renovarArchivo" accept=".pdf,.jpg,.jpeg,.png"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="document.getElementById('renovarPolizaOverlay').classList.remove('active')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarRenovacionPoliza()">Renovar y aplicar a todos</button>
     </div>
   </div>
 </div>
@@ -12174,6 +12200,13 @@ function calcularPendientes(){
     const heSinReg = ult.personas.filter(p=>(p.horasExtra||p.pago25) && !regs.some(r=>r.empId===p.empId)).map(p=>p.nombre);
     add('warn', `${heSinReg.length} trabajador(es) con horas extra pagadas sin registro de sobretiempo`, heSinReg, 'Registrar', "switchView('horasextra')");
   }
+  Object.entries(POLIZA_CATEGORIAS).forEach(([cat, c])=>{
+    if(!c.fin) return;
+    const {s, porDeclarar, porBaja} = polizaPendientes(cat);
+    if(!s) return;
+    add('danger', `${porDeclarar.length} trabajador(es) por declarar en ${c.nombre} (no están cubiertos hasta declararlos)`, porDeclarar.map(e=>e.nombre+(e.fechaIngreso ? ' (ingresó '+fmtDate(e.fechaIngreso)+')' : '')), 'Ir a Seguros', "switchView('seguros')");
+    add('warn', `${porBaja.length} cesado(s) por dar de baja en ${c.nombre}`, porBaja.map(e=>e.nombre), 'Ir a Seguros', "switchView('seguros')");
+  });
   const noAptos = act.filter(e=>aptoParaObra(e).nivel==='danger');
   add('danger', `${noAptos.length} trabajador(es) NO aptos para entrar a obra hoy`, noAptos.map(e=>e.nombre+' ('+aptoParaObra(e).faltan.map(r=>r.corto).join(', ')+')'), 'Ver semáforo', "abrirAptosObra('danger')");
   const constSegVencidas = act.filter(e=>e.constanciaSeg && e.constanciaSeg < hoy).sort((a,b)=>a.constanciaSeg.localeCompare(b.constanciaSeg));
@@ -12720,6 +12753,136 @@ async function guardarCoberturaMasiva(){
   }
 }
 
+// ---------- Pólizas generales de la empresa ----------
+// Una póliza cubre a un grupo completo. Al registrarla o renovarla se aplican sus fechas a todos los activos del grupo
+// y quedan como "declarados" (empIds). Los que ingresan después quedan "por declarar"; los que cesan, "por dar de baja".
+const POLIZA_CATEGORIAS = {
+  sctr_obreros: {nombre:'SCTR — personal obrero', tipo:'SCTR Salud y Pensión', grupo:'obreros', ini:'vigenciaSctrInicio', fin:'vigenciaSctr', meses:1},
+  sctr_administrativos: {nombre:'SCTR — personal administrativo', tipo:'SCTR Salud y Pensión', grupo:'administrativos', ini:'vigenciaSctrInicio', fin:'vigenciaSctr', meses:1},
+  vidaley: {nombre:'Seguro Vida Ley', tipo:'Seguro Vida Ley', grupo:null, ini:'vigenciaVidaLeyInicio', fin:'vigenciaVidaLey', meses:12},
+  rc: {nombre:'Responsabilidad Civil frente a Terceros', tipo:'Responsabilidad Civil frente a Terceros', grupo:null, ini:null, fin:null, meses:12}
+};
+function polizaCategoria(s){
+  if(s.categoria && POLIZA_CATEGORIAS[s.categoria]) return s.categoria;
+  const t = String(s.tipo||'');
+  if(/SCTR/i.test(t)) return s.grupo==='administrativos' ? 'sctr_administrativos' : 'sctr_obreros';
+  if(/Vida Ley/i.test(t)) return 'vidaley';
+  if(/Responsabilidad/i.test(t)) return 'rc';
+  return null;
+}
+// Póliza vigente (o la última) de una categoría: la de fin más lejano.
+function polizaActual(cat){
+  return segurosEmpresa.filter(s=>polizaCategoria(s)===cat && s.fin).sort((a,b)=>b.fin.localeCompare(a.fin) || (b.fechaRegistro||'').localeCompare(a.fechaRegistro||''))[0] || null;
+}
+function polizaCubreA(cat, e){
+  const c = POLIZA_CATEGORIAS[cat];
+  return !!c && !!c.fin && (!c.grupo || sctrGrupo(e)===c.grupo);
+}
+// Aplica la póliza a todos los activos del grupo: les pone las fechas y los deja como declarados.
+function aplicarPolizaGeneral(s){
+  const cat = polizaCategoria(s), c = POLIZA_CATEGORIAS[cat];
+  if(!c || !c.fin) return 0;
+  const activos = employees.filter(e=>e.estado==='activo' && polizaCubreA(cat, e));
+  activos.forEach(e=>{ if(!e[c.fin] || e[c.fin] <= s.fin){ e[c.ini] = s.inicio; e[c.fin] = s.fin; } });
+  s.categoria = cat; s.grupo = c.grupo || s.grupo || null;
+  s.empIds = [...new Set([...(s.empIds||[]), ...activos.map(e=>e.id)])];
+  return activos.length;
+}
+function polizaPendientes(cat){
+  const s = polizaActual(cat), c = POLIZA_CATEGORIAS[cat];
+  if(!s || !c.fin || daysUntil(s.fin) < 0) return {s, porDeclarar:[], porBaja:[]};
+  // Pólizas registradas antes sin lista de declarados: se toma como declarado a quien ya tiene esas fechas.
+  const ids = new Set(Array.isArray(s.empIds) && s.empIds.length ? s.empIds
+    : employees.filter(e=>polizaCubreA(cat, e) && e[c.fin] && e[c.fin] >= s.inicio).map(e=>e.id));
+  return {s,
+    porDeclarar: employees.filter(e=>e.estado==='activo' && polizaCubreA(cat, e) && !ids.has(e.id)),
+    porBaja: employees.filter(e=>e.estado!=='activo' && ids.has(e.id))};
+}
+async function declararEnPoliza(cat, empId){
+  const s = polizaActual(cat), c = POLIZA_CATEGORIAS[cat];
+  if(!s) return;
+  const ids = empId ? [empId] : polizaPendientes(cat).porDeclarar.map(e=>e.id);
+  ids.forEach(id=>{ const e = employees.find(x=>x.id===id); if(e){ e[c.ini] = hoyISO() > s.inicio ? hoyISO() : s.inicio; e[c.fin] = s.fin; } });
+  s.empIds = [...new Set([...(s.empIds||[]), ...ids])];
+  (s.declaraciones = s.declaraciones || []).push(...ids.map(id=>({empId:id, fecha:hoyISO()})));
+  await saveData('employees', employees);
+  await saveData('segurosEmpresa', segurosEmpresa);
+  renderAll();
+  showToast(`${ids.length} trabajador(es) declarados en ${c.nombre}`);
+}
+async function bajaEnPoliza(cat, empId){
+  const s = polizaActual(cat);
+  if(!s) return;
+  const ids = empId ? [empId] : polizaPendientes(cat).porBaja.map(e=>e.id);
+  s.empIds = (s.empIds||[]).filter(id=>!ids.includes(id));
+  (s.bajas = s.bajas || []).push(...ids.map(id=>({empId:id, fecha:hoyISO()})));
+  await saveData('segurosEmpresa', segurosEmpresa);
+  renderAll();
+  showToast(`${ids.length} trabajador(es) dados de baja en ${POLIZA_CATEGORIAS[cat].nombre}`);
+}
+let renovarPolizaCat = null;
+function abrirRenovarPoliza(cat){
+  const s = polizaActual(cat), c = POLIZA_CATEGORIAS[cat];
+  renovarPolizaCat = cat;
+  const inicio = s ? docsSumarDias(s.fin, 1) : hoyISO();
+  document.getElementById('renovarPolizaTitulo').textContent = (s ? 'Renovar ' : 'Registrar ') + c.nombre;
+  document.getElementById('renovarPolizaResumen').textContent = s ? `Póliza actual: ${s.aseguradora||'—'} ${s.numeroPoliza ? '· N° '+s.numeroPoliza : ''} · vence ${fmtDate(s.fin)}` : 'Aún no hay una póliza registrada para este grupo.';
+  document.getElementById('renovarAseguradora').value = s ? (s.aseguradora||'') : '';
+  document.getElementById('renovarNumero').value = s ? (s.numeroPoliza||'') : '';
+  document.getElementById('renovarInicio').value = inicio;
+  document.getElementById('renovarFin').value = docsSumarDias(docsSumarDiasMes(inicio, c.meses), -1);
+  document.getElementById('renovarArchivo').value = '';
+  document.getElementById('renovarPolizaOverlay').classList.add('active');
+}
+async function guardarRenovacionPoliza(){
+  const cat = renovarPolizaCat, c = POLIZA_CATEGORIAS[cat];
+  const inicio = document.getElementById('renovarInicio').value, fin = document.getElementById('renovarFin').value;
+  const aseguradora = document.getElementById('renovarAseguradora').value.trim();
+  if(!aseguradora || !inicio || !fin || fin < inicio){ showToast('Completa la aseguradora y revisa las fechas'); return; }
+  const archivo = document.getElementById('renovarArchivo').files[0];
+  if(archivo && archivo.size > 3*1024*1024){ showToast('El archivo es muy grande (máx. 3MB)'); return; }
+  const fileData = archivo ? await new Promise(r=>{ const fr = new FileReader(); fr.onload = ()=>r(fr.result); fr.readAsDataURL(archivo); }) : null;
+  const s = {id:'seg'+Date.now(), tipo:c.tipo, categoria:cat, grupo:c.grupo, aseguradora, numeroPoliza: document.getElementById('renovarNumero').value.trim(),
+    inicio, fin, notas:'', fileData, fileName: archivo ? archivo.name : null, fechaRegistro: hoyISO(), empIds:[]};
+  segurosEmpresa.push(s);
+  const n = aplicarPolizaGeneral(s);
+  s.notas = c.fin ? `Póliza general: cubre a ${n} trabajador(es) activos` : 'Póliza general de la empresa';
+  await saveData('employees', employees);
+  await saveData('segurosEmpresa', segurosEmpresa);
+  document.getElementById('renovarPolizaOverlay').classList.remove('active');
+  renderAll();
+  showToast(c.fin ? `${c.nombre}: vigente hasta ${fmtDate(fin)} para ${n} trabajador(es)` : `${c.nombre} registrada hasta ${fmtDate(fin)}`);
+}
+function renderPolizasGenerales(){
+  const cont = document.getElementById('polizasGenerales');
+  if(!cont) return;
+  cont.innerHTML = Object.entries(POLIZA_CATEGORIAS).map(([cat, c])=>{
+    const {s, porDeclarar, porBaja} = polizaPendientes(cat);
+    const grupoTotal = c.fin ? employees.filter(e=>e.estado==='activo' && polizaCubreA(cat, e)).length : 0;
+    const cubiertos = c.fin && s && daysUntil(s.fin) >= 0 ? grupoTotal - porDeclarar.length : 0;
+    const lista = (L, titulo, color, accion, txtBtn, txtTodos)=> L.length ? `<div style="margin-top:8px;">
+      <div style="font-size:12px;font-weight:700;color:${color};display:flex;justify-content:space-between;align-items:center;">${titulo} (${L.length})
+        ${L.length>1 ? `<button class="btn btn-ghost btn-sm" onclick="${accion}('${cat}')">${txtTodos}</button>` : ''}</div>
+      ${L.map(e=>`<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border);">
+        <span>${escHtml(e.nombre)}${e.fechaIngreso && accion==='declararEnPoliza' ? ` <span style="color:var(--ink-soft);">· ingresó ${fmtDate(e.fechaIngreso)}</span>` : ''}</span>
+        <button class="btn btn-ghost btn-sm" onclick="${accion}('${cat}','${e.id}')">${txtBtn}</button></div>`).join('')}</div>` : '';
+    return `<div style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--card,#fff);">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+        <div><div style="font-weight:700;">${c.nombre}</div>
+          <div style="font-size:12px;color:var(--ink-soft);">${s ? `${escHtml(s.aseguradora||'—')}${s.numeroPoliza ? ' · N° '+escHtml(s.numeroPoliza) : ''}<br>${fmtDate(s.inicio)} al ${fmtDate(s.fin)}` : 'Sin póliza registrada'}</div></div>
+        ${s ? seguroVigenciaPill(s) : '<span class="pill pill-danger">Sin póliza</span>'}
+      </div>
+      ${c.fin && s && daysUntil(s.fin) >= 0 ? `<div style="font-size:12.5px;margin-top:8px;">👷 Cubre a <b>${cubiertos}</b> de ${grupoTotal} trabajador(es) activos</div>` : ''}
+      ${lista(porDeclarar, '⚠ Por declarar a la aseguradora', 'var(--danger)', 'declararEnPoliza', 'Declarado ✓', 'Declarar a todos')}
+      ${lista(porBaja, '↩ Por dar de baja (cesados)', '#B7791F', 'bajaEnPoliza', 'Baja ✓', 'Dar de baja a todos')}
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+        <button class="btn btn-accent btn-sm" onclick="abrirRenovarPoliza('${cat}')">${s ? '🔄 Renovar' : '+ Registrar póliza'}</button>
+        ${s && s.fileData ? `<button class="btn btn-ghost btn-sm" onclick="downloadSeguroFile('${s.id}')">Constancia</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
 // ---------- Seguros de la empresa ----------
 let currentSeguroFiltroTipo = 'todos';
 let currentSeguroFiltroAseguradora = 'todos';
@@ -12730,7 +12893,8 @@ function toggleSeguroAseguradoraOtro(){
 }
 
 async function saveSeguro(){
-  const tipo = document.getElementById('seguroTipo').value;
+  const cat = document.getElementById('seguroTipo').value;
+  const tipo = (POLIZA_CATEGORIAS[cat] || {}).tipo || cat;
   const aseguradoraSel = document.getElementById('seguroAseguradora').value;
   const aseguradora = aseguradoraSel==='Otra' ? document.getElementById('seguroAseguradoraOtro').value.trim() : aseguradoraSel;
   const numeroPoliza = document.getElementById('seguroNumeroPoliza').value.trim();
@@ -12740,18 +12904,22 @@ async function saveSeguro(){
   const fileInput = document.getElementById('seguroArchivo');
 
   const registrar = async (fileData, fileName)=>{
-    segurosEmpresa.push({
-      id:'seg'+Date.now(), tipo, aseguradora, numeroPoliza,
+    const s = {
+      id:'seg'+Date.now(), tipo, categoria: POLIZA_CATEGORIAS[cat] ? cat : null, aseguradora, numeroPoliza,
       inicio, fin,
       notas: document.getElementById('seguroNotas').value.trim(),
       fileData: fileData||null, fileName: fileName||null,
-      fechaRegistro: hoyISO()
-    });
+      fechaRegistro: hoyISO(), empIds: []
+    };
+    segurosEmpresa.push(s);
+    // Póliza general: se aplica sola a todos los trabajadores activos del grupo.
+    const n = POLIZA_CATEGORIAS[cat] ? aplicarPolizaGeneral(s) : 0;
+    if(n) await saveData('employees', employees);
     await saveData('segurosEmpresa', segurosEmpresa);
     ['seguroNumeroPoliza','seguroInicio','seguroFin','seguroNotas','seguroAseguradoraOtro'].forEach(id=>document.getElementById(id).value='');
     fileInput.value='';
     renderAll();
-    showToast('Póliza registrada');
+    showToast(n ? `Póliza registrada y aplicada a ${n} trabajador(es)` : 'Póliza registrada');
   };
   if(fileInput.files.length){
     if(fileInput.files[0].size > 1*1024*1024){ showToast('El archivo es muy grande (máx. 1MB, para no llenar el espacio de almacenamiento)'); return; }
@@ -12817,6 +12985,7 @@ function populateSegurosFiltros(){
 function renderSeguros(){
   const statsEl = document.getElementById('segurosStats');
   if(!statsEl) return;
+  renderPolizasGenerales();
   renderCoberturaSeguros();
   populateSegurosFiltros();
   toggleSeguroAseguradoraOtro();
