@@ -700,18 +700,18 @@ tr:hover td{background:#FAF9F6;}
       </div>
 
       <div class="tabs-sub">
-        <button class="tab-sub-btn active" data-asist-tab="registro" onclick="switchAsistTab('registro')">1. Registro diario</button>
+        <button class="tab-sub-btn active" data-asist-tab="formatomanual" onclick="switchAsistTab('formatomanual')">1. Asistencia del día</button>
         <button class="tab-sub-btn" data-asist-tab="faltas" onclick="switchAsistTab('faltas')">Faltas</button>
         <button class="tab-sub-btn" data-asist-tab="permisos" onclick="switchAsistTab('permisos')">Permisos</button>
         <button class="tab-sub-btn" data-asist-tab="descansos" onclick="switchAsistTab('descansos')">Descansos médicos</button>
+        <button class="tab-sub-btn" data-asist-tab="reportes" onclick="switchAsistTab('reportes')">2. Reporte mensual</button>
         <button class="tab-sub-btn" data-asist-tab="prestamos" onclick="switchAsistTab('prestamos')">Préstamos y adelantos</button>
         <button class="tab-sub-btn" data-asist-tab="reembolsos" onclick="switchAsistTab('reembolsos')">Reembolsos</button>
-        <button class="tab-sub-btn" data-asist-tab="formatomanual" onclick="switchAsistTab('formatomanual')">Formato de asistencia manual</button>
-        <button class="tab-sub-btn" data-asist-tab="reportes" onclick="switchAsistTab('reportes')">3-4. Reportes mensuales y nómina</button>
+        <button class="tab-sub-btn" data-asist-tab="registro" id="tabRegistroAntiguo" style="display:none;" onclick="switchAsistTab('registro')">Registro detallado (antiguo)</button>
       </div>
 
-      <!-- REGISTRO DIARIO -->
-      <div id="asistRegistroBlock">
+      <!-- REGISTRO DIARIO (antiguo: solo visible si tiene datos; la asistencia se marca en "Asistencia del día") -->
+      <div id="asistRegistroBlock" style="display:none;">
         <div class="panel">
           <div class="panel-head"><h3>Registrar ingreso, salida, horas extras y permisos</h3></div>
           <div style="padding:16px 18px;">
@@ -924,9 +924,9 @@ tr:hover td{background:#FAF9F6;}
       </div>
 
       <!-- FORMATO DE ASISTENCIA MANUAL -->
-      <div id="asistFormatoManualBlock" style="display:none;">
+      <div id="asistFormatoManualBlock">
         <div class="panel">
-          <div class="panel-head"><h3>Formato de asistencia manual del día</h3></div>
+          <div class="panel-head"><h3>Asistencia del día</h3></div>
           <div style="padding:16px 18px;">
             <div class="field-row" style="align-items:flex-end;">
               <div class="field"><label>Fecha</label><input type="date" id="formatoManualFecha" onchange="cargarFormatoManualFecha()"></div>
@@ -973,7 +973,7 @@ tr:hover td{background:#FAF9F6;}
             </div>
           </div>
           <div id="reporteMensualTable"></div>
-          <p class="hint" style="padding:0 18px 16px;">El monto estimado se calcula con el sueldo diario ÷ 8 horas × horas trabajadas + horas extras, como referencia para la elaboración de la nómina. No reemplaza el cálculo oficial de planilla.</p>
+          <p class="hint" style="padding:0 18px 16px;">Se calcula con la <b>Asistencia del día</b> (formato manual) y las <b>Horas extra</b> registradas. Monto estimado = días asistidos × jornal + horas extra (25% las 2 primeras y 35% las siguientes). Horas trabajadas: entrada a salida menos 1 h de refrigerio; si no se marcó la hora, se toma la jornada de 8 h. Es una referencia: el pago oficial es la Planilla semanal.</p>
         </div>
       </div>
     </div>
@@ -2977,6 +2977,12 @@ function switchView(name){
   if(name==='reportes') renderReportes();
   if(name==='dashboard') renderPendientes();
   if(name==='boletaspago') renderBoletasSemanales();
+  if(name==='asistencia'){
+    const ant = document.getElementById('tabRegistroAntiguo');
+    if(ant) ant.style.display = registrosDiarios.length ? '' : 'none';
+    const activa = document.querySelector('[data-asist-tab].active');
+    if(activa && activa.dataset.asistTab==='formatomanual') initFormatoManual();
+  }
 }
 
 function showToast(msg){
@@ -3375,13 +3381,52 @@ function togglePeriodoPrueba(){
   document.getElementById('empPeriodoPruebaDuracionField').style.display = document.getElementById('empPeriodoPruebaTiene').value==='si' ? 'block':'none';
 }
 let empFotoData = '';
+// Achica una imagen (dataURL) a máximo 360×450 px en JPEG; respeta la proporción y la orientación del celular.
+const FOTO_MAX_W = 360, FOTO_MAX_H = 450, FOTO_CALIDAD = 0.82, FOTO_YA_LIVIANA = 70000;
+function comprimirFoto(dataUrl){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const k = Math.min(1, FOTO_MAX_W/img.width, FOTO_MAX_H/img.height);
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.width*k)); c.height = Math.max(1, Math.round(img.height*k));
+      const cx = c.getContext('2d');
+      cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, c.height);
+      cx.drawImage(img, 0, 0, c.width, c.height);
+      const salida = c.toDataURL('image/jpeg', FOTO_CALIDAD);
+      // Solo se usa si ahorra al menos 15%: una foto ya achicada no se vuelve a procesar.
+      resolve(salida.length < dataUrl.length*0.85 ? salida : dataUrl);
+    };
+    img.onerror = ()=>reject(new Error('Imagen no válida'));
+    img.src = dataUrl;
+  });
+}
+// Una sola vez: achica las fotos ya guardadas que pesan mucho.
+async function optimizarFotosPersonal(){
+  let n = 0, antes = 0, despues = 0;
+  for(const e of employees){
+    if(typeof e.fotoData!=='string' || !e.fotoData.startsWith('data:image') || e.fotoData.length <= FOTO_YA_LIVIANA) continue;
+    try{
+      const nueva = await comprimirFoto(e.fotoData);
+      if(nueva !== e.fotoData){ antes += e.fotoData.length; despues += nueva.length; e.fotoData = nueva; n++; }
+    }catch(err){ console.warn('Foto no optimizada', e.nombre, err); }
+  }
+  if(n){
+    await saveData('employees', employees);
+    showToast(`✅ ${n} foto(s) optimizadas: de ${(antes/1024/1024).toFixed(1)} MB a ${(despues/1024/1024).toFixed(2)} MB`);
+  }
+  return n;
+}
 function previewEmpFoto(input){
   if(!input.files.length) return;
   const file = input.files[0];
-  if(file.size > 1.5*1024*1024){ showToast('La foto es muy grande (máx. 1.5MB)'); input.value=''; return; }
+  if(!/^image\//.test(file.type)){ showToast('Elige una imagen (JPG o PNG)'); input.value=''; return; }
+  if(file.size > 15*1024*1024){ showToast('La foto es muy grande (máx. 15MB)'); input.value=''; return; }
   const reader = new FileReader();
-  reader.onload = ()=>{
-    empFotoData = reader.result;
+  reader.onload = async ()=>{
+    // La foto se achica a tamaño carné (~30 KB) para que la ficha cargue y se guarde rápido.
+    try{ empFotoData = await comprimirFoto(reader.result); }
+    catch(err){ console.error(err); showToast('No se pudo leer la imagen'); input.value=''; return; }
     document.getElementById('empFotoPreview').src = empFotoData;
     document.getElementById('empFotoPreview').style.display = 'block';
     document.getElementById('empFotoPlaceholder').style.display = 'none';
@@ -6216,6 +6261,7 @@ function populateReporteFiltros(){
   mesSel.value = currentReporteMes;
   const years = Array.from(new Set([
     ...registrosDiarios.map(r=>r.fecha.slice(0,4)),
+    ...asistenciaManual.map(a=>(a.fecha||'').slice(0,4)).filter(Boolean),
     ...faltas.map(f=>f.fecha.slice(0,4)),
     new Date().getFullYear().toString()
   ]));
@@ -6231,7 +6277,7 @@ function renderReporteMensual(){
       <td><b>${r.nombre}</b></td>
       <td class="mono">${r.diasAsistidos}</td>
       <td class="mono">${r.tardanzas}</td>
-      <td class="mono">${r.ausencias}</td>
+      <td class="mono">${r.ausencias}${r.sinMarcar ? `<div style="font-size:11px;color:var(--warn,#B7791F);">${r.sinMarcar} sin marcar</div>` : ''}</td>
       <td class="mono">${r.horasTrabajadas.toFixed(1)}h</td>
       <td class="mono">${r.horasExtras.toFixed(1)}h</td>
       <td class="mono">S/ ${r.montoEstimado.toFixed(2)}</td>
@@ -6261,18 +6307,45 @@ function exportReporteMensualCsv(){
   URL.revokeObjectURL(url);
 }
 
+// Días del mes (AAAA-MM) de un trabajador. La fuente principal es la asistencia del día (formato manual);
+// el registro detallado antiguo solo se usa en las fechas que no estén en la asistencia manual.
+// Horas: entrada a salida menos 1 h de refrigerio si la jornada pasa de 5 h; sin horas marcadas se toma la jornada de 8 h.
+function diasAsistenciaMes(e, ym){
+  const porFecha = new Map();
+  const horasDe = (ent, sal)=>{
+    if(!ent || !sal) return 8;
+    const span = Math.max(0, (horaAminutos(sal) - horaAminutos(ent))/60);
+    return Math.round(Math.max(0, span - (span > 5 ? 1 : 0))*100)/100;
+  };
+  const tarde = ent => !!(ent && e.horaEntrada && horaAminutos(ent) > horaAminutos(e.horaEntrada));
+  registrosDiarios.filter(r=>r.empId===e.id && (r.fecha||'').startsWith(ym)).forEach(r=>{
+    porFecha.set(r.fecha, {fecha:r.fecha, asistio:true, horas: r.horasTrabajadas || horasDe(r.horaIngreso, r.horaSalida), extras: r.horasExtras||0, tardanza: !!r.tardanza});
+  });
+  asistenciaManual.filter(a=>a.empId===e.id && (a.fecha||'').startsWith(ym)).forEach(a=>{
+    porFecha.set(a.fecha, {fecha:a.fecha, asistio:a.asistio, horas: a.asistio===true ? horasDe(a.horaEntrada, a.horaSalida) : 0, extras:0, tardanza: a.asistio===true && tarde(a.horaEntrada)});
+  });
+  return [...porFecha.values()];
+}
 function calcularFilasReporteMensual(){
   const mm = String(parseInt(currentReporteMes)+1).padStart(2,'0');
   const activos = employees.filter(e=>e.estado==='activo');
   const TIPOS_DEDUCCION = ['Préstamo','Adelanto','Descuento EPP'];
   const TIPOS_REEMBOLSO = ['Reembolso EPP','Reembolso Otros'];
+  const ym = currentReporteAnio+'-'+mm;
   return activos.map(e=>{
-    const regsMes = registrosDiarios.filter(r=>r.empId===e.id && r.fecha.slice(0,4)===currentReporteAnio && r.fecha.slice(5,7)===mm);
-    const faltasMes = faltas.filter(f=>f.empId===e.id && f.fecha.slice(0,4)===currentReporteAnio && f.fecha.slice(5,7)===mm);
-    const horasTrabajadas = regsMes.reduce((s,r)=>s+(r.horasTrabajadas||0),0);
-    const horasExtras = regsMes.reduce((s,r)=>s+(r.horasExtras||0),0);
-    const tarifaHora = (e.sueldoDiario||0)/8;
-    const montoEstimado = (horasTrabajadas*tarifaHora) + (horasExtras*tarifaHora*1.25);
+    const dias = diasAsistenciaMes(e, ym);
+    const asistidos = dias.filter(d=>d.asistio===true);
+    // Ausencias: días marcados "No asistió" más las faltas registradas aparte (sin contar dos veces la misma fecha).
+    const fechasAusencia = new Set(dias.filter(d=>d.asistio===false).map(d=>d.fecha));
+    faltas.filter(f=>f.empId===e.id && (f.fecha||'').startsWith(ym)).forEach(f=>fechasAusencia.add(f.fecha));
+    const horasTrabajadas = asistidos.reduce((s,d)=>s+d.horas, 0);
+    // Horas extra: las del módulo Horas extra (registro oficial); si un día no tiene, las del registro detallado antiguo.
+    const heMes = horasExtraRegistro.filter(r=>r.empId===e.id && (r.fecha||'').startsWith(ym));
+    const fechasHe = new Set(heMes.map(r=>r.fecha));
+    const heAntiguas = asistidos.filter(d=>d.extras>0 && !fechasHe.has(d.fecha));
+    const horasExtras = heMes.reduce((s,r)=>s+(r.horas||0),0) + heAntiguas.reduce((s,d)=>s+d.extras,0);
+    const montoHe = heMes.reduce((s,r)=>s+heMontoDia(r.horas||0, e.sueldoDiario),0) + heAntiguas.reduce((s,d)=>s+heMontoDia(d.extras, e.sueldoDiario),0);
+    const montoEstimado = asistidos.length*(e.sueldoDiario||0) + montoHe;
 
     const pagosDelMes = (tipos) => prestamos.filter(p=>p.empId===e.id && tipos.includes(p.tipo)).reduce((s,p)=>{
       return s + (p.pagos||[]).filter(pg=>pg.fecha.slice(0,4)===currentReporteAnio && pg.fecha.slice(5,7)===mm).reduce((s2,pg)=>s2+pg.monto,0);
@@ -6281,8 +6354,8 @@ function calcularFilasReporteMensual(){
     const reembolsos = pagosDelMes(TIPOS_REEMBOLSO) + reembolsosEnBoletaMes(e.id, currentReporteAnio+'-'+mm);
 
     return {
-      nombre: e.nombre, diasAsistidos: regsMes.length, tardanzas: regsMes.filter(r=>r.tardanza).length,
-      ausencias: faltasMes.length, horasTrabajadas, horasExtras, montoEstimado, descuentoPrestamos, reembolsos,
+      nombre: e.nombre, diasAsistidos: asistidos.length, tardanzas: asistidos.filter(d=>d.tardanza).length,
+      ausencias: fechasAusencia.size, sinMarcar: dias.filter(d=>d.asistio===null).length, horasTrabajadas, horasExtras, montoEstimado, descuentoPrestamos, reembolsos,
       neto: montoEstimado - descuentoPrestamos + reembolsos
     };
   });
@@ -12608,7 +12681,10 @@ async function arrancarSistema(){
   sistemaIniciado = true;
   mostrarBloqueAuth(null);
   // Los documentos que aún estén dentro de los datos se pasan a archivos separados (solo la primera vez).
-  setTimeout(()=>migrarArchivosANube().catch(err=>console.error('Migración de archivos', err)), 2500);
+  setTimeout(async ()=>{
+    try{ await migrarArchivosANube(); }catch(err){ console.error('Migración de archivos', err); }
+    try{ await optimizarFotosPersonal(); }catch(err){ console.error('Optimización de fotos', err); }
+  }, 2500);
 }
 
 (function bootstrap(){
