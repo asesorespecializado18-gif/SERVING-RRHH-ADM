@@ -3610,8 +3610,8 @@ const EMP_FIELD_IDS = ['empNombre','empDni','empDomicilio','empCiudad','empCorre
   'empLicenciaCategoria','empLicenciaNumero','empLicenciaVigencia','empBanco','empNumeroCuenta','empCci',
   'empRefNombre','empRefParentesco','empRefTelefono','empRefDireccion','empNotas'];
 
-// Remuneración Mínima Vital vigente (D.S. N.° 006-2024-TR, desde el 01/01/2025). Actualizar si el Gobierno la modifica.
-const RMV_VIGENTE = 1130;
+// Remuneración Mínima Vital vigente (S/ 1,230, confirmado por RRHH el 26/10/2026). Actualizar si el Gobierno la modifica.
+const RMV_VIGENTE = 1230;
 function updateSueldoMensual(){
   const diario = parseFloat(document.getElementById('empSueldoDiario').value) || 0;
   const mensual = diario*30;
@@ -10446,7 +10446,8 @@ function renderPlanillaPorTrabajador(){
 // Tasas editables desde el panel de Inicio; los valores por defecto deben confirmarse con la tabla vigente de la SBS.
 const APORTES_DEFECTO = {afpAporte:10, afpPrima:1.37, afpFlujo:{Integra:1.55, Prima:1.60, Habitat:1.47, Profuturo:1.69}, onp:13, essalud:9, sisMensual:15, rmv:RMV_VIGENTE};
 const AP_CONCEPTOS = ['AFP','ONP','EsSalud','SIS'];
-function apCfg(){ const c = aportesConfig || {}; return {...APORTES_DEFECTO, ...c, afpFlujo:{...APORTES_DEFECTO.afpFlujo, ...(c.afpFlujo||{})}}; }
+// La RMV solo sube: una guardada antes del último aumento no puede quedar por debajo de la vigente.
+function apCfg(){ const c = aportesConfig || {}; return {...APORTES_DEFECTO, ...c, rmv: Math.max(Number(c.rmv)||0, RMV_VIGENTE), afpFlujo:{...APORTES_DEFECTO.afpFlujo, ...(c.afpFlujo||{})}}; }
 function apR2(n){ return Math.round((Number(n)||0)*100)/100; }
 // Base afecta: jornales, horas extra y bonos. La cena y el cuarto son condiciones de trabajo (no remunerativos).
 function apBase(p){ return apR2((p.pagoSemanal||0) + (p.pago25||0) + (p.bonificacion||0) + (p.bonoArco||0)); }
